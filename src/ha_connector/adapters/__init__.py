@@ -23,7 +23,7 @@ from .aws_manager import (
 
 __all__ = [
     "AWSResourceManager",
-    "AWSResourceType", 
+    "AWSResourceType",
     "AWSLambdaManager",
     "AWSIAMManager",
     "AWSSSMManager",

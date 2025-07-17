@@ -118,13 +118,13 @@ __all__ = [
     # AWS adapters
     'AWSResourceManager',
     'AWSResourceType',
-    'AWSLambdaManager', 
+    'AWSLambdaManager',
     'AWSIAMManager',
     'AWSSSMManager',
     'AWSLogsManager',
     'AWSTriggerManager',
     'validate_aws_access',
-    
+
     # Deployment
     'ServiceInstaller',
     'ServiceType',
@@ -136,7 +136,7 @@ __all__ = [
     'AccessApplicationConfig',
     'create_access_application',
     'DeploymentManager',
-    'DeploymentStrategy', 
+    'DeploymentStrategy',
     'DeploymentConfig',
     'orchestrate_deployment',
 ]
