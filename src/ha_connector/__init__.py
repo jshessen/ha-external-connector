@@ -1,16 +1,79 @@
-"""Home Assistant External Connector Package."""
+"""
+Home Assistant External Connector.
 
-__version__ = "0.1.0"
+A Python package for connecting self-hosted Home Assistant instances 
+to external cloud services like AWS Lambda, Alexa, CloudFlare, and iOS.
+"""
+
+from .utils import (
+    # Logger and error handling
+    logger,
+    HAConnectorError,
+    PrerequisiteError,
+    HAEnvironmentError,
+    ValidationError,
+    error_exit,
+    
+    # Validation and requirements
+    require_commands,
+    require_env,
+    validate_input,
+    sanitize_env_var,
+    
+    # File operations
+    safe_file_backup,
+    safe_file_write,
+    safe_file_append,
+    
+    # Command execution
+    safe_exec,
+    
+    # JSON utilities
+    validate_json,
+    extract_json_value,
+    process_json_secure,
+    
+    # AWS utilities
+    aws_region_check,
+    aws_credentials_check,
+    check_lambda_function_exists,
+)
+
+__version__ = "1.0.0"
 __author__ = "Home Assistant External Connector Team"
-__description__ = "Secure integration between Home Assistant and external services"
+__description__ = "Connect self-hosted Home Assistant to external cloud services"
 
-from .config import Settings
-from .models import InstallationScenario
-
+# Package metadata
 __all__ = [
-    "__version__",
-    "__author__", 
-    "__description__",
-    "Settings",
-    "InstallationScenario",
+    # Core utilities
+    'logger',
+    'HAConnectorError',
+    'PrerequisiteError', 
+    'HAEnvironmentError',
+    'ValidationError',
+    'error_exit',
+    
+    # Validation functions
+    'require_commands',
+    'require_env',
+    'validate_input',
+    'sanitize_env_var',
+    
+    # File operations
+    'safe_file_backup',
+    'safe_file_write', 
+    'safe_file_append',
+    
+    # Command execution
+    'safe_exec',
+    
+    # JSON utilities
+    'validate_json',
+    'extract_json_value',
+    'process_json_secure',
+    
+    # AWS utilities
+    'aws_region_check',
+    'aws_credentials_check',
+    'check_lambda_function_exists',
 ]
