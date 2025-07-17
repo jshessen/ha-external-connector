@@ -1,7 +1,7 @@
 """
 AWS Resource Manager - Pure JSON CRUD interface over AWS resources
 
-This module provides a modern Python implementation of the AWS resource management 
+This module provides a modern Python implementation of the AWS resource management
 functionality originally implemented in bash aws_manager.sh.
 
 Key Features:
@@ -87,11 +87,11 @@ class AWSResourceResponse(BaseModel):
 
 class AWSBaseManager:
     """Base class for AWS resource managers"""
-    
+
     def __init__(self, region: str = "us-east-1"):
         self.region = region
         self.logger = HAConnectorLogger("aws_manager")
-        
+
     def _handle_boto_error(self, error: Exception, operation: str) -> AWSResourceResponse:
         """Handle boto3 errors and return standardized error response"""
         if isinstance(error, ClientError):
@@ -112,30 +112,30 @@ class AWSBaseManager:
 
 class AWSLambdaManager(AWSBaseManager):
     """Manager for AWS Lambda functions"""
-    
+
     def __init__(self, region: str = "us-east-1"):
         super().__init__(region)
         self.client = boto3.client('lambda', region_name=region)
-        
+
     def create_or_update(self, spec: LambdaResourceSpec) -> AWSResourceResponse:
         """Create or update a Lambda function"""
         try:
             # Check if function exists
             function_exists = self._function_exists(spec.function_name)
-            
+
             if function_exists:
                 return self._update_function(spec)
             else:
                 return self._create_function(spec)
-                
+
         except Exception as e:
             return self._handle_boto_error(e, "Lambda create/update")
-    
+
     def read(self, function_name: str) -> AWSResourceResponse:
         """Read Lambda function configuration"""
         try:
             response = self.client.get_function(FunctionName=function_name)
-            
+
             # Try to get function URL if it exists
             url_config = None
             try:
@@ -144,19 +144,19 @@ class AWSLambdaManager(AWSBaseManager):
             except ClientError as e:
                 if e.response['Error']['Code'] != 'ResourceNotFoundException':
                     raise
-            
+
             # Add URL config to response
             if url_config:
                 response['Configuration']['FunctionUrl'] = url_config
             else:
                 response['Configuration']['FunctionUrl'] = None
-                
+
             return AWSResourceResponse(
                 status="success",
                 resource=response,
                 exists=True
             )
-            
+
         except ClientError as e:
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
                 return AWSResourceResponse(
@@ -167,14 +167,14 @@ class AWSLambdaManager(AWSBaseManager):
             return self._handle_boto_error(e, "Lambda read")
         except Exception as e:
             return self._handle_boto_error(e, "Lambda read")
-    
+
     def delete(self, function_name: str) -> AWSResourceResponse:
         """Delete Lambda function (placeholder - not implemented in original)"""
         return AWSResourceResponse(
             status="not_implemented",
             errors=["Lambda delete not implemented"]
         )
-    
+
     def _function_exists(self, function_name: str) -> bool:
         """Check if Lambda function exists"""
         try:
@@ -184,13 +184,13 @@ class AWSLambdaManager(AWSBaseManager):
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
                 return False
             raise
-    
+
     def _create_function(self, spec: LambdaResourceSpec) -> AWSResourceResponse:
         """Create new Lambda function"""
         # Read the package file
         with open(spec.package_path, 'rb') as package_file:
             package_bytes = package_file.read()
-        
+
         create_params = {
             'FunctionName': spec.function_name,
             'Runtime': spec.runtime,
@@ -200,19 +200,19 @@ class AWSLambdaManager(AWSBaseManager):
             'Timeout': spec.timeout,
             'MemorySize': spec.memory_size,
         }
-        
+
         if spec.description:
             create_params['Description'] = spec.description
-            
+
         if spec.environment_variables:
             create_params['Environment'] = {'Variables': spec.environment_variables}
-        
+
         # Create the function
         self.client.create_function(**create_params)
-        
+
         # Get the created function details
         function_data = self.client.get_function(FunctionName=spec.function_name)
-        
+
         # Create function URL if requested
         if spec.create_url:
             try:
@@ -226,24 +226,24 @@ class AWSLambdaManager(AWSBaseManager):
                 function_data['Configuration']['FunctionUrl'] = None
         else:
             function_data['Configuration']['FunctionUrl'] = None
-        
+
         self.logger.info(f"Created Lambda function: {spec.function_name}")
         return AWSResourceResponse(
             status="created",
             resource=function_data
         )
-    
+
     def _update_function(self, spec: LambdaResourceSpec) -> AWSResourceResponse:
         """Update existing Lambda function"""
         # Update function code
         with open(spec.package_path, 'rb') as package_file:
             package_bytes = package_file.read()
-        
+
         self.client.update_function_code(
             FunctionName=spec.function_name,
             ZipFile=package_bytes
         )
-        
+
         # Update function configuration
         update_params = {
             'FunctionName': spec.function_name,
@@ -253,18 +253,18 @@ class AWSLambdaManager(AWSBaseManager):
             'Timeout': spec.timeout,
             'MemorySize': spec.memory_size,
         }
-        
+
         if spec.description:
             update_params['Description'] = spec.description
-            
+
         if spec.environment_variables:
             update_params['Environment'] = {'Variables': spec.environment_variables}
-        
+
         self.client.update_function_configuration(**update_params)
-        
+
         # Get updated function details
         function_data = self.client.get_function(FunctionName=spec.function_name)
-        
+
         # Handle function URL
         if spec.create_url:
             try:
@@ -287,7 +287,7 @@ class AWSLambdaManager(AWSBaseManager):
                     raise
         else:
             function_data['Configuration']['FunctionUrl'] = None
-        
+
         self.logger.info(f"Updated Lambda function: {spec.function_name}")
         return AWSResourceResponse(
             status="updated",
@@ -297,11 +297,11 @@ class AWSLambdaManager(AWSBaseManager):
 
 class AWSIAMManager(AWSBaseManager):
     """Manager for AWS IAM resources"""
-    
+
     def __init__(self, region: str = "us-east-1"):
         super().__init__(region)
         self.client = boto3.client('iam', region_name=region)
-    
+
     def create_or_update(self, spec: IAMResourceSpec) -> AWSResourceResponse:
         """Create or update IAM resource"""
         try:
@@ -316,7 +316,7 @@ class AWSIAMManager(AWSBaseManager):
                 )
         except Exception as e:
             return self._handle_boto_error(e, "IAM create/update")
-    
+
     def read(self, resource_name: str, resource_type: str = "role") -> AWSResourceResponse:
         """Read IAM resource"""
         try:
@@ -347,14 +347,14 @@ class AWSIAMManager(AWSBaseManager):
             return self._handle_boto_error(e, "IAM read")
         except Exception as e:
             return self._handle_boto_error(e, "IAM read")
-    
+
     def delete(self, resource_name: str, resource_type: str = "role") -> AWSResourceResponse:
         """Delete IAM resource (placeholder)"""
         return AWSResourceResponse(
             status="not_implemented",
             errors=[f"IAM {resource_type} delete not implemented"]
         )
-    
+
     def _create_or_update_role(self, spec: IAMResourceSpec) -> AWSResourceResponse:
         """Create or update IAM role"""
         try:
@@ -367,7 +367,7 @@ class AWSIAMManager(AWSBaseManager):
                     role_exists = False
                 else:
                     raise
-            
+
             if role_exists:
                 # Update role's assume role policy if provided
                 if spec.assume_role_policy:
@@ -375,7 +375,7 @@ class AWSIAMManager(AWSBaseManager):
                         RoleName=spec.name,
                         PolicyDocument=json.dumps(spec.assume_role_policy)
                     )
-                
+
                 response = self.client.get_role(RoleName=spec.name)
                 self.logger.info(f"Updated IAM role: {spec.name}")
                 return AWSResourceResponse(
@@ -388,20 +388,20 @@ class AWSIAMManager(AWSBaseManager):
                     'RoleName': spec.name,
                     'AssumeRolePolicyDocument': json.dumps(spec.assume_role_policy),
                 }
-                
+
                 if spec.description:
                     create_params['Description'] = spec.description
-                
+
                 response = self.client.create_role(**create_params)
                 self.logger.info(f"Created IAM role: {spec.name}")
                 return AWSResourceResponse(
                     status="created",
                     resource=response
                 )
-                
+
         except Exception as e:
             return self._handle_boto_error(e, "IAM role create/update")
-    
+
     def _create_or_update_policy(self, spec: IAMResourceSpec) -> AWSResourceResponse:
         """Create or update IAM policy (placeholder)"""
         return AWSResourceResponse(
@@ -412,40 +412,40 @@ class AWSIAMManager(AWSBaseManager):
 
 class AWSSSMManager(AWSBaseManager):
     """Manager for AWS Systems Manager parameters"""
-    
+
     def __init__(self, region: str = "us-east-1"):
         super().__init__(region)
         self.client = boto3.client('ssm', region_name=region)
-    
+
     def create_or_update(self, spec: SSMResourceSpec) -> AWSResourceResponse:
         """Create or update SSM parameter"""
         try:
             parameter_type = "SecureString" if spec.secure else spec.parameter_type
-            
+
             put_params = {
                 'Name': spec.name,
                 'Value': spec.value,
                 'Type': parameter_type,
                 'Overwrite': True,  # Allow updates
             }
-            
+
             if spec.description:
                 put_params['Description'] = spec.description
-            
+
             self.client.put_parameter(**put_params)
-            
+
             # Get the parameter to return in response
             response = self.client.get_parameter(Name=spec.name, WithDecryption=True)
-            
+
             self.logger.info(f"Created/updated SSM parameter: {spec.name}")
             return AWSResourceResponse(
                 status="created",
                 resource=response
             )
-            
+
         except Exception as e:
             return self._handle_boto_error(e, "SSM create/update")
-    
+
     def read(self, parameter_name: str) -> AWSResourceResponse:
         """Read SSM parameter"""
         try:
@@ -464,7 +464,7 @@ class AWSSSMManager(AWSBaseManager):
             return self._handle_boto_error(e, "SSM read")
         except Exception as e:
             return self._handle_boto_error(e, "SSM read")
-    
+
     def delete(self, parameter_name: str) -> AWSResourceResponse:
         """Delete SSM parameter (placeholder)"""
         return AWSResourceResponse(
@@ -475,11 +475,11 @@ class AWSSSMManager(AWSBaseManager):
 
 class AWSLogsManager(AWSBaseManager):
     """Manager for AWS CloudWatch Logs"""
-    
+
     def __init__(self, region: str = "us-east-1"):
         super().__init__(region)
         self.client = boto3.client('logs', region_name=region)
-    
+
     def create_or_update(self, spec: LogsResourceSpec) -> AWSResourceResponse:
         """Create or update CloudWatch log group"""
         try:
@@ -489,17 +489,17 @@ class AWSLogsManager(AWSBaseManager):
                 log_group_exists = True
             except ClientError:
                 log_group_exists = False
-            
+
             if not log_group_exists:
                 # Create log group
                 self.client.create_log_group(logGroupName=spec.log_group_name)
-                
+
                 # Set retention policy
                 self.client.put_retention_policy(
                     logGroupName=spec.log_group_name,
                     retentionInDays=spec.retention_days
                 )
-                
+
                 self.logger.info(f"Created CloudWatch log group: {spec.log_group_name}")
                 status = "created"
             else:
@@ -508,26 +508,26 @@ class AWSLogsManager(AWSBaseManager):
                     logGroupName=spec.log_group_name,
                     retentionInDays=spec.retention_days
                 )
-                
+
                 self.logger.info(f"Updated CloudWatch log group: {spec.log_group_name}")
                 status = "updated"
-            
+
             # Get log group details
             response = self.client.describe_log_groups(logGroupNamePrefix=spec.log_group_name)
-            
+
             return AWSResourceResponse(
                 status=status,
                 resource=response
             )
-            
+
         except Exception as e:
             return self._handle_boto_error(e, "CloudWatch Logs create/update")
-    
+
     def read(self, log_group_name: str) -> AWSResourceResponse:
         """Read CloudWatch log group"""
         try:
             response = self.client.describe_log_groups(logGroupNamePrefix=log_group_name)
-            
+
             if response.get('logGroups'):
                 return AWSResourceResponse(
                     status="success",
@@ -539,10 +539,10 @@ class AWSLogsManager(AWSBaseManager):
                     status="success",
                     exists=False
                 )
-                
+
         except Exception as e:
             return self._handle_boto_error(e, "CloudWatch Logs read")
-    
+
     def delete(self, log_group_name: str) -> AWSResourceResponse:
         """Delete CloudWatch log group (placeholder)"""
         return AWSResourceResponse(
@@ -553,14 +553,14 @@ class AWSLogsManager(AWSBaseManager):
 
 class AWSTriggerManager(AWSBaseManager):
     """Manager for AWS triggers (placeholder)"""
-    
+
     def create_or_update(self, spec: Dict[str, Any]) -> AWSResourceResponse:
         """Create or update trigger (placeholder)"""
         return AWSResourceResponse(
             status="not_implemented",
             errors=["Trigger resource creation not implemented"]
         )
-    
+
     def read(self, trigger_id: str) -> AWSResourceResponse:
         """Read trigger (placeholder)"""
         return AWSResourceResponse(
@@ -568,7 +568,7 @@ class AWSTriggerManager(AWSBaseManager):
             exists=False,
             errors=["Trigger resource reading not implemented"]
         )
-    
+
     def delete(self, trigger_id: str) -> AWSResourceResponse:
         """Delete trigger (placeholder)"""
         return AWSResourceResponse(
@@ -579,18 +579,18 @@ class AWSTriggerManager(AWSBaseManager):
 
 class AWSResourceManager:
     """Main AWS resource manager providing CRUD operations for all resource types"""
-    
+
     def __init__(self, region: str = "us-east-1"):
         self.region = region
         self.logger = HAConnectorLogger("aws_resource_manager")
-        
+
         # Initialize resource managers
         self.lambda_manager = AWSLambdaManager(region)
         self.iam_manager = AWSIAMManager(region)
         self.ssm_manager = AWSSSMManager(region)
         self.logs_manager = AWSLogsManager(region)
         self.trigger_manager = AWSTriggerManager(region)
-    
+
     def create_resource(self, resource_type: AWSResourceType, resource_spec: Dict[str, Any]) -> AWSResourceResponse:
         """Create a resource based on type and specification"""
         try:
@@ -624,7 +624,7 @@ class AWSResourceManager:
                 status="error",
                 errors=[f"Resource creation failed: {str(e)}"]
             )
-    
+
     def read_resource(self, resource_type: AWSResourceType, resource_id: str, **kwargs) -> AWSResourceResponse:
         """Read a resource's current state"""
         try:
@@ -651,12 +651,12 @@ class AWSResourceManager:
                 status="error",
                 errors=[f"Resource read failed: {str(e)}"]
             )
-    
+
     def update_resource(self, resource_type: AWSResourceType, resource_id: str, resource_spec: Dict[str, Any]) -> AWSResourceResponse:
         """Update a resource"""
         # For most resources, update is the same as create_or_update
         return self.create_resource(resource_type, resource_spec)
-    
+
     def delete_resource(self, resource_type: AWSResourceType, resource_id: str) -> AWSResourceResponse:
         """Delete a resource"""
         try:
@@ -681,22 +681,22 @@ class AWSResourceManager:
                 status="error",
                 errors=[f"Resource deletion failed: {str(e)}"]
             )
-    
+
     def validate_aws_access(self) -> AWSResourceResponse:
         """Validate AWS access and permissions"""
         try:
             # Try to get caller identity
             sts_client = boto3.client('sts', region_name=self.region)
             identity = sts_client.get_caller_identity()
-            
+
             self.logger.info(f"AWS access validated for account: {identity.get('Account')}, user: {identity.get('UserId')}")
-            
+
             return AWSResourceResponse(
                 status="success",
                 resource=identity,
                 errors=[]
             )
-            
+
         except Exception as e:
             self.logger.error(f"AWS access validation failed: {str(e)}")
             return AWSResourceResponse(

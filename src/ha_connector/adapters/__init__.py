@@ -14,6 +14,11 @@ from .aws_manager import (
     AWSLogsManager,
     AWSTriggerManager,
     validate_aws_access,
+    LambdaResourceSpec,
+    IAMResourceSpec,
+    SSMResourceSpec,
+    LogsResourceSpec,
+    AWSResourceResponse,
 )
 
 __all__ = [
@@ -25,4 +30,9 @@ __all__ = [
     "AWSLogsManager",
     "AWSTriggerManager",
     "validate_aws_access",
+    "LambdaResourceSpec",
+    "IAMResourceSpec",
+    "SSMResourceSpec",
+    "LogsResourceSpec",
+    "AWSResourceResponse",
 ]
