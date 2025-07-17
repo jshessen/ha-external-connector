@@ -39,6 +39,13 @@ from .utils import (
     check_lambda_function_exists,
 )
 
+from .config import (
+    Settings,
+    ConfigurationManager,
+    InstallationScenario,
+    config_manager,
+)
+
 __version__ = "1.0.0"
 __author__ = "Home Assistant External Connector Team"
 __description__ = "Connect self-hosted Home Assistant to external cloud services"
@@ -76,4 +83,10 @@ __all__ = [
     'aws_region_check',
     'aws_credentials_check',
     'check_lambda_function_exists',
+    
+    # Configuration management
+    'Settings',
+    'ConfigurationManager',
+    'InstallationScenario',
+    'config_manager',
 ]

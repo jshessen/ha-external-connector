@@ -4,7 +4,18 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 import os
 
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings
+
+from .manager import (
+    ConfigurationManager,
+    ConfigurationState,
+    InstallationScenario,
+    ResourceRequirement,
+    MatchedResource,
+    ResourceDiscoveryResult,
+    config_manager
+)
 
 
 class Settings(BaseSettings):
@@ -98,6 +109,24 @@ def ensure_config_dir() -> Path:
     config_dir = get_config_dir()
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir
+
+
+__all__ = [
+    # Settings
+    'Settings',
+    'load_config',
+    'get_config_dir',
+    'ensure_config_dir',
+    
+    # Configuration Manager
+    'ConfigurationManager',
+    'ConfigurationState', 
+    'InstallationScenario',
+    'ResourceRequirement',
+    'MatchedResource',
+    'ResourceDiscoveryResult',
+    'config_manager',
+]
 
 
 # Global settings instance
