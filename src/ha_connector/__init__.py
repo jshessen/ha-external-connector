@@ -12,6 +12,7 @@ from .utils import (
     PrerequisiteError,
     HAEnvironmentError,
     ValidationError,
+    AWSError,
     error_exit,
     
     # Validation and requirements
@@ -40,10 +41,19 @@ from .utils import (
 )
 
 from .config import (
-    Settings,
     ConfigurationManager,
     InstallationScenario,
-    config_manager,
+)
+
+from .adapters import (
+    AWSResourceManager,
+    AWSResourceType,
+    AWSLambdaManager,
+    AWSIAMManager,
+    AWSSSMManager,
+    AWSLogsManager,
+    AWSTriggerManager,
+    validate_aws_access,
 )
 
 __version__ = "1.0.0"
@@ -58,6 +68,7 @@ __all__ = [
     'PrerequisiteError', 
     'HAEnvironmentError',
     'ValidationError',
+    'AWSError',
     'error_exit',
     
     # Validation functions
@@ -85,8 +96,16 @@ __all__ = [
     'check_lambda_function_exists',
     
     # Configuration management
-    'Settings',
     'ConfigurationManager',
     'InstallationScenario',
-    'config_manager',
+    
+    # AWS adapters
+    'AWSResourceManager',
+    'AWSResourceType',
+    'AWSLambdaManager', 
+    'AWSIAMManager',
+    'AWSSSMManager',
+    'AWSLogsManager',
+    'AWSTriggerManager',
+    'validate_aws_access',
 ]

@@ -150,6 +150,11 @@ class ValidationError(HAConnectorError):
     pass
 
 
+class AWSError(HAConnectorError):
+    """Error for AWS operation failures."""
+    pass
+
+
 def error_exit(message: str, exit_code: int = 1, context: Optional[str] = None):
     """Exit with error message and optional context."""
     logger.error(message)
