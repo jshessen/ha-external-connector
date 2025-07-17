@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 
 from pydantic import Field, validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .manager import (
     ConfigurationManager,
@@ -22,38 +22,39 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # AWS Configuration
-    aws_profile: str = Field("default", env="AWS_PROFILE")
-    aws_region: str = Field("us-east-1", env="AWS_REGION")
-    aws_access_key_id: Optional[str] = Field(None, env="AWS_ACCESS_KEY_ID")
-    aws_secret_access_key: Optional[str] = Field(None, env="AWS_SECRET_ACCESS_KEY")
-    aws_session_token: Optional[str] = Field(None, env="AWS_SESSION_TOKEN")
+    aws_profile: Optional[str] = None
+    aws_region: Optional[str] = None
+    aws_access_key_id: Optional[str] = None
+    aws_secret_access_key: Optional[str] = None
+    aws_session_token: Optional[str] = None
 
     # CloudFlare Configuration
-    cf_api_token: Optional[str] = Field(None, env="CF_API_TOKEN")
-    cf_api_key: Optional[str] = Field(None, env="CF_API_KEY")
-    cf_email: Optional[str] = Field(None, env="CF_EMAIL")
-    cf_client_id: Optional[str] = Field(None, env="CF_CLIENT_ID")
-    cf_client_secret: Optional[str] = Field(None, env="CF_CLIENT_SECRET")
+    cf_api_token: Optional[str] = None
+    cf_api_key: Optional[str] = None
+    cf_email: Optional[str] = None
+    cf_client_id: Optional[str] = None
+    cf_client_secret: Optional[str] = None
 
     # Home Assistant Configuration
-    ha_base_url: Optional[str] = Field(None, env="HA_BASE_URL")
-    alexa_secret: Optional[str] = Field(None, env="ALEXA_SECRET")
+    ha_base_url: Optional[str] = None
+    alexa_secret: Optional[str] = None
 
     # Application Configuration
-    log_level: str = Field("INFO", env="LOG_LEVEL")
-    dry_run: bool = Field(False, env="DRY_RUN")
-    verbose: bool = Field(False, env="VERBOSE")
+    log_level: Optional[str] = None
+    dry_run: Optional[bool] = None
+    verbose: Optional[bool] = None
 
     # Timeouts and Limits
-    request_timeout: int = Field(30, env="REQUEST_TIMEOUT")
-    max_concurrent_requests: int = Field(10, env="MAX_CONCURRENT_REQUESTS")
-    retry_attempts: int = Field(3, env="RETRY_ATTEMPTS")
+    request_timeout: Optional[int] = None
+    max_concurrent_requests: Optional[int] = None
+    retry_attempts: Optional[int] = None
 
     # Lambda Configuration Defaults
-    default_lambda_timeout: int = Field(30, env="DEFAULT_LAMBDA_TIMEOUT")
-    default_lambda_memory: int = Field(512, env="DEFAULT_LAMBDA_MEMORY")
+    default_lambda_timeout: Optional[int] = None
+    default_lambda_memory: Optional[int] = None
 
     @validator('aws_region')
+    @classmethod
     def validate_aws_region(cls, v):
         """Validate AWS region format."""
         if not v or len(v.split('-')) < 3:
@@ -61,6 +62,7 @@ class Settings(BaseSettings):
         return v
 
     @validator('log_level')
+    @classmethod
     def validate_log_level(cls, v):
         """Validate log level."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -69,6 +71,7 @@ class Settings(BaseSettings):
         return v.upper()
 
     @validator('ha_base_url')
+    @classmethod
     def validate_ha_base_url(cls, v):
         """Validate Home Assistant URL."""
         if v and not v.startswith('https://'):
@@ -76,22 +79,22 @@ class Settings(BaseSettings):
         return v
 
     @validator('alexa_secret')
+    @classmethod
     def validate_alexa_secret(cls, v):
         """Validate Alexa secret length."""
         if v and len(v) < 32:
             raise ValueError('Alexa secret must be at least 32 characters long')
         return v
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
 
 
-def load_config(config_file: Optional[Path] = None) -> Settings:
+def load_config() -> Settings:
     """Load configuration from environment and/or file."""
-    if config_file and config_file.exists():
-        return Settings(_env_file=config_file)
     return Settings()
 
 
