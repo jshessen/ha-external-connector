@@ -1,3 +1,5 @@
+[tool.flake8]
+max-line-length = 88
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -127,10 +129,6 @@ exclude_dirs = ["tests"]
 skips = ["B101", "B601"]
 
 [tool.ruff]
-select = ["E", "F", "UP", "B", "SIM", "I"]
-ignore = []
-fixable = ["A", "B", "C", "D", "E", "F", "UP", "SIM", "I"]
-unfixable = []
 exclude = [
     ".bzr",
     ".direnv",
@@ -156,3 +154,9 @@ exclude = [
 ]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I"]
+ignore = []
+fixable = ["A", "B", "C", "D", "E", "F", "UP", "SIM", "I"]
+unfixable = []

@@ -2,17 +2,17 @@
 CLI Package
 
 This package provides the command-line interface for Home Assistant External Connector.
-Replaces the bash install.sh and related CLI scripts with a modern Python implementation using Typer.
+Implements all CLI functionality using modern Python and Typer.
 """
 
-from .main import app, main
 from .commands import (
-    install_command,
-    deploy_command,
     configure_command,
-    status_command,
+    deploy_command,
+    install_command,
     remove_command,
+    status_command,
 )
+from .main import app, main
 
 __all__ = [
     "app",

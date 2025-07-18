@@ -8,13 +8,12 @@ input validation, and AWS utilities that are used across all components.
 import json
 import logging
 import os
-import sys
+import re
 import shutil
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-import subprocess
-import re
 
 
 class ColoredFormatter(logging.Formatter):
@@ -26,7 +25,7 @@ class ColoredFormatter(logging.Formatter):
         'INFO': '\033[0;32m',     # Green
         'WARNING': '\033[1;33m',  # Yellow
         'ERROR': '\033[0;31m',    # Red
-        'CRITICAL': '\033[0;31m', # Red
+        'CRITICAL': '\033[0;31m',  # Red
         'SUCCESS': '\033[0;32m',  # Green
         'RESET': '\033[0m'        # Reset
     }
@@ -45,7 +44,7 @@ class HAConnectorLogger:
 
     def __init__(self,
                  name: str = "ha_connector",
-                 log_file: Optional[str] = None,
+                 log_file: str | None = None,
                  verbose: bool = False,
                  max_log_size: int = 10 * 1024 * 1024):  # 10MB
 
@@ -88,7 +87,7 @@ class HAConnectorLogger:
 
         # Rotate log if too large
         if log_path.exists() and log_path.stat().st_size > self.max_log_size:
-            backup_path = log_path.with_suffix(f'.old')
+            backup_path = log_path.with_suffix('.old')
             shutil.move(str(log_path), str(backup_path))
 
         self.file_handler = logging.FileHandler(self.log_file, mode='a')
@@ -109,7 +108,7 @@ class HAConnectorLogger:
         """Log error message."""
         self.logger.error(message, **kwargs)
 
-    def success(self, message: str, **kwargs):
+    def success(self, message: str):
         """Log success message (custom level)."""
         # Create a custom success record
         record = self.logger.makeRecord(
@@ -128,7 +127,7 @@ logger = HAConnectorLogger(
 class HAConnectorError(Exception):
     """Base exception for HA Connector errors."""
 
-    def __init__(self, message: str, context: Optional[str] = None, exit_code: int = 1):
+    def __init__(self, message: str, context: str | None = None, exit_code: int = 1):
         super().__init__(message)
         self.message = message
         self.context = context
@@ -137,25 +136,21 @@ class HAConnectorError(Exception):
 
 class PrerequisiteError(HAConnectorError):
     """Error for missing prerequisites."""
-    pass
 
 
 class HAEnvironmentError(HAConnectorError):
     """Error for environment configuration issues."""
-    pass
 
 
 class ValidationError(HAConnectorError):
     """Error for input validation failures."""
-    pass
 
 
 class AWSError(HAConnectorError):
     """Error for AWS operation failures."""
-    pass
 
 
-def error_exit(message: str, exit_code: int = 1, context: Optional[str] = None):
+def error_exit(message: str, exit_code: int = 1, context: str | None = None):
     """Exit with error message and optional context."""
     logger.error(message)
     if context:
@@ -164,11 +159,12 @@ def error_exit(message: str, exit_code: int = 1, context: Optional[str] = None):
     logger.error(f"Operation failed. Check {logger.log_file} for details.")
 
     # Call cleanup if it exists
-    if hasattr(sys.modules[__name__], 'cleanup'):
+    cleanup_func = getattr(sys.modules[__name__], 'cleanup', None)
+    if callable(cleanup_func):
         try:
-            cleanup()
-        except Exception as e:
-            logger.error(f"Cleanup failed: {e}")
+            cleanup_func()
+        except OSError as exc:
+            logger.error(f"Cleanup failed: {exc}")
 
     sys.exit(exit_code)
 
@@ -204,8 +200,8 @@ def require_env(*variables: str) -> None:
 
 
 def safe_exec(description: str,
-              cmd: List[str],
-              dry_run: bool = None,
+              cmd: list[str],
+              dry_run: bool = False,
               check: bool = True) -> subprocess.CompletedProcess:
     """Execute command safely with dry-run support."""
     if dry_run is None:
@@ -229,9 +225,11 @@ def safe_exec(description: str,
             exit_code=e.returncode,
             context="command_execution"
         )
+    # Should never reach here, but for type checkers:
+    return subprocess.CompletedProcess(cmd, 1, stdout='', stderr='')
 
 
-def safe_file_backup(file_path: Union[str, Path]) -> Optional[Path]:
+def safe_file_backup(file_path: str | Path) -> Path | None:
     """Create a backup of a file if it exists."""
     file_path = Path(file_path)
 
@@ -245,10 +243,10 @@ def safe_file_backup(file_path: Union[str, Path]) -> Optional[Path]:
     return None
 
 
-def safe_file_write(file_path: Union[str, Path],
-                   content: str,
-                   backup: bool = True,
-                   dry_run: bool = None) -> None:
+def safe_file_write(file_path: str | Path,
+                    content: str,
+                    backup: bool = True,
+                    dry_run: bool = False) -> None:
     """Write content to file safely with optional backup."""
     if dry_run is None:
         dry_run = os.getenv('DRY_RUN', 'false').lower() == 'true'
@@ -263,14 +261,14 @@ def safe_file_write(file_path: Union[str, Path],
         safe_file_backup(file_path)
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_path.write_text(content)
+    file_path.write_text(content, encoding="utf-8")
     logger.debug(f"Wrote to {file_path}")
 
 
-def safe_file_append(file_path: Union[str, Path],
-                    content: str,
-                    backup: bool = True,
-                    dry_run: bool = None) -> None:
+def safe_file_append(file_path: str | Path,
+                     content: str,
+                     backup: bool = True,
+                     dry_run: bool = False) -> None:
     """Append content to file safely with optional backup."""
     if dry_run is None:
         dry_run = os.getenv('DRY_RUN', 'false').lower() == 'true'
@@ -285,7 +283,7 @@ def safe_file_append(file_path: Union[str, Path],
         safe_file_backup(file_path)
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    with file_path.open('a') as f:
+    with file_path.open('a', encoding="utf-8") as f:
         f.write(content)
     logger.debug(f"Appended to {file_path}")
 
@@ -299,9 +297,11 @@ def validate_json(json_string: str) -> bool:
         return False
 
 
-def extract_json_value(json_string: str,
-                      key_path: str,
-                      default: Any = None) -> Any:
+def extract_json_value(
+    json_string: str,
+    key_path: str,
+    default=None,
+):
     """Extract value from JSON using dot notation key path."""
     try:
         data = json.loads(json_string)
@@ -319,10 +319,12 @@ def extract_json_value(json_string: str,
         return default
 
 
-def process_json_secure(json_input: str,
-                       key_path: str,
-                       default_value: Any = None,
-                       max_length: int = 1024) -> Any:
+def process_json_secure(
+    json_input: str,
+    key_path: str,
+    default_value=None,
+    max_length: int = 1024,
+):
     """Process JSON with security validation."""
     # Validate JSON structure first
     if not validate_json(json_input):
@@ -340,9 +342,11 @@ def process_json_secure(json_input: str,
     return value
 
 
-def validate_input(input_value: str,
-                  input_type: str = "string",
-                  max_length: int = 255) -> bool:
+def validate_input(
+    input_value: str,
+    input_type: str = "string",
+    max_length: int = 255,
+) -> bool:
     """Validate and sanitize input based on type."""
 
     # Check length
@@ -358,10 +362,9 @@ def validate_input(input_value: str,
         'string': r'^[^\x00-\x1f\x7f]*$'  # No control characters
     }
 
-    if input_type in patterns:
-        if not re.match(patterns[input_type], input_value):
-            logger.error(f"Invalid {input_type} format: {input_value}")
-            return False
+    if input_type in patterns and not re.match(patterns[input_type], input_value):
+        logger.error(f"Invalid {input_type} format: {input_value}")
+        return False
 
     return True
 
@@ -392,19 +395,19 @@ def sanitize_env_var(var_name: str) -> str:
     return var_value
 
 
-def aws_region_check(region: Optional[str] = None) -> bool:
+def aws_region_check(region: str | None = None) -> bool:
     """Validate AWS region."""
     region = region or os.getenv('AWS_REGION', 'us-east-1')
 
     try:
-        result = safe_exec(
+        safe_exec(
             "Check AWS region",
             ['aws', 'ec2', 'describe-regions', '--region-names', region],
             check=True
         )
         logger.debug(f"AWS region validated: {region}")
         return True
-    except Exception:
+    except subprocess.CalledProcessError:
         logger.error(f"Invalid AWS region: {region}")
         return False
 
@@ -412,27 +415,29 @@ def aws_region_check(region: Optional[str] = None) -> bool:
 def aws_credentials_check() -> bool:
     """Validate AWS credentials."""
     try:
-        result = safe_exec(
+        safe_exec(
             "Check AWS credentials",
             ['aws', 'sts', 'get-caller-identity'],
             check=True
         )
         logger.debug("AWS credentials validated")
         return True
-    except Exception:
+    except subprocess.CalledProcessError:
         logger.error("AWS credentials not configured or invalid")
         return False
 
 
-def check_lambda_function_exists(function_name: str,
-                                region: Optional[str] = None) -> bool:
+def check_lambda_function_exists(
+    function_name: str,
+    region: str | None = None,
+) -> bool:
     """Check if Lambda function exists."""
     region = region or os.getenv('AWS_REGION', 'us-east-1')
 
     logger.debug(f"Checking if Lambda function exists: {function_name} in {region}")
 
     try:
-        result = safe_exec(
+        safe_exec(
             f"Check Lambda function {function_name}",
             ['aws', 'lambda', 'get-function',
              '--function-name', function_name,
@@ -441,6 +446,6 @@ def check_lambda_function_exists(function_name: str,
         )
         logger.debug(f"Lambda function {function_name} exists")
         return True
-    except Exception:
+    except subprocess.CalledProcessError:
         logger.debug(f"Lambda function {function_name} does not exist")
         return False

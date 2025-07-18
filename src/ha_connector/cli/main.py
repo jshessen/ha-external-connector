@@ -2,10 +2,12 @@
 Main CLI Application
 
 This module provides the main command-line interface using Typer.
-Replaces the bash install.sh with a modern Python CLI.
+Modern Python CLI for Home Assistant External Connector.
 """
 
-from typing import Optional
+
+import os
+
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -20,41 +22,50 @@ logger = HAConnectorLogger("ha-connector-cli")
 # Create main Typer app
 app = typer.Typer(
     name="ha-connector",
-    help="Home Assistant External Connector - Bridging the gap between external services and your Home Assistant instance",
+    help=(
+        "Home Assistant External Connector - Bridging the gap between external "
+        "services and your Home Assistant instance"
+    ),
     add_completion=False,
     rich_markup_mode="rich",
-    context_settings={"help_option_names": ["-h", "--help"]}
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
+
 
 # Version information
 __version__ = "3.0.0"
 
+
 def version_callback(value: bool):
-    """Show version information"""
+    """Show version information."""
     if value:
         console.print(f"Home Assistant External Connector v{__version__}")
-        console.print("Comprehensive framework for secure external connectivity with automated deployment")
+        console.print(
+            "Comprehensive framework for secure external connectivity "
+            "with automated deployment"
+        )
         raise typer.Exit()
+
 
 @app.callback()
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         "-v",
         callback=version_callback,
-        help="Show version and exit"
+        help="Show version and exit",
     ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
-        help="Enable verbose logging"
+        help="Enable verbose logging",
     ),
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
-        help="Show what would be done without making changes"
-    )
+        help="Show what would be done without making changes",
+    ),
 ):
     """
     Home Assistant External Connector CLI
@@ -65,10 +76,10 @@ def main(
     # Set global options
     if verbose:
         logger.verbose = True
-        logger.logger.setLevel(logger.logger.DEBUG if verbose else logger.logger.INFO)
+        # Use standard logging levels
+        logger.logger.setLevel(10 if verbose else 20)  # 10=DEBUG, 20=INFO
 
     if dry_run:
-        import os
         os.environ['DRY_RUN'] = 'true'
 
     # Show welcome banner
@@ -81,7 +92,7 @@ def main(
             welcome_text,
             title="🏠 HA External Connector",
             border_style="blue",
-            padding=(1, 2)
+            padding=(1, 2),
         )
 
         console.print(welcome_panel)

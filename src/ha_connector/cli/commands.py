@@ -2,43 +2,55 @@
 CLI Commands Module
 
 This module provides all the CLI commands for the Home Assistant External Connector.
-Replaces the various bash command functions with modern Python implementations.
+Modern Python implementations for all command functionality.
 """
 
-import traceback
-
 import os
-from typing import List, Optional, Dict, Any
+import traceback
+from typing import Any
 
 import typer
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm, Prompt
+from rich.table import Table
 
-from .main import app
-from ..utils import HAConnectorLogger
+from ..adapters.aws_manager import AWSResourceManager
 from ..config import ConfigurationManager, InstallationScenario
 from ..deployment import (
+    DeploymentConfig,
+    DeploymentManager,
+    DeploymentStrategy,
     ServiceInstaller,
     ServiceType,
-    DeploymentManager,
-    DeploymentConfig,
-    DeploymentStrategy,
 )
-from ..adapters import validate_aws_access
+from ..utils import HAConnectorLogger
+from .main import app
 
-# Initialize console and logger
 console = Console()
 logger = HAConnectorLogger("ha-connector-cli")
+
+# Helper for AWS access validation
+
+
+def validate_aws_access(region: str = "us-east-1") -> dict[str, Any]:
+    """
+    Validate AWS access for the given region and return the result as a dictionary.
+    """
+    manager = AWSResourceManager(region)
+    resp = manager.validate_aws_access()
+    return resp.model_dump() if hasattr(resp, "model_dump") else dict(resp)
 
 
 @app.command()
 def install(
     scenario: str = typer.Argument(
         ...,
-        help="Installation scenario: direct_alexa, cloudflare_alexa, cloudflare_ios, or all",
+        help=(
+            "Installation scenario: direct_alexa, cloudflare_alexa, "
+            "cloudflare_ios, or all"
+        ),
     ),
     region: str = typer.Option(
         "us-east-1", "--region", "-r", help="AWS region for deployment"
@@ -60,7 +72,7 @@ def install(
     auto_setup_cloudflare: bool = typer.Option(
         False, "--auto-setup-cloudflare", help="Automatically set up CloudFlare Access"
     ),
-    cloudflare_domain: Optional[str] = typer.Option(
+    cloudflare_domain: str | None = typer.Option(
         None, "--cloudflare-domain", help="Domain for CloudFlare Access setup"
     ),
 ):
@@ -103,7 +115,7 @@ def install(
         installation_scenario = scenario_mapping[scenario]
 
         # Initialize configuration manager
-        config_manager = ConfigurationManager(installation_scenario)
+        config_manager = ConfigurationManager()
 
         # Load and validate configuration
         with Progress(
@@ -119,13 +131,15 @@ def install(
                 installation_scenario
             ):
                 console.print(
-                    "[yellow]⚠ Some configuration missing or invalid, entering interactive setup[/yellow]"
+                    "[yellow]⚠ Some configuration missing or invalid, "
+                    "entering interactive setup[/yellow]"
                 )
                 _interactive_configuration_setup(config_manager)
                 # Re-validate after interactive setup
                 if not config_manager.validate_scenario_setup(installation_scenario):
                     console.print(
-                        "[red]❌ Configuration validation failed after interactive setup[/red]"
+                        "[red]❌ Configuration validation failed after "
+                        "interactive setup[/red]"
                     )
                     raise typer.Exit(1)
 
@@ -187,14 +201,13 @@ def install(
         console.print(f"\n[red]💥 Installation failed: {str(e)}[/red]")
         if verbose:
             console.print(traceback.format_exc())
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
+@app.command()
 def deploy(
-    services: List[str] = typer.Argument(
-        ..., help="Services to deploy (alexa, ios_companion, cloudflare_proxy)"
-    ),
+    services: list[str] | None = None,
     region: str = typer.Option(
         "us-east-1", "--region", "-r", help="AWS region for deployment"
     ),
@@ -219,6 +232,9 @@ def deploy(
     This command deploys individual services without full installation setup.
     Useful for updates and targeted deployments.
     """
+    if services is None:
+        # This will only happen if called programmatically, not via CLI
+        services = []
     console.print(f"🚀 Deploying services: [bold]{', '.join(services)}[/bold]")
 
     try:
@@ -283,12 +299,12 @@ def deploy(
 
     except Exception as e:
         console.print(f"\n[red]💥 Deployment failed: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
 def configure(
-    scenario: Optional[str] = typer.Option(
+    scenario: str | None = typer.Option(
         None, "--scenario", "-s", help="Installation scenario to configure"
     ),
     interactive: bool = typer.Option(
@@ -322,7 +338,7 @@ def configure(
         else:
             installation_scenario = InstallationScenario.DIRECT_ALEXA
 
-        config_manager = ConfigurationManager(installation_scenario)
+        config_manager = ConfigurationManager()
 
         if interactive:
             _interactive_configuration_setup(config_manager)
@@ -339,7 +355,7 @@ def configure(
 
     except Exception as e:
         console.print(f"\n[red]💥 Configuration failed: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -387,14 +403,13 @@ def status(
 
     except Exception as e:
         console.print(f"\n[red]💥 Status check failed: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
+@app.command()
 def remove(
-    services: List[str] = typer.Argument(
-        ..., help="Services to remove (alexa, ios_companion, cloudflare_proxy, all)"
-    ),
+    services: list[str] | None = None,
     region: str = typer.Option("us-east-1", "--region", "-r", help="AWS region"),
     force: bool = typer.Option(
         False, "--force", "-f", help="Force removal without confirmation"
@@ -409,6 +424,9 @@ def remove(
     This command removes Home Assistant External Connector services
     from AWS Lambda and associated resources.
     """
+    if services is None:
+        # This will only happen if called programmatically, not via CLI
+        services = []
     console.print(f"🗑️ Removing services: [bold]{', '.join(services)}[/bold]")
 
     if dry_run:
@@ -436,12 +454,12 @@ def remove(
         # Remove duplicates
         functions_to_remove = list(set(functions_to_remove))
 
-        if not force and not dry_run:
-            if not Confirm.ask(
-                f"Are you sure you want to remove {len(functions_to_remove)} service(s)?"
-            ):
-                console.print("Operation cancelled")
-                raise typer.Exit(0)
+        if not force and not dry_run and not Confirm.ask(
+            f"Are you sure you want to remove {len(functions_to_remove)} "
+            "service(s)?"
+        ):
+            console.print("Operation cancelled")
+            raise typer.Exit(0)
 
         service_installer = ServiceInstaller(region=region, dry_run=dry_run)
 
@@ -460,13 +478,13 @@ def remove(
 
     except Exception as e:
         console.print(f"\n[red]💥 Removal failed: {str(e)}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 # Helper functions
 
 
-def _get_services_for_scenario(scenario: InstallationScenario) -> List[ServiceType]:
+def _get_services_for_scenario(scenario: InstallationScenario) -> list[ServiceType]:
     """Get list of services for installation scenario"""
     if scenario == InstallationScenario.DIRECT_ALEXA:
         return [ServiceType.ALEXA]
@@ -509,7 +527,7 @@ def _interactive_configuration_setup(config_manager: ConfigurationManager):
     console.print("[green]✓ Interactive configuration completed[/green]")
 
 
-def _display_installation_results(result: Dict[str, Any]):
+def _display_installation_results(result: dict[str, Any]):
     """Display installation results"""
     table = Table(title="Installation Results")
     table.add_column("Service", style="cyan")
@@ -539,7 +557,7 @@ def _display_installation_results(result: Dict[str, Any]):
         console.print(cf_panel)
 
 
-def _display_deployment_results(result: Dict[str, Any]):
+def _display_deployment_results(result: dict[str, Any]):
     """Display deployment results"""
     _display_installation_results(result)
 
@@ -568,7 +586,7 @@ def _display_configuration_summary(_config_manager: ConfigurationManager):
     console.print(table)
 
 
-def _display_service_status(services: List[Dict[str, Any]], verbose: bool):
+def _display_service_status(services: list[dict[str, Any]], verbose: bool):
     """Display service status"""
     table = Table(title="Service Status")
     table.add_column("Service", style="cyan")
@@ -582,21 +600,20 @@ def _display_service_status(services: List[Dict[str, Any]], verbose: bool):
     # This is a placeholder - in reality you'd query AWS Lambda
     # for actual service information
     for service in services:
-        table.add_row(
-            service.get("name", "Unknown"),
-            service.get("status", "Unknown"),
-            service.get("last_modified", "Unknown"),
-            *(
-                (
-                    [
-                        service.get("runtime", "Unknown"),
-                        service.get("memory", "Unknown"),
-                    ]
-                    if verbose
-                    else []
-                )
-            ),
-        )
+        if verbose:
+            table.add_row(
+                service.get("name", "Unknown"),
+                service.get("status", "Unknown"),
+                service.get("last_modified", "Unknown"),
+                service.get("runtime", "Unknown"),
+                service.get("memory", "Unknown"),
+            )
+        else:
+            table.add_row(
+                service.get("name", "Unknown"),
+                service.get("status", "Unknown"),
+                service.get("last_modified", "Unknown"),
+            )
 
     console.print(table)
 

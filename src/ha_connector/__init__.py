@@ -5,71 +5,53 @@ A Python package for connecting self-hosted Home Assistant instances
 to external cloud services like AWS Lambda, Alexa, CloudFlare, and iOS.
 """
 
-from .utils import (
-    # Logger and error handling
-    logger,
-    HAConnectorError,
-    PrerequisiteError,
-    HAEnvironmentError,
-    ValidationError,
-    AWSError,
-    error_exit,
-
-    # Validation and requirements
-    require_commands,
-    require_env,
-    validate_input,
-    sanitize_env_var,
-
-    # File operations
-    safe_file_backup,
-    safe_file_write,
-    safe_file_append,
-
-    # Command execution
-    safe_exec,
-
-    # JSON utilities
-    validate_json,
-    extract_json_value,
-    process_json_secure,
-
-    # AWS utilities
-    aws_region_check,
-    aws_credentials_check,
-    check_lambda_function_exists,
+from .adapters import (
+    AWSIAMManager,
+    AWSLambdaManager,
+    AWSLogsManager,
+    AWSResourceManager,
+    AWSResourceType,
+    AWSSSMManager,
+    AWSTriggerManager,
+    CloudFlareManager,
+    CloudFlareResourceType,
 )
-
 from .config import (
     ConfigurationManager,
     InstallationScenario,
 )
-
-from .adapters import (
-    AWSResourceManager,
-    AWSResourceType,
-    AWSLambdaManager,
-    AWSIAMManager,
-    AWSSSMManager,
-    AWSLogsManager,
-    AWSTriggerManager,
-    validate_aws_access,
-)
-
 from .deployment import (
+    DeploymentConfig,
+    DeploymentManager,
+    DeploymentResult,
+    DeploymentStrategy,
+    ServiceConfig,
     ServiceInstaller,
     ServiceType,
-    ServiceConfig,
-    DeploymentResult,
-    deploy_service,
-    CloudFlareManager,
-    CloudFlareConfig,
-    AccessApplicationConfig,
-    create_access_application,
-    DeploymentManager,
-    DeploymentStrategy,
-    DeploymentConfig,
     orchestrate_deployment,
+)
+from .utils import (
+    AWSError,
+    HAConnectorError,
+    HAEnvironmentError,
+    PrerequisiteError,
+    ValidationError,
+    aws_credentials_check,
+    aws_region_check,
+    check_lambda_function_exists,
+    error_exit,
+    extract_json_value,
+    logger,
+    process_json_secure,
+    require_commands,
+    require_env,
+    safe_exec,
+    safe_file_append,
+    safe_file_backup,
+    safe_file_write,
+    sanitize_env_var,
+    validate_input,
+    validate_json,
 )
 
 __version__ = "1.0.0"
@@ -123,18 +105,16 @@ __all__ = [
     'AWSSSMManager',
     'AWSLogsManager',
     'AWSTriggerManager',
-    'validate_aws_access',
+
+    # CloudFlare adapters (moved to adapters module)
+    'CloudFlareManager',
+    'CloudFlareResourceType',
 
     # Deployment
     'ServiceInstaller',
     'ServiceType',
     'ServiceConfig',
     'DeploymentResult',
-    'deploy_service',
-    'CloudFlareManager',
-    'CloudFlareConfig',
-    'AccessApplicationConfig',
-    'create_access_application',
     'DeploymentManager',
     'DeploymentStrategy',
     'DeploymentConfig',

@@ -7,6 +7,7 @@ This document outlines the comprehensive migration strategy for transforming the
 ## 🎯 Migration Objectives
 
 ### Primary Goals
+
 - **Maintainability**: Replace complex bash logic with readable, testable Python code
 - **Type Safety**: Implement strict typing and validation using Python type hints
 - **Testing**: Enable comprehensive unit and integration testing with pytest
@@ -15,6 +16,7 @@ This document outlines the comprehensive migration strategy for transforming the
 - **Documentation**: Auto-generate API documentation from code
 
 ### Success Criteria
+
 - ✅ All existing functionality preserved
 - ✅ Improved error handling and user experience
 - ✅ 90%+ test coverage
@@ -25,7 +27,8 @@ This document outlines the comprehensive migration strategy for transforming the
 ## 📊 Current Codebase Analysis
 
 ### Script Inventory (4,601 total lines)
-```
+
+```plaintext
 1,156 lines - config_manager.sh      (Configuration & Validation)
 1,136 lines - service_installer.sh   (Service Installation Logic)
   684 lines - aws_manager.sh         (AWS Resource Management)
@@ -38,6 +41,7 @@ This document outlines the comprehensive migration strategy for transforming the
 ```
 
 ### Architecture Analysis
+
 - **Data Adapter Pattern**: Well-defined separation between business logic and external service APIs
 - **Modular Design**: Clear module boundaries and responsibilities
 - **Configuration Management**: Centralized configuration with validation
@@ -46,9 +50,11 @@ This document outlines the comprehensive migration strategy for transforming the
 ## 🚀 Migration Strategy
 
 ### Phase-Based Approach
+
 We'll migrate incrementally, starting with foundation components and working up to user-facing modules.
 
 ### Technology Stack
+
 - **Python**: 3.11+ (current Lambda runtime)
 - **CLI Framework**: Click (for command-line interface)
 - **HTTP Client**: httpx (async-capable HTTP client)
@@ -63,10 +69,12 @@ We'll migrate incrementally, starting with foundation components and working up 
 ## 📅 Migration Phases
 
 ### Phase 1: Foundation & Core Infrastructure (Week 1-2)
+
 **Priority**: Critical foundation components
 
 #### 1.1 Project Setup & Structure
-```
+
+```tree
 ha-external-connector-py/
 ├── src/
 │   └── ha_connector/
@@ -88,14 +96,17 @@ ha-external-connector-py/
 ```
 
 **Commits:**
+
 1. `feat: initial Python project structure with pyproject.toml`
 2. `feat: configure development tooling (mypy, pytest, pre-commit)`
 3. `feat: setup CI/CD pipeline with GitHub Actions`
 
 #### 1.2 Core Models & Configuration (common_utils.sh → Python)
+
 **Target**: `/src/ha_connector/models/` and `/src/ha_connector/config/`
 
 **Key Components:**
+
 - Configuration models with Pydantic
 - AWS resource models (IAM, Lambda, SSM, CloudWatch)
 - CloudFlare resource models
@@ -103,15 +114,18 @@ ha-external-connector-py/
 - Environment configuration models
 
 **Commits:**
+
 1. `feat(models): implement AWS resource models with Pydantic validation`
 2. `feat(models): implement CloudFlare resource models`
 3. `feat(config): implement configuration management with environment validation`
 4. `feat(models): implement service configuration schemas`
 
 #### 1.3 Logging & Utilities (common_utils.sh → Python)
+
 **Target**: `/src/ha_connector/utils/`
 
 **Key Components:**
+
 - Structured logging with contextual information
 - JSON processing utilities
 - Input validation and sanitization
@@ -119,6 +133,7 @@ ha-external-connector-py/
 - Error handling and custom exceptions
 
 **Commits:**
+
 1. `feat(utils): implement structured logging with contextual metadata`
 2. `feat(utils): implement JSON processing and validation utilities`
 3. `feat(utils): implement input validation and sanitization`
@@ -126,12 +141,15 @@ ha-external-connector-py/
 5. `feat(utils): implement error handling and custom exceptions`
 
 ### Phase 2: Data Adapters (Week 2-3)
+
 **Priority**: External service integrations
 
 #### 2.1 AWS Data Adapter (aws_manager.sh → Python)
+
 **Target**: `/src/ha_connector/adapters/aws/`
 
 **Key Components:**
+
 - Async boto3 client wrapper
 - IAM operations (roles, policies, trust relationships)
 - Lambda operations (functions, layers, URLs, environment variables)
@@ -140,6 +158,7 @@ ha-external-connector-py/
 - Resource validation and health checks
 
 **Commits:**
+
 1. `feat(adapters): implement async AWS client wrapper with retry logic`
 2. `feat(adapters): implement IAM operations with validation`
 3. `feat(adapters): implement Lambda operations with packaging support`
@@ -148,9 +167,11 @@ ha-external-connector-py/
 6. `feat(adapters): implement AWS resource validation and health checks`
 
 #### 2.2 CloudFlare Data Adapter (cloudflare_manager.sh → Python)
+
 **Target**: `/src/ha_connector/adapters/cloudflare/`
 
 **Key Components:**
+
 - CloudFlare API client with rate limiting
 - Zone management
 - Access application management
@@ -158,18 +179,22 @@ ha-external-connector-py/
 - Policy management
 
 **Commits:**
+
 1. `feat(adapters): implement CloudFlare API client with rate limiting`
 2. `feat(adapters): implement CloudFlare zone and DNS management`
 3. `feat(adapters): implement CloudFlare Access application management`
 4. `feat(adapters): implement CloudFlare service token and policy management`
 
 ### Phase 3: Core Business Logic (Week 3-4)
+
 **Priority**: Configuration and deployment orchestration
 
 #### 3.1 Configuration Manager (config_manager.sh → Python)
+
 **Target**: `/src/ha_connector/core/config/`
 
 **Key Components:**
+
 - Scenario-based configuration validation
 - Interactive configuration collection
 - Configuration export and import
@@ -177,6 +202,7 @@ ha-external-connector-py/
 - Prerequisites validation
 
 **Commits:**
+
 1. `feat(core): implement scenario-based configuration validation`
 2. `feat(core): implement interactive configuration collection with prompts`
 3. `feat(core): implement configuration persistence and export`
@@ -184,112 +210,136 @@ ha-external-connector-py/
 5. `feat(core): implement comprehensive prerequisites validation`
 
 #### 3.2 Core Deployment Manager (core_manager.sh → Python)
+
 **Target**: `/src/ha_connector/core/deployment/`
 
 **Key Components:**
+
 - Deployment orchestration with async operations
 - Health checks and monitoring
 - Rollback and recovery mechanisms
 - Batch operations with progress tracking
 
 **Commits:**
+
 1. `feat(core): implement async deployment orchestration`
 2. `feat(core): implement health checks and service monitoring`
 3. `feat(core): implement rollback and recovery mechanisms`
 4. `feat(core): implement batch operations with progress tracking`
 
 ### Phase 4: Service Layer (Week 4-5)
+
 **Priority**: Service-specific installation logic
 
 #### 4.1 Service Installer (service_installer.sh → Python)
+
 **Target**: `/src/ha_connector/services/`
 
 **Key Components:**
+
 - Service-specific installation workflows
 - User interaction and decision handling
 - Resource conflict resolution
 - Installation progress tracking
 
 **Commits:**
+
 1. `feat(services): implement service-specific installation workflows`
 2. `feat(services): implement user interaction and decision handling`
 3. `feat(services): implement resource conflict resolution`
 4. `feat(services): implement installation progress tracking and status`
 
 #### 4.2 Environment Management (environment_loader.sh → Python)
+
 **Target**: `/src/ha_connector/core/environment/`
 
 **Key Components:**
+
 - Environment configuration loading
 - Environment-specific validation
 - Configuration templating
 - Environment switching
 
 **Commits:**
+
 1. `feat(core): implement environment configuration loading and validation`
 2. `feat(core): implement configuration templating and substitution`
 3. `feat(core): implement environment switching and isolation`
 
 ### Phase 5: CLI Interface & Security (Week 5-6)
+
 **Priority**: User interface and security validation
 
 #### 5.1 CLI Interface (install.sh → Python)
+
 **Target**: `/src/ha_connector/cli/`
 
 **Key Components:**
+
 - Click-based command structure
 - Interactive prompts and wizards
 - Progress bars and status indicators
 - Command completion and help
 
 **Commits:**
+
 1. `feat(cli): implement main CLI structure with Click framework`
 2. `feat(cli): implement interactive installation wizard`
 3. `feat(cli): implement progress tracking and status indicators`
 4. `feat(cli): implement command completion and comprehensive help`
 
 #### 5.2 Security Validation (check_lambda_security.sh → Python)
+
 **Target**: `/src/ha_connector/security/`
 
 **Key Components:**
+
 - Security policy validation
 - Compliance checking
 - Vulnerability scanning
 - Security reporting
 
 **Commits:**
+
 1. `feat(security): implement security policy validation framework`
 2. `feat(security): implement compliance checking and reporting`
 3. `feat(security): implement vulnerability scanning integration`
 
 ### Phase 6: Testing & Documentation (Week 6-7)
+
 **Priority**: Comprehensive testing and documentation
 
 #### 6.1 Test Suite
+
 **Target**: `/tests/`
 
 **Key Components:**
+
 - Unit tests with mocking
 - Integration tests with real AWS resources
 - End-to-end workflow tests
 - Performance benchmarks
 
 **Commits:**
+
 1. `test: implement comprehensive unit test suite with mocking`
 2. `test: implement integration tests with AWS LocalStack`
 3. `test: implement end-to-end workflow tests`
 4. `test: implement performance benchmarks and regression tests`
 
 #### 6.2 Documentation
+
 **Target**: `/docs/`
 
 **Key Components:**
+
 - API documentation generation
 - User guides and tutorials
 - Migration guide from bash version
 - Development and contribution guides
 
 **Commits:**
+
 1. `docs: implement automatic API documentation generation`
 2. `docs: create comprehensive user guides and tutorials`
 3. `docs: create migration guide from bash version`
@@ -384,6 +434,7 @@ async def install(ctx, scenario, interactive):
 ## 📝 Migration Workflow
 
 ### Git Repository Strategy
+
 1. **Create new Python repository**: `ha-external-connector-py`
 2. **Incremental commits**: Document functionality, not migration process
 3. **Feature branches**: One per major component
@@ -391,6 +442,7 @@ async def install(ctx, scenario, interactive):
 5. **Documentation**: Update docs with each component completion
 
 ### Development Workflow
+
 1. **Setup development environment** with pyenv, poetry, pre-commit
 2. **Implement component** following TDD practices
 3. **Write comprehensive tests** with high coverage
@@ -400,6 +452,7 @@ async def install(ctx, scenario, interactive):
 7. **Merge and deploy** to staging environment
 
 ### Quality Gates
+
 - ✅ All tests pass (unit, integration, end-to-end)
 - ✅ Type checking passes with mypy --strict
 - ✅ Code coverage > 90%
@@ -410,12 +463,14 @@ async def install(ctx, scenario, interactive):
 ## 🔄 Parallel Development Strategy
 
 ### Maintaining Bash Version
+
 - Keep bash version functional during migration
 - Implement feature parity validation
 - Create compatibility test suite
 - Gradual user migration path
 
 ### Integration Points
+
 - Shared configuration formats
 - Compatible command-line interfaces
 - Consistent output formats
@@ -424,12 +479,14 @@ async def install(ctx, scenario, interactive):
 ## 📊 Success Metrics
 
 ### Technical Metrics
+
 - **Code Quality**: Type coverage > 95%, cyclomatic complexity < 10
 - **Performance**: Response times ≤ bash version, memory usage < 2x
 - **Reliability**: Error rate < 1%, successful deployment rate > 99%
 - **Maintainability**: New feature development time reduced by 50%
 
 ### User Experience Metrics
+
 - **Onboarding**: New user setup time < 10 minutes
 - **Error Handling**: Clear error messages with actionable guidance
 - **Documentation**: Self-service success rate > 80%
@@ -438,18 +495,21 @@ async def install(ctx, scenario, interactive):
 ## 🎯 Post-Migration Roadmap
 
 ### Immediate Enhancements (Month 1)
+
 - **Web Dashboard**: Simple web interface for installation and monitoring
 - **Configuration Validation API**: REST API for configuration validation
 - **Monitoring Integration**: Prometheus metrics and health endpoints
 - **Auto-update Mechanism**: Self-updating capability
 
 ### Medium-term Features (Month 2-3)
+
 - **Multi-cloud Support**: Azure, GCP adapter implementations
 - **Plugin Architecture**: Third-party service integrations
 - **Advanced Scheduling**: Cron-like deployment scheduling
 - **Backup and Recovery**: Automated backup and restore functionality
 
 ### Long-term Vision (Month 3-6)
+
 - **GitOps Integration**: Git-based configuration management
 - **Infrastructure as Code**: Terraform/CDK integration
 - **Multi-tenant Support**: Organization and user management
@@ -458,12 +518,14 @@ async def install(ctx, scenario, interactive):
 ## 🚨 Risk Mitigation
 
 ### Technical Risks
+
 - **AWS API Changes**: Abstract AWS operations, implement adapter pattern
 - **Performance Regression**: Continuous benchmarking and optimization
 - **Python Dependency Issues**: Lock dependency versions, use virtual environments
 - **Migration Complexity**: Incremental approach with rollback capability
 
 ### Business Risks
+
 - **User Adoption**: Maintain feature parity, provide migration guides
 - **Maintenance Burden**: Comprehensive testing, clear documentation
 - **Knowledge Transfer**: Document architectural decisions, create onboarding guides
@@ -471,12 +533,14 @@ async def install(ctx, scenario, interactive):
 ## 📚 Learning Resources
 
 ### Required Skills
+
 - **Python**: Advanced async/await, type hints, context managers
 - **AWS**: boto3, CloudFormation, Lambda packaging
 - **Testing**: pytest, mocking, integration testing
 - **CLI Development**: Click framework, progress bars, interactive prompts
 
 ### Recommended Reading
+
 - "Effective Python" by Brett Slatkin
 - "Architecture Patterns with Python" by Percival & Gregory
 - "Python Tricks" by Dan Bader

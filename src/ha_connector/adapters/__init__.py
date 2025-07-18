@@ -1,38 +1,50 @@
 """
-AWS Adapters Package
+AWS and CloudFlare Adapters Package
 
-This package provides AWS resource management capabilities with a pure JSON CRUD interface.
-Replaces the bash aws_manager.sh with a modern Python implementation using boto3.
+This package provides AWS and CloudFlare resource management capabilities
+with a pure JSON CRUD interface.
 """
 
 from .aws_manager import (
-    AWSResourceManager,
-    AWSResourceType,
-    AWSLambdaManager,
     AWSIAMManager,
-    AWSSSMManager,
+    AWSLambdaManager,
     AWSLogsManager,
-    AWSTriggerManager,
-    validate_aws_access,
-    LambdaResourceSpec,
-    IAMResourceSpec,
-    SSMResourceSpec,
-    LogsResourceSpec,
+    AWSResourceManager,
     AWSResourceResponse,
+    AWSResourceType,
+    AWSSSMManager,
+    AWSTriggerManager,
+    IAMResourceSpec,
+    LambdaResourceSpec,
+    LogsResourceSpec,
+    SSMResourceSpec,
+)
+from .cloudflare_manager import (
+    AccessApplicationSpec,
+    CloudFlareManager,
+    CloudFlareResourceResponse,
+    CloudFlareResourceType,
+    DNSRecordSpec,
 )
 
 __all__ = [
-    "AWSResourceManager",
-    "AWSResourceType",
-    "AWSLambdaManager",
+    # AWS Adapters
     "AWSIAMManager",
-    "AWSSSMManager",
+    "AWSLambdaManager",
     "AWSLogsManager",
-    "AWSTriggerManager",
-    "validate_aws_access",
-    "LambdaResourceSpec",
-    "IAMResourceSpec",
-    "SSMResourceSpec",
-    "LogsResourceSpec",
+    "AWSResourceManager",
     "AWSResourceResponse",
+    "AWSResourceType",
+    "AWSSSMManager",
+    "AWSTriggerManager",
+    "IAMResourceSpec",
+    "LambdaResourceSpec",
+    "LogsResourceSpec",
+    "SSMResourceSpec",
+    # CloudFlare Adapters
+    "AccessApplicationSpec",
+    "CloudFlareManager",
+    "CloudFlareResourceResponse",
+    "CloudFlareResourceType",
+    "DNSRecordSpec",
 ]

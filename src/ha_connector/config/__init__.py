@@ -1,57 +1,58 @@
 """Configuration management for the Home Assistant External Connector."""
 
-from typing import Optional, Dict, Any
-from pathlib import Path
 import os
+from pathlib import Path
 
-from pydantic import Field, validator
+from pydantic import validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .manager import (
     ConfigurationManager,
     ConfigurationState,
     InstallationScenario,
-    ResourceRequirement,
     MatchedResource,
     ResourceDiscoveryResult,
-    config_manager
+    ResourceRequirement,
+    config_manager,
 )
 
 
 class Settings(BaseSettings):
-    """Application settings."""
+    """
+    Application settings.
+    """
 
     # AWS Configuration
-    aws_profile: Optional[str] = None
-    aws_region: Optional[str] = None
-    aws_access_key_id: Optional[str] = None
-    aws_secret_access_key: Optional[str] = None
-    aws_session_token: Optional[str] = None
+    aws_profile: str | None = None
+    aws_region: str | None = None
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+    aws_session_token: str | None = None
 
     # CloudFlare Configuration
-    cf_api_token: Optional[str] = None
-    cf_api_key: Optional[str] = None
-    cf_email: Optional[str] = None
-    cf_client_id: Optional[str] = None
-    cf_client_secret: Optional[str] = None
+    cf_api_token: str | None = None
+    cf_api_key: str | None = None
+    cf_email: str | None = None
+    cf_client_id: str | None = None
+    cf_client_secret: str | None = None
 
     # Home Assistant Configuration
-    ha_base_url: Optional[str] = None
-    alexa_secret: Optional[str] = None
+    ha_base_url: str | None = None
+    alexa_secret: str | None = None
 
     # Application Configuration
-    log_level: Optional[str] = None
-    dry_run: Optional[bool] = None
-    verbose: Optional[bool] = None
+    log_level: str | None = None
+    dry_run: bool | None = None
+    verbose: bool | None = None
 
     # Timeouts and Limits
-    request_timeout: Optional[int] = None
-    max_concurrent_requests: Optional[int] = None
-    retry_attempts: Optional[int] = None
+    request_timeout: int | None = None
+    max_concurrent_requests: int | None = None
+    retry_attempts: int | None = None
 
     # Lambda Configuration Defaults
-    default_lambda_timeout: Optional[int] = None
-    default_lambda_memory: Optional[int] = None
+    default_lambda_timeout: int | None = None
+    default_lambda_memory: int | None = None
 
     @validator('aws_region')
     @classmethod
