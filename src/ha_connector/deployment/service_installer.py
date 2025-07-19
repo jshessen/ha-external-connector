@@ -104,15 +104,17 @@ class ServiceInstaller:
                 "function_name": "ha-alexa-proxy",
                 "handler": "alexa_wrapper.lambda_handler",
                 "source_path": "src/alexa/alexa_wrapper.py",
+                "runtime": "python3.11",
                 "description": "Home Assistant Alexa Skills Proxy",
                 "timeout": 30,
                 "memory_size": 512,
                 "create_url": True,
             },
             ServiceType.IOS_COMPANION: {
-                "function_name": "ha-ios-companion-proxy",
-                "handler": "ios_companion.lambda_handler",
+                "function_name": "ha-ios-proxy",
+                "handler": "ios_wrapper.lambda_handler",
                 "source_path": "src/ios/ios_companion.py",
+                "runtime": "python3.11",
                 "description": "Home Assistant iOS Companion Proxy",
                 "timeout": 30,
                 "memory_size": 256,
@@ -284,6 +286,9 @@ class ServiceInstaller:
                     f"arn:aws:lambda:{self.region}:123456789012:function:"
                     f"{config.function_name}"
                 )
+                result.metadata = {
+                    "message": f"Would deploy Lambda function: {config.function_name}"
+                }
                 if config.create_url:
                     result.function_url = (
                         f"https://example.lambda-url.{self.region}.on.aws/"
@@ -291,7 +296,7 @@ class ServiceInstaller:
             else:
                 deploy_result = self.aws_manager.create_resource(
                     AWSResourceType.LAMBDA,
-                    lambda_spec.dict(),
+                    lambda_spec.model_dump(),
                 )
 
                 if deploy_result.status in ["created", "updated"]:

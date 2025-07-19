@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from pydantic import validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .manager import (
@@ -54,24 +54,28 @@ class Settings(BaseSettings):
     default_lambda_timeout: int | None = None
     default_lambda_memory: int | None = None
 
-    @validator('aws_region')
+    @field_validator('aws_region')
     @classmethod
     def validate_aws_region(cls, v):
         """Validate AWS region format."""
-        if not v or len(v.split('-')) < 3:
+        if not v:
+            return "us-east-1"  # Default region
+        if len(v.split('-')) < 3:
             raise ValueError('Invalid AWS region format')
         return v
 
-    @validator('log_level')
+    @field_validator('log_level')
     @classmethod
     def validate_log_level(cls, v):
         """Validate log level."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if v is None:
+            return "INFO"  # Default log level
         if v.upper() not in valid_levels:
             raise ValueError(f'Log level must be one of: {valid_levels}')
         return v.upper()
 
-    @validator('ha_base_url')
+    @field_validator('ha_base_url')
     @classmethod
     def validate_ha_base_url(cls, v):
         """Validate Home Assistant URL."""
@@ -79,7 +83,7 @@ class Settings(BaseSettings):
             raise ValueError('Home Assistant URL must use HTTPS')
         return v
 
-    @validator('alexa_secret')
+    @field_validator('alexa_secret')
     @classmethod
     def validate_alexa_secret(cls, v):
         """Validate Alexa secret length."""

@@ -7,7 +7,10 @@ Modern Python implementations for all command functionality.
 
 import os
 import traceback
-from typing import Any
+
+# Note: Using Optional[X] instead of X | None for Typer compatibility with Python 3.11
+# This prevents "Parameter.make_metavar() missing ctx" error with Click/Typer
+from typing import Any, Optional
 
 import typer
 from rich.console import Console
@@ -26,7 +29,6 @@ from ..deployment import (
     ServiceType,
 )
 from ..utils import HAConnectorLogger
-from .main import app
 
 console = Console()
 logger = HAConnectorLogger("ha-connector-cli")
@@ -43,37 +45,20 @@ def validate_aws_access(region: str = "us-east-1") -> dict[str, Any]:
     return resp.model_dump() if hasattr(resp, "model_dump") else dict(resp)
 
 
-@app.command()
 def install(
     scenario: str = typer.Argument(
-        ...,
-        help=(
-            "Installation scenario: direct_alexa, cloudflare_alexa, "
-            "cloudflare_ios, or all"
-        ),
+        "direct_alexa",
+        help="Installation scenario: direct_alexa|cloudflare_alexa|cloudflare_ios|all"
     ),
-    region: str = typer.Option(
-        "us-east-1", "--region", "-r", help="AWS region for deployment"
-    ),
-    environment: str = typer.Option(
-        "prod",
-        "--environment",
-        "-e",
-        help="Deployment environment (dev, staging, prod)",
-    ),
-    version: str = typer.Option("1.0.0", "--version", help="Version to deploy"),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Force installation even if resources exist"
-    ),
-    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Show what would be done without making changes"
-    ),
-    auto_setup_cloudflare: bool = typer.Option(
-        False, "--auto-setup-cloudflare", help="Automatically set up CloudFlare Access"
-    ),
-    cloudflare_domain: str | None = typer.Option(
-        None, "--cloudflare-domain", help="Domain for CloudFlare Access setup"
+    region: str = typer.Option("us-east-1", "--region", "-r"),
+    environment: str = typer.Option("prod", "--environment", "-e"),
+    version: str = typer.Option("1.0.0", "--version"),
+    force: bool = typer.Option(False, "--force", "-f"),
+    verbose: bool = typer.Option(False, "--verbose"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    auto_setup_cloudflare: bool = typer.Option(False, "--auto-setup-cloudflare"),
+    cloudflare_domain: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--cloudflare-domain"
     ),
 ):
     """
@@ -204,37 +189,31 @@ def install(
         raise typer.Exit(1) from e
 
 
-@app.command()
-@app.command()
+_DEFAULT_SERVICES = ["alexa", "ios_companion", "cloudflare_proxy"]
+
+
 def deploy(
-    services: list[str] | None = None,
-    region: str = typer.Option(
-        "us-east-1", "--region", "-r", help="AWS region for deployment"
-    ),
-    environment: str = typer.Option(
-        "prod", "--environment", "-e", help="Deployment environment"
-    ),
-    version: str = typer.Option("1.0.0", "--version", help="Version to deploy"),
-    strategy: str = typer.Option(
-        "rolling",
-        "--strategy",
-        "-s",
-        help="Deployment strategy (rolling, blue-green, canary, immediate)",
-    ),
-    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Show what would be done without making changes"
-    ),
+    services: list[str],
+    region: str = typer.Option("us-east-1", "--region", "-r"),
+    environment: str = typer.Option("prod", "--environment", "-e"),
+    version: str = typer.Option("1.0.0", "--version"),
+    strategy: str = typer.Option("rolling", "--strategy", "-s"),
+    verbose: bool = typer.Option(False, "--verbose"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
 ):
     """
     Deploy specific services to AWS Lambda.
 
     This command deploys individual services without full installation setup.
     Useful for updates and targeted deployments.
+
+    Examples:
+        ha-connector deploy alexa
+        ha-connector deploy alexa ios_companion --strategy rolling
+        ha-connector deploy cloudflare_proxy --region us-west-2
+
+    Available services: alexa, ios_companion, cloudflare_proxy
     """
-    if services is None:
-        # This will only happen if called programmatically, not via CLI
-        services = []
     console.print(f"🚀 Deploying services: [bold]{', '.join(services)}[/bold]")
 
     try:
@@ -302,17 +281,10 @@ def deploy(
         raise typer.Exit(1) from e
 
 
-@app.command()
 def configure(
-    scenario: str | None = typer.Option(
-        None, "--scenario", "-s", help="Installation scenario to configure"
-    ),
-    interactive: bool = typer.Option(
-        False, "--interactive", "-i", help="Interactive configuration mode"
-    ),
-    validate_only: bool = typer.Option(
-        False, "--validate-only", help="Only validate current configuration"
-    ),
+    scenario: Optional[str] = typer.Option(None, "--scenario", "-s"),  # noqa: UP045
+    interactive: bool = typer.Option(False, "--interactive", "-i"),
+    validate_only: bool = typer.Option(False, "--validate-only"),
 ):
     """
     Configure Home Assistant External Connector settings.
@@ -358,14 +330,9 @@ def configure(
         raise typer.Exit(1) from e
 
 
-@app.command()
 def status(
-    region: str = typer.Option(
-        "us-east-1", "--region", "-r", help="AWS region to check"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", help="Show detailed status information"
-    ),
+    region: str = typer.Option("us-east-1", "--region", "-r"),
+    verbose: bool = typer.Option(False, "--verbose"),
 ):
     """
     Check status of deployed services.
@@ -406,27 +373,25 @@ def status(
         raise typer.Exit(1) from e
 
 
-@app.command()
-@app.command()
 def remove(
-    services: list[str] | None = None,
-    region: str = typer.Option("us-east-1", "--region", "-r", help="AWS region"),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Force removal without confirmation"
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Show what would be removed without making changes"
-    ),
+    services: list[str],
+    region: str = typer.Option("us-east-1", "--region", "-r"),
+    force: bool = typer.Option(False, "--force", "-f"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
 ):
     """
     Remove deployed services.
 
     This command removes Home Assistant External Connector services
     from AWS Lambda and associated resources.
+
+    Examples:
+        ha-connector remove alexa
+        ha-connector remove alexa ios_companion --force
+        ha-connector remove cloudflare_proxy --dry-run
+
+    Available services: alexa, ios_companion, cloudflare_proxy
     """
-    if services is None:
-        # This will only happen if called programmatically, not via CLI
-        services = []
     console.print(f"🗑️ Removing services: [bold]{', '.join(services)}[/bold]")
 
     if dry_run:
@@ -437,19 +402,18 @@ def remove(
             "alexa": "ha-alexa-proxy",
             "ios_companion": "ha-ios-companion",
             "cloudflare_proxy": "ha-cloudflare-proxy",
-            "all": ["ha-alexa-proxy", "ha-ios-companion", "ha-cloudflare-proxy"],
         }
 
         functions_to_remove = []
         for service in services:
             if service not in service_mapping:
                 console.print(f"[red]❌ Invalid service: {service}[/red]")
+                console.print(
+                    f"Supported services: {', '.join(service_mapping.keys())}"
+                )
                 raise typer.Exit(1)
 
-            if service == "all":
-                functions_to_remove.extend(service_mapping[service])
-            else:
-                functions_to_remove.append(service_mapping[service])
+            functions_to_remove.append(service_mapping[service])
 
         # Remove duplicates
         functions_to_remove = list(set(functions_to_remove))

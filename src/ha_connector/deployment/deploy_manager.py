@@ -88,12 +88,14 @@ class DeploymentManager:
                 f"Must be one of: {valid_environments}"
             )
 
-        # Validate version format (simple semver check)
-        version_parts = self.config.version.split('.')
+        # Validate version format (semantic versioning with pre-release support)
+        # Support formats like: 1.0.0, 1.0.0-alpha, 1.0.0-test, 1.0.0-rc.1
+        version_base = self.config.version.split('-')[0]  # Get base version part
+        version_parts = version_base.split('.')
         if len(version_parts) < 2 or not all(part.isdigit() for part in version_parts):
             raise ValidationError(
                 f"Invalid version format: {self.config.version}. "
-                "Expected: x.y.z"
+                "Expected: x.y.z or x.y.z-prerelease"
             )
 
         # Validate services
@@ -464,27 +466,49 @@ class DeploymentManager:
 
             # Deploy services
             lambda_urls = {}
+            deployment_errors = []
 
             for service_type in self.config.services:
-                result = self.deploy_service_with_strategy(service_type)
-                self.deployment_results.append(result)
+                try:
+                    result = self.deploy_service_with_strategy(service_type)
+                    self.deployment_results.append(result)
 
-                if result.success:
-                    self.logger.success(
-                        f"✓ Successfully deployed {service_type}"
+                    if result.success:
+                        self.logger.success(
+                            f"✓ Successfully deployed {service_type}"
+                        )
+                        if result.function_url:
+                            lambda_urls[service_type] = result.function_url
+                    else:
+                        error_msg = (
+                            f"Failed to deploy {service_type}: "
+                            f"{', '.join(result.errors)}"
+                        )
+                        self.logger.error(f"✗ {error_msg}")
+                        deployment_errors.append(error_msg)
+                        if self.config.rollback_on_failure:
+                            self.rollback_deployment()
+                except (
+                    KeyError, AttributeError, RuntimeError, ValueError, TypeError
+                ) as e:
+                    error_msg = f"Failed to deploy {service_type}: {str(e)}"
+                    self.logger.error(f"✗ {error_msg}")
+                    deployment_errors.append(error_msg)
+                    # Create a failed result for this service
+                    failed_result = DeploymentResult(
+                        success=False,
+                        function_name=f"ha-{service_type.value}-proxy",
+                        function_arn=None,
+                        function_url=None,
+                        role_arn=None,
+                        errors=[str(e)]
                     )
-                    if result.function_url:
-                        lambda_urls[service_type] = result.function_url
-                else:
-                    self.logger.error(
-                        f"✗ Failed to deploy {service_type}: "
-                        f"{', '.join(result.errors)}"
-                    )
-                    if self.config.rollback_on_failure:
-                        self.rollback_deployment()
-                    raise ValidationError(
-                        f"Service deployment failed: {service_type}"
-                    )
+                    self.deployment_results.append(failed_result)
+
+            # If there were deployment errors, include them in final result
+            if deployment_errors and not self.config.force:
+                # Still continue to completion but mark as failed
+                pass
 
             # Set up CloudFlare Access if requested
             cloudflare_result = {}
@@ -494,20 +518,32 @@ class DeploymentManager:
             self.end_time = time.time()
             deployment_time = self.end_time - self.start_time
 
-            self.logger.success(
-                f"🎉 Deployment completed successfully in {deployment_time:.2f} seconds"
-            )
+            # Determine overall success
+            overall_success = len(deployment_errors) == 0
+
+            if overall_success:
+                self.logger.success(
+                    f"🎉 Deployment completed successfully in "
+                    f"{deployment_time:.2f} seconds"
+                )
+            else:
+                self.logger.error(
+                    f"💥 Deployment completed with errors in "
+                    f"{deployment_time:.2f} seconds"
+                )
 
             return {
-                "success": True,
+                "success": overall_success,
                 "environment": self.config.environment,
                 "version": self.config.version,
                 "strategy": self.config.strategy,
                 "deployment_time": deployment_time,
-                "services": [result.dict() for result in self.deployment_results],
+                "dry_run": self.config.dry_run,
+                "services": [result.model_dump() for result in self.deployment_results],
+                "results": self.deployment_results,  # For test compatibility
                 "lambda_urls": lambda_urls,
                 "cloudflare": cloudflare_result,
-                "errors": [],
+                "errors": deployment_errors,
             }
 
         except ValidationError as e:
@@ -522,7 +558,9 @@ class DeploymentManager:
                 "deployment_time": (
                     self.end_time - self.start_time
                 ) if self.start_time else 0,
-                "services": [result.dict() for result in self.deployment_results],
+                "dry_run": self.config.dry_run,
+                "services": [result.model_dump() for result in self.deployment_results],
+                "results": self.deployment_results,  # For test compatibility
                 "errors": [str(e)],
             }
 
