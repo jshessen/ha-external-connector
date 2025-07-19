@@ -5,16 +5,17 @@ Comprehensive tests for all CLI commands and functionality.
 """
 
 import os
+import shutil
 import tempfile
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 from typer.testing import CliRunner
 
 from ha_connector.cli import app
+from ha_connector.cli.commands import _get_services_for_scenario
 from ha_connector.config import InstallationScenario
-from ha_connector.deployment import ServiceType, DeploymentStrategy
+from ha_connector.deployment import ServiceType
 
 
 class TestCLICommands:
@@ -22,6 +23,7 @@ class TestCLICommands:
 
     def setup_method(self):
         """Set up test environment"""
+        # pylint: disable=attribute-defined-outside-init
         self.runner = CliRunner()
         self.test_env = {
             "HA_BASE_URL": "https://test.example.com",
@@ -31,9 +33,9 @@ class TestCLICommands:
 
     def test_version_command(self):
         """Test version command"""
-        result = self.runner.invoke(app, ["--version"])
+        result = self.runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "1.0.0" in result.stdout
+        assert "3.0.0" in result.stdout
 
     def test_help_command(self):
         """Test help command"""
@@ -47,10 +49,19 @@ class TestCLICommands:
             result = self.runner.invoke(app, [command, "--help"])
             assert result.exit_code == 0
 
-    @patch.dict(os.environ, {"HA_BASE_URL": "https://test.example.com", "ALEXA_SECRET": "test-secret", "AWS_REGION": "us-east-1"})
+    @patch.dict(
+        os.environ,
+        {
+            "HA_BASE_URL": "https://test.example.com",
+            "ALEXA_SECRET": "test-secret",
+            "AWS_REGION": "us-east-1"
+        }
+    )
     @patch("ha_connector.cli.commands.ConfigurationManager")
     @patch("ha_connector.cli.commands.DeploymentManager")
-    def test_install_command_success(self, mock_deployment_manager, mock_config_manager):
+    def test_install_command_success(
+        self, mock_deployment_manager, mock_config_manager
+    ):
         """Test successful installation"""
         # Mock configuration manager
         mock_config = Mock()
@@ -66,7 +77,9 @@ class TestCLICommands:
                 {
                     "function_name": "ha-alexa-proxy",
                     "success": True,
-                    "function_arn": "arn:aws:lambda:us-east-1:123456789012:function:ha-alexa-proxy",
+                    "function_arn": (
+                        "arn:aws:lambda:us-east-1:123456789012:function:ha-alexa-proxy"
+                    ),
                     "function_url": "https://test.lambda-url.us-east-1.on.aws/"
                 }
             ],
@@ -90,7 +103,9 @@ class TestCLICommands:
 
     @patch.dict(os.environ, {})
     @patch("ha_connector.cli.commands.ConfigurationManager")
-    def test_install_command_invalid_scenario(self, mock_config_manager):
+    def test_install_command_invalid_scenario(
+        self, mock_config_manager  # pylint: disable=unused-argument
+    ):
         """Test installation with invalid scenario"""
         result = self.runner.invoke(app, [
             "install",
@@ -101,15 +116,15 @@ class TestCLICommands:
         assert "Invalid scenario" in result.stdout
 
     @patch.dict(os.environ, {"HA_BASE_URL": "https://test.example.com"})
+    @patch("ha_connector.cli.commands._interactive_configuration_setup")
     @patch("ha_connector.cli.commands.ConfigurationManager")
-    def test_install_command_config_validation_failure(self, mock_config_manager):
+    def test_install_command_config_validation_failure(
+        self, mock_config_manager
+    ):
         """Test installation with configuration validation failure"""
         mock_config = Mock()
-        mock_config.load_from_environment.return_value = True
-        mock_config.validate_configuration.return_value = Mock(
-            is_valid=False,
-            errors=["Missing required environment variable: ALEXA_SECRET"]
-        )
+        mock_config.config = None  # Simulate missing config
+        mock_config.validate_scenario_setup.return_value = False
         mock_config_manager.return_value = mock_config
 
         result = self.runner.invoke(app, [
@@ -118,8 +133,10 @@ class TestCLICommands:
         ])
 
         assert result.exit_code == 1
-        assert "Configuration validation failed" in result.stdout
-        assert "ALEXA_SECRET" in result.stdout
+        assert (
+            "Configuration validation failed after interactive setup"
+            in result.stdout
+        )
 
     @patch("ha_connector.cli.commands.DeploymentManager")
     def test_deploy_command_success(self, mock_deployment_manager):
@@ -131,7 +148,9 @@ class TestCLICommands:
                 {
                     "function_name": "ha-alexa-proxy",
                     "success": True,
-                    "function_arn": "arn:aws:lambda:us-east-1:123456789012:function:ha-alexa-proxy",
+                    "function_arn": (
+                        "arn:aws:lambda:us-east-1:123456789012:function:ha-alexa-proxy"
+                    ),
                     "function_url": "https://test.lambda-url.us-east-1.on.aws/"
                 }
             ],
@@ -176,7 +195,7 @@ class TestCLICommands:
     def test_configure_command_validation_success(self, mock_config_manager):
         """Test configuration validation success"""
         mock_config = Mock()
-        mock_config.validate_configuration.return_value = Mock(is_valid=True, errors=[])
+        mock_config.validate_scenario_setup.return_value = True
         mock_config_manager.return_value = mock_config
 
         result = self.runner.invoke(app, [
@@ -191,10 +210,7 @@ class TestCLICommands:
     def test_configure_command_validation_failure(self, mock_config_manager):
         """Test configuration validation failure"""
         mock_config = Mock()
-        mock_config.validate_configuration.return_value = Mock(
-            is_valid=False,
-            errors=["Missing HA_BASE_URL", "Invalid AWS region"]
-        )
+        mock_config.validate_scenario_setup.return_value = False
         mock_config_manager.return_value = mock_config
 
         result = self.runner.invoke(app, [
@@ -204,7 +220,6 @@ class TestCLICommands:
 
         assert result.exit_code == 1
         assert "Configuration validation failed" in result.stdout
-        assert "HA_BASE_URL" in result.stdout
 
     @patch("ha_connector.cli.commands.validate_aws_access")
     @patch("ha_connector.cli.commands.ServiceInstaller")
@@ -279,7 +294,7 @@ class TestCLICommands:
 
         result = self.runner.invoke(app, [
             "remove",
-            "all",
+            "alexa", "ios_companion", "cloudflare_proxy",
             "--force"
         ])
 
@@ -326,8 +341,6 @@ class TestCLIHelpers:
 
     def test_get_services_for_scenario(self):
         """Test service mapping for scenarios"""
-        from ha_connector.cli.commands import _get_services_for_scenario
-
         # Test direct Alexa
         services = _get_services_for_scenario(InstallationScenario.DIRECT_ALEXA)
         assert services == [ServiceType.ALEXA]
@@ -355,12 +368,12 @@ class TestCLIIntegration:
 
     def setup_method(self):
         """Set up integration test environment"""
+        # pylint: disable=attribute-defined-outside-init
         self.runner = CliRunner()
         self.temp_dir = tempfile.mkdtemp()
 
     def teardown_method(self):
         """Clean up test environment"""
-        import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_command_chaining(self):
@@ -369,7 +382,8 @@ class TestCLIIntegration:
         # 1. configure -> validate
         # 2. install -> status
         # 3. deploy -> status
-        pass
+        # Placeholder for future implementation
+        assert True
 
     def test_error_handling(self):
         """Test CLI error handling"""
@@ -389,6 +403,7 @@ class TestCLIIntegration:
         ])
         # Should include additional details when verbose is enabled
         # Exact assertions depend on implementation
+        assert result.exit_code == 0
 
 
 if __name__ == "__main__":
