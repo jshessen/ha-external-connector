@@ -57,30 +57,28 @@ def main() -> None:
     if not test_file.exists():
         test_file.write_text(
             '"""Initial test file.\n\n'
-            'import pytest\n\n'
-            'def test_project_structure():\n'
+            "import pytest\n\n"
+            "def test_project_structure():\n"
             '    """Test that the project structure is correct."""\n'
-            '    import ha_connector\n'
+            "    import ha_connector\n"
             '    assert ha_connector.__version__ == "0.1.0"\n\n\n'
-            'def test_imports():\n'
+            "def test_imports():\n"
             '    """Test that basic imports work."""\n'
-            '    from ha_connector.models import InstallationScenario\n'
-            '    from ha_connector.config import Settings\n'
-            '    # Test enum values\n'
+            "    from ha_connector.models import InstallationScenario\n"
+            "    from ha_connector.config import Settings\n"
+            "    # Test enum values\n"
             '    assert InstallationScenario.DIRECT_ALEXA == "direct_alexa"\n'
             '    assert InstallationScenario.CLOUDFLARE_ALEXA == "cloudflare_alexa"\n'
             '    assert InstallationScenario.CLOUDFLARE_IOS == "cloudflare_ios"\n'
-            '    # Test settings instantiation\n'
-            '    settings = Settings()\n'
+            "    # Test settings instantiation\n"
+            "    settings = Settings()\n"
             '    assert settings.aws_region == "us-east-1"\n'
             '    assert settings.log_level == "INFO"\n'
         )
 
     # Run initial tests
     print("🧪 Running initial tests...")
-    run_command(
-        "poetry run python -m pytest tests/unit/test_initial.py -v"
-    )
+    run_command("poetry run python -m pytest tests/unit/test_initial.py -v")
     # Check code quality
     print("🔍 Running code quality checks...")
     run_command(

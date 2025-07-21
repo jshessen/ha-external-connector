@@ -24,9 +24,10 @@ from ha_connector.utils import ValidationError
 class TestServiceInstaller:
     """Test Service Installer functionality"""
 
+    installer: ServiceInstaller
+
     def setup_method(self):
         """Set up test fixtures"""
-        # pylint: disable=attribute-defined-outside-init
         self.installer = ServiceInstaller(
             region="us-east-1",
             dry_run=False,
@@ -269,9 +270,11 @@ class TestServiceInstaller:
 class TestDeploymentManager:
     """Test Deployment Manager functionality"""
 
+    config: DeploymentConfig
+    manager: DeploymentManager
+
     def setup_method(self):
         """Set up test fixtures"""
-        # pylint: disable=attribute-defined-outside-init
         self.config = DeploymentConfig(
             environment="dev",
             version="1.0.0",

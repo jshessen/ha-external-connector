@@ -11,7 +11,7 @@ import traceback
 # Note: Using Optional[X] instead of X | None for Typer compatibility
 # Typer does not yet support the modern union syntax (str | None) from Python 3.10
 # This prevents "Parameter.make_metavar() missing ctx" error with Click/Typer
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 from rich.console import Console
@@ -171,15 +171,27 @@ def install(  # pylint: disable=too-many-positional-arguments
         "direct_alexa",
         help="Installation scenario: direct_alexa|cloudflare_alexa|cloudflare_ios|all",
     ),
-    region: str = typer.Option("us-east-1", "--region", "-r"),
-    environment: str = typer.Option("prod", "--environment", "-e"),
-    version: str = typer.Option("1.0.0", "--version"),
-    force: bool = typer.Option(False, "--force", "-f"),
-    verbose: bool = typer.Option(False, "--verbose"),
-    dry_run: bool = typer.Option(False, "--dry-run"),
-    auto_setup_cloudflare: bool = typer.Option(False, "--auto-setup-cloudflare"),
+    region: str = typer.Option(
+        "us-east-1", "--region", "-r", help="AWS region for deployment"
+    ),
+    environment: str = typer.Option(
+        "prod", "--environment", "-e", help="Deployment environment"
+    ),
+    version: str = typer.Option("1.0.0", "--version", help="Service version to deploy"),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force installation without confirmation"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be done without executing"
+    ),
+    auto_setup_cloudflare: bool = typer.Option(
+        False,
+        "--auto-setup-cloudflare",
+        help="Automatically setup CloudFlare configuration",
+    ),
     cloudflare_domain: Optional[str] = typer.Option(  # noqa: UP045
-        None, "--cloudflare-domain"
+        None, "--cloudflare-domain", help="CloudFlare domain for configuration"
     ),
 ) -> None:
     """
@@ -240,13 +252,19 @@ _DEFAULT_SERVICES = ["alexa", "ios_companion", "cloudflare_proxy"]
 
 
 def deploy(
-    service: str,
-    strategy: str = typer.Option("rolling", "--strategy", "-s"),
-    cloudflare_domain: Optional[str] = typer.Option(  # noqa: UP045
-        None, "--domain", "-d"
+    service: Annotated[
+        str, typer.Argument(..., help="Service to deploy (e.g., alexa, cloudflare)")
+    ],
+    strategy: str = typer.Option(
+        "rolling", "--strategy", "-s", help="Deployment strategy"
     ),
-    dry_run: bool = typer.Option(False, "--dry-run"),
-    verbose: bool = typer.Option(False, "--verbose"),
+    cloudflare_domain: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--domain", "-d", help="CloudFlare domain for deployment"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be deployed without executing"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
 ) -> None:
     """
     Deploy specific services to AWS Lambda.
@@ -332,9 +350,15 @@ def deploy(
 
 
 def configure(
-    scenario: Optional[str] = typer.Option(None, "--scenario", "-s"),  # noqa: UP045
-    interactive: bool = typer.Option(False, "--interactive", "-i"),
-    validate_only: bool = typer.Option(False, "--validate-only"),
+    scenario: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--scenario", "-s", help="Configuration scenario"
+    ),
+    interactive: bool = typer.Option(
+        False, "--interactive", "-i", help="Enable interactive configuration"
+    ),
+    validate_only: bool = typer.Option(
+        False, "--validate-only", help="Only validate without making changes"
+    ),
 ) -> None:
     """
     Configure Home Assistant External Connector settings.
@@ -387,8 +411,10 @@ def configure(
 
 
 def status(
-    region: str = typer.Option("us-east-1", "--region", "-r"),
-    verbose: bool = typer.Option(False, "--verbose"),
+    region: str = typer.Option(
+        "us-east-1", "--region", "-r", help="AWS region to check"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
 ) -> None:
     """
     Check status of deployed services.
@@ -436,10 +462,16 @@ def status(
 
 
 def remove(
-    services: list[str],
-    region: str = typer.Option("us-east-1", "--region", "-r"),
-    force: bool = typer.Option(False, "--force", "-f"),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    services: Annotated[list[str], typer.Argument(..., help="Services to remove")],
+    region: str = typer.Option(
+        "us-east-1", "--region", "-r", help="AWS region to remove from"
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force removal without confirmation"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be removed without executing"
+    ),
 ) -> None:
     """
     Remove deployed services.

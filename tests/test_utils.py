@@ -101,8 +101,8 @@ def create_mock_service_installer(dry_run: bool = True) -> Mock:
 
     # Mock installation results
     def mock_install_service(
-        service_config, environment_vars  # pylint: disable=unused-argument
-    ):
+        service_config: ServiceConfig, _environment_vars: dict[str, Any]
+    ) -> DeploymentResult:
         return DeploymentResult(
             success=True,
             function_name=service_config.function_name,
@@ -134,7 +134,7 @@ def create_mock_service_installer(dry_run: bool = True) -> Mock:
     mock_installer.install_service.side_effect = mock_install_service
 
     # Mock removal
-    def mock_remove_service(service_type):
+    def mock_remove_service(service_type: ServiceType) -> dict[str, Any]:
         return {
             "success": True,
             "service_type": service_type,
@@ -154,7 +154,7 @@ def create_mock_deployment_manager(dry_run: bool = True) -> Mock:
     """Create a mock deployment manager for testing"""
     mock_manager = Mock()
 
-    def mock_execute_deployment():
+    def mock_execute_deployment() -> dict[str, Any]:
         return {
             "success": True,
             "results": [],
@@ -169,7 +169,7 @@ def create_mock_deployment_manager(dry_run: bool = True) -> Mock:
 
 def assert_deployment_result_valid(
     result: dict[str, Any], expected_success: bool = True
-):
+) -> None:
     """Assert that a deployment result is valid"""
     assert "success" in result
     assert "results" in result
@@ -193,7 +193,7 @@ def create_mock_deployment_result(
     errors: list[str] | None = None,
     warnings: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
-):
+) -> DeploymentResult:
     """Create a mock DeploymentResult object."""
     return DeploymentResult(
         success=success,
@@ -207,7 +207,9 @@ def create_mock_deployment_result(
     )
 
 
-def assert_service_config_valid(config, service_type: ServiceType):
+def assert_service_config_valid(
+    config: ServiceConfig, service_type: ServiceType
+) -> None:
     """Assert that a service configuration is valid"""
     assert isinstance(config, ServiceConfig)
     assert config.service_type == service_type
@@ -248,7 +250,7 @@ def get_expected_ssm_path(service_type: ServiceType) -> str:
     return mapping[service_type]
 
 
-def cleanup_temp_files(*paths: Path):
+def cleanup_temp_files(*paths: Path) -> None:
     """Clean up temporary files created during testing"""
     for path in paths:
         if path.exists():

@@ -1,0 +1,17 @@
+Good point! Let's test each linter individually to make sure they're working correctly with the updated versions. I'll run them one by one:
+
+
+source .venv/bin/activate && black --check --diff src/
+
+source .venv/bin/activate && isort --check-only --diff src/
+
+source .venv/bin/activate && flake8 src/
+
+source .venv/bin/activate && mypy src/
+
+source .venv/bin/activate && ruff check src/
+
+source .venv/bin/activate && pytest --version
+
+source .venv/bin/activate && pytest tests/ -v --tb=short
+Ah! We have some issues:

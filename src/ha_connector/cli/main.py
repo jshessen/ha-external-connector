@@ -9,8 +9,6 @@ import os
 
 import typer
 from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
 
 from ..utils import HAConnectorLogger
 from .commands import (
@@ -44,8 +42,10 @@ __version__ = "3.0.0"
 
 @app.callback()
 def main(
-    verbose: bool = typer.Option(False, "--verbose"),
-    dry_run: bool = typer.Option(False, "--dry-run"),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be done without executing"
+    ),
 ) -> None:
     """
     Home Assistant External Connector CLI
@@ -61,20 +61,6 @@ def main(
 
     if dry_run:
         os.environ["DRY_RUN"] = "true"
-
-    # Show welcome banner
-    welcome_text = Text()
-    welcome_text.append("Home Assistant External Connector", style="bold blue")
-    welcome_text.append(f" v{__version__}", style="dim")
-
-    welcome_panel = Panel(
-        welcome_text,
-        title="🏠 HA External Connector",
-        border_style="blue",
-        padding=(1, 2),
-    )
-
-    console.print(welcome_panel)
 
 
 # Add version as a separate command instead of a callback
