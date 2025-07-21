@@ -1,9 +1,11 @@
-"""Initial commit setup files."""
+# Home Assistant External Connector - Python Implementation
+# .gitignore for Python project with AWS and CloudFlare integrations
 
-# .gitignore for Python project
+# === PYTHON ===
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 
 # Distribution / packaging
 .Python
@@ -60,6 +62,9 @@ Pipfile.lock
 # Poetry
 poetry.lock
 
+# PEP 582
+__pypackages__/
+
 # Celery stuff
 celerybeat-schedule
 celerybeat.pid
@@ -94,34 +99,102 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Local configuration
+# Pytype static type analyzer
+.pytype/
+
+# === PROJECT SPECIFIC ===
+# Local configuration files
 config.json
 config.yaml
 config.yml
 secrets.json
+app_config.json
+appConfig.json
 
-# AWS credentials
+# Credentials and sensitive data
+.env.local
+.env.*.local
+*.key
+*.pem
+*.crt
+*.csr
+
+# AWS credentials and config
 .aws/
 credentials
+aws_credentials
 
-# IDE
-.vscode/
+# CloudFlare credentials
+cf_credentials
+cloudflare_credentials
+
+# Lambda deployment packages
+*.zip
+lambda_packages/
+deployment_packages/
+
+# === DEVELOPMENT TOOLS ===
+# IDE and editors
+.vscode/settings_*.json
+.vscode/*_output.log
+.vscode/vs_code_task.log
+.vscode/lint_with_markers.log
 .idea/
 *.swp
 *.swo
+*.tmp
+*~
 
-# OS
+# VS Code workspace specific (keep main config files)
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+!.vscode/README.md
+
+# === RUNTIME AND LOGS ===
+# OS files
 .DS_Store
+.DS_Store?
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Logs
+# Logs and runtime data
 logs/
 *.log
+*.log.*
+*.out
+install.log
 
-# Backup files
+# Backup and temporary files
 *.bak
 *.backup
+*.orig
+*.rej
+*.tmp
+backups/
 
-# Test artifacts
+# === TESTING AND COVERAGE ===
+# Test artifacts and reports
 test-results/
 test-reports/
+.coverage_reports/
+coverage_html/
+test_output/
+
+# Pytest specific
+.pytest_cache/
+pytest.ini.user
+
+# === BUILD AND DEPLOYMENT ===
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Deployment artifacts  
+terraform.tfstate*
+.terraform/
+infrastructure/deployed/
+deployment_logs/
