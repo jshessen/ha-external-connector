@@ -10,10 +10,11 @@ import logging
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, NoReturn, cast
 
 
 class ColoredFormatter(logging.Formatter):
@@ -21,19 +22,19 @@ class ColoredFormatter(logging.Formatter):
 
     # ANSI color codes
     COLORS = {
-        'DEBUG': '\033[0;34m',    # Blue
-        'INFO': '\033[0;32m',     # Green
-        'WARNING': '\033[1;33m',  # Yellow
-        'ERROR': '\033[0;31m',    # Red
-        'CRITICAL': '\033[0;31m',  # Red
-        'SUCCESS': '\033[0;32m',  # Green
-        'RESET': '\033[0m'        # Reset
+        "DEBUG": "\033[0;34m",  # Blue
+        "INFO": "\033[0;32m",  # Green
+        "WARNING": "\033[1;33m",  # Yellow
+        "ERROR": "\033[0;31m",  # Red
+        "CRITICAL": "\033[0;31m",  # Red
+        "SUCCESS": "\033[0;32m",  # Green
+        "RESET": "\033[0m",  # Reset
     }
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         # Add color to levelname
-        if hasattr(record, 'levelname'):
-            color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
+        if hasattr(record, "levelname"):
+            color = self.COLORS.get(record.levelname, self.COLORS["RESET"])
             record.levelname = f"{color}[{record.levelname}]{self.COLORS['RESET']}"
 
         return super().format(record)
@@ -42,15 +43,19 @@ class ColoredFormatter(logging.Formatter):
 class HAConnectorLogger:
     """Enhanced logging system for HA Connector."""
 
-    def __init__(self,
-                 name: str = "ha_connector",
-                 log_file: str | None = None,
-                 verbose: bool = False,
-                 max_log_size: int = 10 * 1024 * 1024):  # 10MB
-
+    def __init__(
+        self,
+        name: str = "ha_connector",
+        log_file: str | None = None,
+        verbose: bool = False,
+        max_log_size: int = 10 * 1024 * 1024,
+    ):  # 10MB
         self.logger = logging.getLogger(name)
         self.verbose = verbose
-        self.log_file = log_file or os.getenv('LOG_FILE', '/tmp/ha-connector.log')
+        # Ensure log_file is never None - explicit type annotation
+        self.log_file: str = (
+            log_file or os.getenv("LOG_FILE") or "/tmp/ha-connector.log"  # nosec B108
+        )
         self.max_log_size = max_log_size
 
         # Clear existing handlers
@@ -67,10 +72,10 @@ class HAConnectorLogger:
         self._setup_file_handler()
 
         # Set formatters
-        console_format = ColoredFormatter('%(levelname)s %(message)s')
+        console_format = ColoredFormatter("%(levelname)s %(message)s")
         file_format = logging.Formatter(
-            '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
         console_handler.setFormatter(console_format)
@@ -80,48 +85,46 @@ class HAConnectorLogger:
         self.logger.addHandler(console_handler)
         self.logger.addHandler(self.file_handler)
 
-    def _setup_file_handler(self):
+    def _setup_file_handler(self) -> None:
         """Setup file handler with rotation."""
         log_path = Path(self.log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Rotate log if too large
         if log_path.exists() and log_path.stat().st_size > self.max_log_size:
-            backup_path = log_path.with_suffix('.old')
+            backup_path = log_path.with_suffix(".old")
             shutil.move(str(log_path), str(backup_path))
 
-        self.file_handler = logging.FileHandler(self.log_file, mode='a')
+        self.file_handler = logging.FileHandler(self.log_file, mode="a")
 
-    def debug(self, message: str, **kwargs):
+    def debug(self, message: str, **kwargs: Any) -> None:
         """Log debug message."""
         self.logger.debug(message, **kwargs)
 
-    def info(self, message: str, **kwargs):
+    def info(self, message: str, **kwargs: Any) -> None:
         """Log info message."""
         self.logger.info(message, **kwargs)
 
-    def warning(self, message: str, **kwargs):
+    def warning(self, message: str, **kwargs: Any) -> None:
         """Log warning message."""
         self.logger.warning(message, **kwargs)
 
-    def error(self, message: str, **kwargs):
+    def error(self, message: str, **kwargs: Any) -> None:
         """Log error message."""
         self.logger.error(message, **kwargs)
 
-    def success(self, message: str):
+    def success(self, message: str) -> None:
         """Log success message (custom level)."""
         # Create a custom success record
         record = self.logger.makeRecord(
             self.logger.name, logging.INFO, __file__, 0, message, (), None
         )
-        record.levelname = 'SUCCESS'
+        record.levelname = "SUCCESS"
         self.logger.handle(record)
 
 
 # Global logger instance
-logger = HAConnectorLogger(
-    verbose=os.getenv('VERBOSE', 'false').lower() == 'true'
-)
+logger = HAConnectorLogger(verbose=os.getenv("VERBOSE", "false").lower() == "true")
 
 
 class HAConnectorError(Exception):
@@ -150,7 +153,17 @@ class AWSError(HAConnectorError):
     """Error for AWS operation failures."""
 
 
-def error_exit(message: str, exit_code: int = 1, context: str | None = None):
+def assert_never(value: object) -> NoReturn:
+    """Helper for exhaustive enum checking.
+
+    This function should be used in else blocks of exhaustive if/elif chains
+    to satisfy type checkers and catch potential bugs if new enum values
+    are added without updating the corresponding logic.
+    """
+    raise ValueError(f"Unexpected value: {value}. This indicates a bug in the code.")
+
+
+def error_exit(message: str, exit_code: int = 1, context: str | None = None) -> None:
     """Exit with error message and optional context."""
     logger.error(message)
     if context:
@@ -159,7 +172,7 @@ def error_exit(message: str, exit_code: int = 1, context: str | None = None):
     logger.error(f"Operation failed. Check {logger.log_file} for details.")
 
     # Call cleanup if it exists
-    cleanup_func = getattr(sys.modules[__name__], 'cleanup', None)
+    cleanup_func = getattr(sys.modules[__name__], "cleanup", None)
     if callable(cleanup_func):
         try:
             cleanup_func()
@@ -171,7 +184,7 @@ def error_exit(message: str, exit_code: int = 1, context: str | None = None):
 
 def require_commands(*commands: str) -> None:
     """Validate that required commands are available."""
-    missing_commands = []
+    missing_commands: list[str] = []
 
     for cmd in commands:
         if not shutil.which(cmd):
@@ -180,13 +193,13 @@ def require_commands(*commands: str) -> None:
     if missing_commands:
         raise PrerequisiteError(
             f"Missing required commands: {', '.join(missing_commands)}",
-            context="prerequisite_check"
+            context="prerequisite_check",
         )
 
 
 def require_env(*variables: str) -> None:
     """Validate that required environment variables are set."""
-    missing_vars = []
+    missing_vars: list[str] = []
 
     for var in variables:
         if not os.getenv(var):
@@ -195,38 +208,37 @@ def require_env(*variables: str) -> None:
     if missing_vars:
         raise HAEnvironmentError(
             f"Missing required environment variables: {', '.join(missing_vars)}",
-            context="environment_check"
+            context="environment_check",
         )
 
 
-def safe_exec(description: str,
-              cmd: list[str],
-              dry_run: bool = False,
-              check: bool = True) -> subprocess.CompletedProcess:
+def safe_exec(
+    description: str, cmd: list[str], dry_run: bool = False, check: bool = True
+) -> subprocess.CompletedProcess[str]:
     """Execute command safely with dry-run support."""
-    if dry_run is None:
-        dry_run = os.getenv('DRY_RUN', 'false').lower() == 'true'
-
     if dry_run:
         logger.info(f"[DRY RUN] Would execute: {description}")
         logger.debug(f"[DRY RUN] Command: {' '.join(cmd)}")
         # Return a mock successful result for dry run
-        return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     logger.debug(f"Executing: {description}")
     logger.debug(f"Command: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(cmd, check=check, capture_output=True, text=True)
+        # nosec B603 - subprocess call with validated cmd list
+        result = subprocess.run(  # nosec B603
+            cmd, check=check, capture_output=True, text=True
+        )
         return result
     except subprocess.CalledProcessError as e:
         error_exit(
             f"Failed to execute: {description}",
             exit_code=e.returncode,
-            context="command_execution"
+            context="command_execution",
         )
-    # Should never reach here, but for type checkers:
-    return subprocess.CompletedProcess(cmd, 1, stdout='', stderr='')
+        # This is unreachable due to error_exit calling sys.exit(), kept for type safety
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="")
 
 
 def safe_file_backup(file_path: str | Path) -> Path | None:
@@ -235,7 +247,7 @@ def safe_file_backup(file_path: str | Path) -> Path | None:
 
     if file_path.exists():
         timestamp = int(datetime.now().timestamp())
-        backup_path = file_path.with_suffix(f'.backup.{timestamp}')
+        backup_path = file_path.with_suffix(f".backup.{timestamp}")
         shutil.copy2(file_path, backup_path)
         logger.debug(f"Backed up {file_path} to {backup_path}")
         return backup_path
@@ -243,13 +255,15 @@ def safe_file_backup(file_path: str | Path) -> Path | None:
     return None
 
 
-def safe_file_write(file_path: str | Path,
-                    content: str,
-                    backup: bool = True,
-                    dry_run: bool = False) -> None:
+def safe_file_write(
+    file_path: str | Path,
+    content: str,
+    backup: bool = True,
+    dry_run: bool | None = None,
+) -> None:
     """Write content to file safely with optional backup."""
     if dry_run is None:
-        dry_run = os.getenv('DRY_RUN', 'false').lower() == 'true'
+        dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
 
     file_path = Path(file_path)
 
@@ -265,13 +279,15 @@ def safe_file_write(file_path: str | Path,
     logger.debug(f"Wrote to {file_path}")
 
 
-def safe_file_append(file_path: str | Path,
-                     content: str,
-                     backup: bool = True,
-                     dry_run: bool = False) -> None:
+def safe_file_append(
+    file_path: str | Path,
+    content: str,
+    backup: bool = True,
+    dry_run: bool | None = None,
+) -> None:
     """Append content to file safely with optional backup."""
     if dry_run is None:
-        dry_run = os.getenv('DRY_RUN', 'false').lower() == 'true'
+        dry_run = os.getenv("DRY_RUN", "false").lower() == "true"
 
     file_path = Path(file_path)
 
@@ -283,7 +299,7 @@ def safe_file_append(file_path: str | Path,
         safe_file_backup(file_path)
 
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    with file_path.open('a', encoding="utf-8") as f:
+    with file_path.open("a", encoding="utf-8") as f:
         f.write(content)
     logger.debug(f"Appended to {file_path}")
 
@@ -300,21 +316,22 @@ def validate_json(json_string: str) -> bool:
 def extract_json_value(
     json_string: str,
     key_path: str,
-    default=None,
-):
+    default: Any = None,
+) -> Any:
     """Extract value from JSON using dot notation key path."""
     try:
-        data = json.loads(json_string)
+        data: Any = json.loads(json_string)
 
         # Navigate through key path
-        keys = key_path.split('.')
+        keys = key_path.split(".")
+        current_data: Any = data
         for key in keys:
-            if isinstance(data, dict) and key in data:
-                data = data[key]
+            if isinstance(current_data, dict) and key in current_data:
+                current_data = cast(Any, current_data[key])
             else:
                 return default
 
-        return data
+        return current_data
     except (json.JSONDecodeError, KeyError, TypeError):
         return default
 
@@ -322,9 +339,9 @@ def extract_json_value(
 def process_json_secure(
     json_input: str,
     key_path: str,
-    default_value=None,
+    default_value: Any = None,
     max_length: int = 1024,
-):
+) -> Any:
     """Process JSON with security validation."""
     # Validate JSON structure first
     if not validate_json(json_input):
@@ -356,10 +373,10 @@ def validate_input(
 
     # Type-specific validation
     patterns = {
-        'url': r'^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$',
-        'aws_region': r'^[a-z]{2}-[a-z]+-[0-9]+$',
-        'service_name': r'^[a-z]+$',
-        'string': r'^[^\x00-\x1f\x7f]*$'  # No control characters
+        "url": r"^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$",
+        "aws_region": r"^[a-z]{2}-[a-z]+-[0-9]+$",
+        "service_name": r"^[a-z]+$",
+        "string": r"^[^\x00-\x1f\x7f]*$",  # No control characters
     }
 
     if input_type in patterns and not re.match(patterns[input_type], input_value):
@@ -371,17 +388,17 @@ def validate_input(
 
 def sanitize_env_var(var_name: str) -> str:
     """Sanitize environment variable value."""
-    var_value = os.getenv(var_name, '')
+    var_value = os.getenv(var_name, "")
 
     # Remove leading/trailing whitespace
     var_value = var_value.strip()
 
     # Convert to lowercase if applicable
-    if var_name.endswith('_NAME'):
+    if var_name.endswith("_NAME"):
         var_value = var_value.lower()
 
     # Replace invalid characters (keep alphanumeric, underscore, dot, slash, dash)
-    var_value = re.sub(r'[^a-z0-9_./-]', '', var_value)
+    var_value = re.sub(r"[^a-z0-9_./-]", "", var_value)
 
     # Ensure non-empty value
     if not var_value:
@@ -397,13 +414,13 @@ def sanitize_env_var(var_name: str) -> str:
 
 def aws_region_check(region: str | None = None) -> bool:
     """Validate AWS region."""
-    region = region or os.getenv('AWS_REGION', 'us-east-1')
+    region = region or os.getenv("AWS_REGION") or "us-east-1"
 
     try:
         safe_exec(
             "Check AWS region",
-            ['aws', 'ec2', 'describe-regions', '--region-names', region],
-            check=True
+            ["aws", "ec2", "describe-regions", "--region-names", region],
+            check=True,
         )
         logger.debug(f"AWS region validated: {region}")
         return True
@@ -416,9 +433,7 @@ def aws_credentials_check() -> bool:
     """Validate AWS credentials."""
     try:
         safe_exec(
-            "Check AWS credentials",
-            ['aws', 'sts', 'get-caller-identity'],
-            check=True
+            "Check AWS credentials", ["aws", "sts", "get-caller-identity"], check=True
         )
         logger.debug("AWS credentials validated")
         return True
@@ -432,17 +447,23 @@ def check_lambda_function_exists(
     region: str | None = None,
 ) -> bool:
     """Check if Lambda function exists."""
-    region = region or os.getenv('AWS_REGION', 'us-east-1')
+    region = region or os.getenv("AWS_REGION") or "us-east-1"
 
     logger.debug(f"Checking if Lambda function exists: {function_name} in {region}")
 
     try:
         safe_exec(
             f"Check Lambda function {function_name}",
-            ['aws', 'lambda', 'get-function',
-             '--function-name', function_name,
-             '--region', region],
-            check=True
+            [
+                "aws",
+                "lambda",
+                "get-function",
+                "--function-name",
+                function_name,
+                "--region",
+                region,
+            ],
+            check=True,
         )
         logger.debug(f"Lambda function {function_name} exists")
         return True
