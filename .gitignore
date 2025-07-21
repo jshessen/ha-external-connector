@@ -193,7 +193,7 @@ dist/
 *.egg-info/
 .eggs/
 
-# Deployment artifacts  
+# Deployment artifacts
 terraform.tfstate*
 .terraform/
 infrastructure/deployed/
