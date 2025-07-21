@@ -4,6 +4,10 @@ AWS Resource Manager - Pure JSON CRUD interface over AWS resources.
 Modern Python implementation for AWS resource management.
 """
 
+# http://github.com/microsoft/pyright/issues/698
+# pyright: reportMissingTypeStubs=false
+# pyright: reportUnknownMemberType=false
+
 from __future__ import annotations
 
 from enum import Enum
@@ -11,10 +15,12 @@ from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
+from mypy_boto3_iam import IAMClient
+from mypy_boto3_sts import STSClient
 from pydantic import BaseModel, Field
 
 # Local imports
-from ..utils import HAConnectorLogger, ValidationError
+from ..utils import HAConnectorLogger, ValidationError, assert_never
 
 # Global instance storage for backwards compatibility
 _global_managers: dict[str, AWSResourceManager] = {}
@@ -115,15 +121,15 @@ class SSMResourceSpec(BaseModel):
 class AWSLambdaManager(AWSBaseManager):
     """Manager for AWS Lambda resources (placeholder)."""
 
-    def create_or_update(self, _spec):
+    def create_or_update(self, _spec: LambdaResourceSpec) -> AWSResourceResponse:
         """Stub: Create or update Lambda resource"""
         return AWSResourceResponse(status="not_implemented", errors=["Not implemented"])
 
-    def read(self, _resource_id):
+    def read(self, _resource_id: str) -> AWSResourceResponse:
         """Stub: Read Lambda resource"""
         return AWSResourceResponse(status="not_implemented", errors=["Not implemented"])
 
-    def delete(self, _resource_id):
+    def delete(self, _resource_id: str) -> AWSResourceResponse:
         """Stub: Delete Lambda resource"""
         return AWSResourceResponse(status="not_implemented", errors=["Not implemented"])
 
@@ -131,15 +137,15 @@ class AWSLambdaManager(AWSBaseManager):
 class AWSSSMManager(AWSBaseManager):
     """Manager for AWS SSM resources (placeholder)."""
 
-    def create_or_update(self, _spec):
+    def create_or_update(self, _spec: SSMResourceSpec) -> AWSResourceResponse:
         """Stub: Create or update SSM resource"""
         return AWSResourceResponse(status="not_implemented", errors=["Not implemented"])
 
-    def read(self, _resource_id):
+    def read(self, _resource_id: str) -> AWSResourceResponse:
         """Stub: Read SSM resource"""
         return AWSResourceResponse(status="not_implemented", errors=["Not implemented"])
 
-    def delete(self, _resource_id):
+    def delete(self, _resource_id: str) -> AWSResourceResponse:
         """Stub: Delete SSM resource"""
         return AWSResourceResponse(status="not_implemented", errors=["Not implemented"])
 
@@ -157,7 +163,9 @@ class AWSIAMManager(AWSBaseManager):
 
     def __init__(self, region: str = "us-east-1") -> None:
         super().__init__(region)
-        self.client = boto3.client("iam", region_name=region)
+        self.client: IAMClient = boto3.client(  # type: ignore[arg-type]
+            "iam", region_name=region
+        )
 
     def create_or_update(self, _spec: IAMResourceSpec) -> AWSResourceResponse:
         """Stub: Create or update IAM resource"""
@@ -238,24 +246,31 @@ class AWSResourceManager:
     ) -> AWSResourceResponse:
         """Create a resource based on type and specification"""
         try:
-            if resource_type == AWSResourceType.LAMBDA:
-                spec = LambdaResourceSpec(**resource_spec)
-                return self.lambda_manager.create_or_update(spec)
-            elif resource_type == AWSResourceType.IAM:
-                spec = IAMResourceSpec(**resource_spec)
-                return self.iam_manager.create_or_update(spec)
-            elif resource_type == AWSResourceType.SSM:
-                spec = SSMResourceSpec(**resource_spec)
-                return self.ssm_manager.create_or_update(spec)
-            elif resource_type == AWSResourceType.LOGS:
-                spec = LogsResourceSpec(**resource_spec)
-                return self.logs_manager.create_or_update(spec)
-            elif resource_type == AWSResourceType.TRIGGER:
-                return self.trigger_manager.create_or_update(resource_spec)
-            else:
-                return AWSResourceResponse(
-                    status="error", errors=[f"Unknown resource type: {resource_type}"]
-                )
+            # Resource type handlers mapping
+            handlers = {
+                AWSResourceType.LAMBDA: lambda: self.lambda_manager.create_or_update(
+                    LambdaResourceSpec(**resource_spec)
+                ),
+                AWSResourceType.IAM: lambda: self.iam_manager.create_or_update(
+                    IAMResourceSpec(**resource_spec)
+                ),
+                AWSResourceType.SSM: lambda: self.ssm_manager.create_or_update(
+                    SSMResourceSpec(**resource_spec)
+                ),
+                AWSResourceType.LOGS: lambda: self.logs_manager.create_or_update(
+                    LogsResourceSpec(**resource_spec)
+                ),
+                AWSResourceType.TRIGGER: lambda: self.trigger_manager.create_or_update(
+                    resource_spec
+                ),
+            }
+
+            handler = handlers.get(resource_type)
+            if handler:
+                return handler()
+
+            # This should never happen with current enum
+            assert_never(resource_type)
         except ValidationError as e:
             return AWSResourceResponse(
                 status="error", errors=[f"Invalid resource specification: {str(e)}"]
@@ -267,25 +282,27 @@ class AWSResourceManager:
             )
 
     def read_resource(
-        self, resource_type: AWSResourceType, resource_id: str, **kwargs
+        self, resource_type: AWSResourceType, resource_id: str, **kwargs: Any
     ) -> AWSResourceResponse:
         """Read a resource's current state"""
         try:
-            if resource_type == AWSResourceType.LAMBDA:
-                return self.lambda_manager.read(resource_id)
-            elif resource_type == AWSResourceType.IAM:
-                resource_subtype = kwargs.get("resource_subtype", "role")
-                return self.iam_manager.read(resource_id, resource_subtype)
-            elif resource_type == AWSResourceType.SSM:
-                return self.ssm_manager.read(resource_id)
-            elif resource_type == AWSResourceType.LOGS:
-                return self.logs_manager.read(resource_id)
-            elif resource_type == AWSResourceType.TRIGGER:
-                return self.trigger_manager.read(resource_id)
-            else:
-                return AWSResourceResponse(
-                    status="success", errors=[f"Unknown resource type: {resource_type}"]
-                )
+            # Resource type handlers mapping
+            handlers = {
+                AWSResourceType.LAMBDA: lambda: self.lambda_manager.read(resource_id),
+                AWSResourceType.IAM: lambda: self.iam_manager.read(
+                    resource_id, kwargs.get("resource_subtype", "role")
+                ),
+                AWSResourceType.SSM: lambda: self.ssm_manager.read(resource_id),
+                AWSResourceType.LOGS: lambda: self.logs_manager.read(resource_id),
+                AWSResourceType.TRIGGER: lambda: self.trigger_manager.read(resource_id),
+            }
+
+            handler = handlers.get(resource_type)
+            if handler:
+                return handler()
+
+            # This should never happen with current enum
+            assert_never(resource_type)
         except (ImportError, TypeError, ValueError) as e:
             self.logger.error(
                 f"Resource read failed for {resource_type} {resource_id}: {str(e)}"
@@ -309,22 +326,23 @@ class AWSResourceManager:
     ) -> AWSResourceResponse:
         """Delete a resource"""
         try:
-            if resource_type == AWSResourceType.LAMBDA:
-                return self.lambda_manager.delete(resource_id)
-            elif resource_type == AWSResourceType.IAM:
-                return self.iam_manager.delete(resource_id)
-            elif resource_type == AWSResourceType.SSM:
-                return self.ssm_manager.delete(resource_id)
-            elif resource_type == AWSResourceType.LOGS:
-                return self.logs_manager.delete(resource_id)
-            elif resource_type == AWSResourceType.TRIGGER:
-                return self.trigger_manager.delete(resource_id)
-            else:
-                return AWSResourceResponse(
-                    status="error",
-                    resource=None,
-                    errors=[f"Unknown resource type: {resource_type}"],
-                )
+            # Resource type handlers mapping
+            handlers = {
+                AWSResourceType.LAMBDA: lambda: self.lambda_manager.delete(resource_id),
+                AWSResourceType.IAM: lambda: self.iam_manager.delete(resource_id),
+                AWSResourceType.SSM: lambda: self.ssm_manager.delete(resource_id),
+                AWSResourceType.LOGS: lambda: self.logs_manager.delete(resource_id),
+                AWSResourceType.TRIGGER: lambda: self.trigger_manager.delete(
+                    resource_id
+                ),
+            }
+
+            handler = handlers.get(resource_type)
+            if handler:
+                return handler()
+
+            # This should never happen with current enum
+            assert_never(resource_type)
         except (ImportError, TypeError, ValueError) as e:
             self.logger.error(
                 f"Resource deletion failed for {resource_type} {resource_id}: {str(e)}"
@@ -339,7 +357,9 @@ class AWSResourceManager:
         """Validate AWS access and permissions"""
         try:
             # Basic AWS access validation using STS
-            sts_client = boto3.client("sts", region_name=self.region)
+            sts_client: STSClient = boto3.client(  # type: ignore[arg-type]
+                "sts", region_name=self.region
+            )
             caller_identity = sts_client.get_caller_identity()
             self.logger.info(f"AWS access validated for: {caller_identity['Arn']}")
             return AWSResourceResponse(

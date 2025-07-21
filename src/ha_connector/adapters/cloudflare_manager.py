@@ -5,12 +5,14 @@ Modern Python implementation for CloudFlare resource management
 aligned with AWS adapter pattern.
 """
 
+# pyright: reportUnknownVariableType=false
+# https://github.com/microsoft/pyright/issues/698
 
 from __future__ import annotations
 
 import os
 from enum import Enum
-from typing import Any
+from typing import Any, Self
 
 import httpx
 from pydantic import BaseModel, Field
@@ -38,7 +40,7 @@ class CloudFlareResourceResponse(BaseModel):
 
 def _extract_id(resource: dict[str, Any] | None) -> str | None:
     """Safely extract 'id' from a resource dict."""
-    if resource is not None and isinstance(resource, dict):
+    if resource is not None:
         id_val = resource.get("id")
         if isinstance(id_val, str):
             return id_val
@@ -57,7 +59,7 @@ class CloudFlareResourceType(str, Enum):
 class CloudFlareBaseManager:
     """Base class for CloudFlare resource managers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = HAConnectorLogger(self.__class__.__name__)
 
 
@@ -114,7 +116,7 @@ class DNSRecordSpec(BaseModel):
 class CloudFlareAccessManager(CloudFlareBaseManager):
     """Manager for CloudFlare Access applications."""
 
-    def __init__(self, client: httpx.Client):
+    def __init__(self, client: httpx.Client) -> None:
         super().__init__()
         self.client = client
 
@@ -123,7 +125,7 @@ class CloudFlareAccessManager(CloudFlareBaseManager):
     ) -> CloudFlareResourceResponse:
         """Create or update Access application."""
         try:
-            app_data = {
+            app_data: dict[str, Any] = {
                 "name": spec.name,
                 "domain": spec.domain,
                 "session_duration": spec.session_duration,
@@ -135,9 +137,7 @@ class CloudFlareAccessManager(CloudFlareBaseManager):
                 app_data["domain"] = f"{spec.subdomain}.{spec.domain}"
 
             if spec.allowed_identity_providers:
-                app_data["allowed_identity_providers"] = (
-                    spec.allowed_identity_providers
-                )
+                app_data["allowed_identity_providers"] = spec.allowed_identity_providers
 
             if spec.cors_headers:
                 app_data["cors_headers"] = spec.cors_headers
@@ -157,38 +157,17 @@ class CloudFlareAccessManager(CloudFlareBaseManager):
                     status="error", errors=[f"API error: {errors}"]
                 )
 
-            return CloudFlareResourceResponse(
-                status="success", resource=data["result"]
-            )
+            return CloudFlareResourceResponse(status="success", resource=data["result"])
 
         except httpx.HTTPError as exc:
             self.logger.error(f"HTTP error creating Access application: {exc}")
             return CloudFlareResourceResponse(
                 status="error", errors=[f"HTTP error: {str(exc)}"]
             )
-        except KeyError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             self.logger.error(f"Failed to create Access application: {exc}")
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Creation failed: {str(exc)}"]
-            )
-        except TypeError as exc:
-            self.logger.error(f"Failed to create Access application: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Creation failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            self.logger.error(f"Failed to create Access application: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Creation failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            self.logger.error(f"Failed to create Access application: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Creation failed: {str(exc)}"]
+                status="error", errors=[f"Creation failed: {str(exc)}"]
             )
 
     def read(self, app_id: str, account_id: str) -> CloudFlareResourceResponse:
@@ -203,33 +182,15 @@ class CloudFlareAccessManager(CloudFlareBaseManager):
                     status="error", errors=[f"API error: {data.get('errors', [])}"]
                 )
 
-            return CloudFlareResourceResponse(
-                status="success", resource=data["result"]
-            )
+            return CloudFlareResourceResponse(status="success", resource=data["result"])
 
         except httpx.HTTPError as exc:
             return CloudFlareResourceResponse(
                 status="error", errors=[f"Read HTTP error: {str(exc)}"]
             )
-        except KeyError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Read failed: {str(exc)}"]
-            )
-        except TypeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Read failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Read failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Read failed: {str(exc)}"]
+                status="error", errors=[f"Read failed: {str(exc)}"]
             )
 
     def delete(self, app_id: str, account_id: str) -> CloudFlareResourceResponse:
@@ -252,25 +213,9 @@ class CloudFlareAccessManager(CloudFlareBaseManager):
             return CloudFlareResourceResponse(
                 status="error", errors=[f"Delete HTTP error: {str(exc)}"]
             )
-        except KeyError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Delete failed: {str(exc)}"]
-            )
-        except TypeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Delete failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Delete failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Delete failed: {str(exc)}"]
+                status="error", errors=[f"Delete failed: {str(exc)}"]
             )
 
 
@@ -278,14 +223,14 @@ class CloudFlareAccessManager(CloudFlareBaseManager):
 class CloudFlareDNSManager(CloudFlareBaseManager):
     """Manager for CloudFlare DNS records."""
 
-    def __init__(self, client: httpx.Client):
+    def __init__(self, client: httpx.Client) -> None:
         super().__init__()
         self.client = client
 
     def create_or_update(self, spec: DNSRecordSpec) -> CloudFlareResourceResponse:
         """Create or update DNS record."""
         try:
-            record_data = {
+            record_data: dict[str, Any] = {
                 "type": spec.record_type,
                 "name": spec.name,
                 "content": spec.content,
@@ -304,33 +249,15 @@ class CloudFlareDNSManager(CloudFlareBaseManager):
                     status="error", errors=[f"API error: {data.get('errors', [])}"]
                 )
 
-            return CloudFlareResourceResponse(
-                status="success", resource=data["result"]
-            )
+            return CloudFlareResourceResponse(status="success", resource=data["result"])
 
         except httpx.HTTPError as exc:
             return CloudFlareResourceResponse(
                 status="error", errors=[f"DNS creation HTTP error: {str(exc)}"]
             )
-        except KeyError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS creation failed: {str(exc)}"]
-            )
-        except TypeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS creation failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS creation failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS creation failed: {str(exc)}"]
+                status="error", errors=[f"DNS creation failed: {str(exc)}"]
             )
 
     def read(self, zone_id: str, record_id: str) -> CloudFlareResourceResponse:
@@ -345,33 +272,15 @@ class CloudFlareDNSManager(CloudFlareBaseManager):
                     status="error", errors=[f"API error: {data.get('errors', [])}"]
                 )
 
-            return CloudFlareResourceResponse(
-                status="success", resource=data["result"]
-            )
+            return CloudFlareResourceResponse(status="success", resource=data["result"])
 
         except httpx.HTTPError as exc:
             return CloudFlareResourceResponse(
                 status="error", errors=[f"DNS read HTTP error: {str(exc)}"]
             )
-        except KeyError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS read failed: {str(exc)}"]
-            )
-        except TypeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS read failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS read failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS read failed: {str(exc)}"]
+                status="error", errors=[f"DNS read failed: {str(exc)}"]
             )
 
     def delete(self, zone_id: str, record_id: str) -> CloudFlareResourceResponse:
@@ -392,25 +301,9 @@ class CloudFlareDNSManager(CloudFlareBaseManager):
             return CloudFlareResourceResponse(
                 status="error", errors=[f"DNS delete HTTP error: {str(exc)}"]
             )
-        except KeyError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS delete failed: {str(exc)}"]
-            )
-        except TypeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS delete failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS delete failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"DNS delete failed: {str(exc)}"]
+                status="error", errors=[f"DNS delete failed: {str(exc)}"]
             )
 
 
@@ -482,98 +375,58 @@ class CloudFlareManager:
         self,
         resource_type: CloudFlareResourceType,
         resource_spec: dict[str, Any],
-        **kwargs,
+        **kwargs: Any,
     ) -> CloudFlareResourceResponse:
         """Create a resource based on type and specification."""
         try:
             if resource_type == CloudFlareResourceType.ACCESS_APPLICATION:
-                spec = AccessApplicationSpec(**resource_spec)
+                access_spec = AccessApplicationSpec(**resource_spec)
                 account_id = kwargs.get("account_id") or self.get_account_id()
-                return self.access_manager.create_or_update(spec, account_id)
-            elif resource_type == CloudFlareResourceType.DNS_RECORD:
-                spec = DNSRecordSpec(**resource_spec)
-                return self.dns_manager.create_or_update(spec)
-            else:
-                return CloudFlareResourceResponse(
-                    status="error",
-                    errors=[f"Unknown resource type: {resource_type}"],
-                )
+                return self.access_manager.create_or_update(access_spec, account_id)
+            if resource_type == CloudFlareResourceType.DNS_RECORD:
+                dns_spec = DNSRecordSpec(**resource_spec)
+                return self.dns_manager.create_or_update(dns_spec)
+            return CloudFlareResourceResponse(
+                status="error",
+                errors=[f"Unknown resource type: {resource_type}"],
+            )
         except ValidationError as exc:
             return CloudFlareResourceResponse(
                 status="error",
                 errors=[f"Invalid resource specification: {str(exc)}"],
             )
-        except KeyError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             self.logger.error(f"Resource creation failed for {resource_type}: {exc}")
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource creation failed: {str(exc)}"]
-            )
-        except TypeError as exc:
-            self.logger.error(f"Resource creation failed for {resource_type}: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource creation failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            self.logger.error(f"Resource creation failed for {resource_type}: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource creation failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            self.logger.error(f"Resource creation failed for {resource_type}: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource creation failed: {str(exc)}"]
+                status="error", errors=[f"Resource creation failed: {str(exc)}"]
             )
 
     def read_resource(
         self,
         resource_type: CloudFlareResourceType,
         resource_id: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> CloudFlareResourceResponse:
         """Read a resource's current state."""
         try:
             if resource_type == CloudFlareResourceType.ACCESS_APPLICATION:
                 account_id = kwargs.get("account_id") or self.get_account_id()
                 return self.access_manager.read(resource_id, account_id)
-            elif resource_type == CloudFlareResourceType.DNS_RECORD:
+            if resource_type == CloudFlareResourceType.DNS_RECORD:
                 zone_id = kwargs.get("zone_id")
                 if not zone_id:
                     return CloudFlareResourceResponse(
                         status="error", errors=["zone_id required for DNS records"]
                     )
                 return self.dns_manager.read(zone_id, resource_id)
-            else:
-                return CloudFlareResourceResponse(
-                    status="error",
-                    errors=[f"Unknown resource type: {resource_type}"],
-                )
-        except KeyError as exc:
-            self.logger.error(f"Resource read failed for {resource_type}: {exc}")
             return CloudFlareResourceResponse(
                 status="error",
-                errors=[f"Resource read failed: {str(exc)}"]
+                errors=[f"Unknown resource type: {resource_type}"],
             )
-        except TypeError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             self.logger.error(f"Resource read failed for {resource_type}: {exc}")
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource read failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            self.logger.error(f"Resource read failed for {resource_type}: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource read failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            self.logger.error(f"Resource read failed for {resource_type}: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource read failed: {str(exc)}"]
+                status="error", errors=[f"Resource read failed: {str(exc)}"]
             )
 
     def update_resource(
@@ -581,7 +434,7 @@ class CloudFlareManager:
         resource_type: CloudFlareResourceType,
         _resource_id: str,  # unused
         resource_spec: dict[str, Any],
-        **kwargs,
+        **kwargs: Any,
     ) -> CloudFlareResourceResponse:
         """Update a resource."""
         # For most resources, update is the same as create_or_update
@@ -591,48 +444,28 @@ class CloudFlareManager:
         self,
         resource_type: CloudFlareResourceType,
         resource_id: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> CloudFlareResourceResponse:
         """Delete a resource."""
         try:
             if resource_type == CloudFlareResourceType.ACCESS_APPLICATION:
                 account_id = kwargs.get("account_id") or self.get_account_id()
                 return self.access_manager.delete(resource_id, account_id)
-            elif resource_type == CloudFlareResourceType.DNS_RECORD:
+            if resource_type == CloudFlareResourceType.DNS_RECORD:
                 zone_id = kwargs.get("zone_id")
                 if not zone_id:
                     return CloudFlareResourceResponse(
                         status="error", errors=["zone_id required for DNS records"]
                     )
                 return self.dns_manager.delete(zone_id, resource_id)
-            else:
-                return CloudFlareResourceResponse(
-                    status="error",
-                    errors=[f"Unknown resource type: {resource_type}"],
-                )
-        except KeyError as exc:
-            self.logger.error(f"Resource deletion failed for {resource_type}: {exc}")
             return CloudFlareResourceResponse(
                 status="error",
-                errors=[f"Resource deletion failed: {str(exc)}"]
+                errors=[f"Unknown resource type: {resource_type}"],
             )
-        except TypeError as exc:
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
             self.logger.error(f"Resource deletion failed for {resource_type}: {exc}")
             return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource deletion failed: {str(exc)}"]
-            )
-        except ValueError as exc:
-            self.logger.error(f"Resource deletion failed for {resource_type}: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource deletion failed: {str(exc)}"]
-            )
-        except AttributeError as exc:
-            self.logger.error(f"Resource deletion failed for {resource_type}: {exc}")
-            return CloudFlareResourceResponse(
-                status="error",
-                errors=[f"Resource deletion failed: {str(exc)}"]
+                status="error", errors=[f"Resource deletion failed: {str(exc)}"]
             )
 
     def get_zone_id(self, domain: str) -> str:
@@ -642,9 +475,7 @@ class CloudFlareManager:
 
         # Extract root domain (e.g., example.com from ha.example.com)
         domain_parts = domain.split(".")
-        root_domain = (
-            ".".join(domain_parts[-2:]) if len(domain_parts) >= 2 else domain
-        )
+        root_domain = ".".join(domain_parts[-2:]) if len(domain_parts) >= 2 else domain
 
         response = self._client.get("/zones", params={"name": root_domain})
         response.raise_for_status()
@@ -657,7 +488,10 @@ class CloudFlareManager:
         if not zones:
             raise ValidationError(f"No zone found for domain: {root_domain}")
 
-        return zones[0]["id"]
+        zone_id = zones[0]["id"]
+        if not isinstance(zone_id, str):
+            raise ValidationError(f"Invalid zone ID type: {type(zone_id)}")
+        return zone_id
 
     def get_account_id(self) -> str:
         """Get CloudFlare account ID."""
@@ -666,20 +500,21 @@ class CloudFlareManager:
 
         data = response.json()
         if not data.get("success", False):
-            raise ValidationError(
-                f"Failed to get account ID: {data.get('errors', [])}"
-            )
+            raise ValidationError(f"Failed to get account ID: {data.get('errors', [])}")
 
         accounts = data.get("result", [])
         if not accounts:
             raise ValidationError("No CloudFlare accounts found")
 
-        return accounts[0]["id"]
+        account_id = accounts[0]["id"]
+        if not isinstance(account_id, str):
+            raise ValidationError(f"Invalid account ID type: {type(account_id)}")
+        return account_id
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if hasattr(self, "_client"):
             self._client.close()
 
@@ -719,9 +554,7 @@ def create_access_application(
             # Create DNS record
             zone_id = cf_manager.get_zone_id(domain)
             lambda_hostname = (
-                lambda_url.replace("https://", "")
-                .replace("http://", "")
-                .split("/")[0]
+                lambda_url.replace("https://", "").replace("http://", "").split("/")[0]
             )
 
             dns_spec = DNSRecordSpec(
@@ -757,27 +590,25 @@ def create_access_application(
                 "dns_record": dns_result.resource,
                 "access_url": f"https://{domain}",
             }
-        else:
-            app_spec = AccessApplicationSpec(
-                name=application_name,
-                domain=domain,
-                subdomain=None,
-                session_duration="24h",
-                auto_redirect_to_identity=True,
-                allowed_identity_providers=[],
-                cors_headers=None,
-                service_auth_401_redirect=False,
-                tags=None,
-            )
-            result = cf_manager.create_resource(
-                CloudFlareResourceType.ACCESS_APPLICATION, app_spec.model_dump()
-            )
 
-            if result.status != "success":
-                raise HAConnectorError(f"Failed to create app: {result.errors}")
+        app_spec = AccessApplicationSpec(
+            name=application_name,
+            domain=domain,
+            subdomain=None,
+            session_duration="24h",
+            auto_redirect_to_identity=True,
+            allowed_identity_providers=[],
+            cors_headers=None,
+            service_auth_401_redirect=False,
+            tags=None,
+        )
+        result = cf_manager.create_resource(
+            CloudFlareResourceType.ACCESS_APPLICATION, app_spec.model_dump()
+        )
 
-            if result.resource is None:
-                raise HAConnectorError(
-                    "CloudFlare API did not return a resource object."
-                )
-            return result.resource
+        if result.status != "success":
+            raise HAConnectorError(f"Failed to create app: {result.errors}")
+
+        if result.resource is None:
+            raise HAConnectorError("CloudFlare API did not return a resource object.")
+        return result.resource
