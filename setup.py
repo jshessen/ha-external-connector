@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Simple setup script to initialize the project."""
 
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
 
-def run_command(cmd: str, check: bool = True) -> subprocess.CompletedProcess:
+def run_command(cmd: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run a shell command."""
     print(f"Running: {cmd}")
-    result = subprocess.run(
+    # nosec B602 - shell=True needed for setup commands like "poetry install"
+    result = subprocess.run(  # nosec B602
         cmd,
         shell=True,
         capture_output=True,
@@ -26,7 +27,7 @@ def run_command(cmd: str, check: bool = True) -> subprocess.CompletedProcess:
     return result
 
 
-def main():
+def main() -> None:
     """Initialize the project."""
     project_root = Path(__file__).parent
 
