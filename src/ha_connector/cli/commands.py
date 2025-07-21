@@ -8,7 +8,8 @@ Modern Python implementations for all command functionality.
 import os
 import traceback
 
-# Note: Using Optional[X] instead of X | None for Typer compatibility with Python 3.11
+# Note: Using Optional[X] instead of X | None for Typer compatibility
+# Typer does not yet support the modern union syntax (str | None) from Python 3.10
 # This prevents "Parameter.make_metavar() missing ctx" error with Click/Typer
 from typing import Any, Optional
 
@@ -28,7 +29,7 @@ from ..deployment import (
     ServiceInstaller,
     ServiceType,
 )
-from ..utils import HAConnectorLogger
+from ..utils import HAConnectorLogger, ValidationError
 
 console = Console()
 logger = HAConnectorLogger("ha-connector-cli")
@@ -45,10 +46,130 @@ def validate_aws_access(region: str = "us-east-1") -> dict[str, Any]:
     return resp.model_dump() if hasattr(resp, "model_dump") else dict(resp)
 
 
-def install(
+# Helper functions for the install command
+
+
+def _print_installation_header(
+    scenario: str, region: str, environment: str, dry_run: bool
+) -> None:
+    """Print installation header information."""
+    console.print("🚀 Starting Home Assistant External Connector installation...")
+    console.print(f"Scenario: [bold]{scenario}[/bold]")
+    console.print(f"Region: [bold]{region}[/bold]")
+    console.print(f"Environment: [bold]{environment}[/bold]")
+
+    if dry_run:
+        console.print("[yellow]🔍 DRY RUN MODE - No changes will be made[/yellow]")
+
+
+def _validate_and_get_scenario(scenario: str) -> InstallationScenario:
+    """Validate scenario string and return InstallationScenario enum."""
+    scenario_mapping = {
+        "direct_alexa": InstallationScenario.DIRECT_ALEXA,
+        "cloudflare_alexa": InstallationScenario.CLOUDFLARE_ALEXA,
+        "cloudflare_ios": InstallationScenario.CLOUDFLARE_IOS,
+        "all": InstallationScenario.ALL,
+    }
+
+    if scenario not in scenario_mapping:
+        console.print(f"[red]❌ Invalid scenario: {scenario}[/red]")
+        console.print(f"Supported scenarios: {', '.join(scenario_mapping.keys())}")
+        raise typer.Exit(1)
+
+    return scenario_mapping[scenario]
+
+
+def _setup_configuration(
+    installation_scenario: InstallationScenario,
+) -> ConfigurationManager:
+    """Set up and validate configuration."""
+    config_manager = ConfigurationManager()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task("Loading configuration...", total=None)
+
+        config_manager.init_config(installation_scenario)
+        # If config is missing, enter interactive setup
+        if not config_manager.config or not config_manager.validate_scenario_setup(
+            installation_scenario
+        ):
+            console.print(
+                "[yellow]⚠ Some configuration missing or invalid, "
+                "entering interactive setup[/yellow]"
+            )
+            _interactive_configuration_setup(config_manager)
+            # Re-validate after interactive setup
+            if not config_manager.validate_scenario_setup(installation_scenario):
+                console.print(
+                    "[red]❌ Configuration validation failed after "
+                    "interactive setup[/red]"
+                )
+                raise typer.Exit(1)
+
+    console.print("[green]✓ Configuration validated successfully[/green]")
+    return config_manager
+
+
+def _print_services_to_install(services_to_install: list[ServiceType]) -> None:
+    """Print services that will be installed."""
+    services_str = ", ".join([s.value for s in services_to_install])
+    console.print(f"Services to install: [bold]{services_str}[/bold]")
+
+
+def _create_deployment_config(
+    services_to_install: list[ServiceType],
+    config_params: dict[str, Any],
+) -> DeploymentConfig:
+    """Create deployment configuration."""
+    return DeploymentConfig(
+        environment=config_params["environment"],
+        version=config_params["version"],
+        strategy=DeploymentStrategy.ROLLING,
+        services=services_to_install,
+        region=config_params["region"],
+        dry_run=config_params["dry_run"],
+        verbose=config_params["verbose"],
+        force=config_params["force"],
+        cloudflare_setup=config_params["auto_setup_cloudflare"],
+        cloudflare_domain=config_params["cloudflare_domain"],
+        service_overrides=None,
+        tags=None,
+    )
+
+
+def _execute_deployment(deployment_config: DeploymentConfig) -> dict[str, Any]:
+    """Execute the deployment and return results."""
+    deployment_manager = DeploymentManager(deployment_config)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task("Executing deployment...", total=None)
+        return deployment_manager.execute_deployment()
+
+
+def _handle_deployment_result(deployment_result: dict[str, Any]) -> None:
+    """Handle deployment results and display appropriate messages."""
+    if deployment_result["success"]:
+        console.print("\n[green]🎉 Installation completed successfully![/green]")
+        _display_installation_results(deployment_result)
+    else:
+        console.print("\n[red]💥 Installation failed![/red]")
+        for error in deployment_result["errors"]:
+            console.print(f"[red]  • {error}[/red]")
+        raise typer.Exit(1)
+
+
+def install(  # pylint: disable=too-many-positional-arguments
     scenario: str = typer.Argument(
         "direct_alexa",
-        help="Installation scenario: direct_alexa|cloudflare_alexa|cloudflare_ios|all"
+        help="Installation scenario: direct_alexa|cloudflare_alexa|cloudflare_ios|all",
     ),
     region: str = typer.Option("us-east-1", "--region", "-r"),
     environment: str = typer.Option("prod", "--environment", "-e"),
@@ -60,7 +181,7 @@ def install(
     cloudflare_domain: Optional[str] = typer.Option(  # noqa: UP045
         None, "--cloudflare-domain"
     ),
-):
+) -> None:
     """
     Install Home Assistant External Connector services.
 
@@ -73,115 +194,41 @@ def install(
     - cloudflare_ios: iOS Companion via CloudFlare Access
     - all: Install all supported integrations
     """
-    console.print("🚀 Starting Home Assistant External Connector installation...")
-    console.print(f"Scenario: [bold]{scenario}[/bold]")
-    console.print(f"Region: [bold]{region}[/bold]")
-    console.print(
-        f"Environment: [bold]{environment}[/bold]"
-    )
-
-    if dry_run:
-        console.print("[yellow]🔍 DRY RUN MODE - No changes will be made[/yellow]")
+    _print_installation_header(scenario, region, environment, dry_run)
 
     try:
-        # Validate scenario
-        scenario_mapping = {
-            "direct_alexa": InstallationScenario.DIRECT_ALEXA,
-            "cloudflare_alexa": InstallationScenario.CLOUDFLARE_ALEXA,
-            "cloudflare_ios": InstallationScenario.CLOUDFLARE_IOS,
-            "all": InstallationScenario.ALL,
-        }
-
-        if scenario not in scenario_mapping:
-            console.print(f"[red]❌ Invalid scenario: {scenario}[/red]")
-            console.print(f"Supported scenarios: {', '.join(scenario_mapping.keys())}")
-            raise typer.Exit(1)
-
-        installation_scenario = scenario_mapping[scenario]
-
-        # Initialize configuration manager
-        config_manager = ConfigurationManager()
-
-        # Load and validate configuration
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            progress.add_task("Loading configuration...", total=None)
-
-            config_manager.init_config(installation_scenario)
-            # If config is missing, enter interactive setup
-            if not config_manager.config or not config_manager.validate_scenario_setup(
-                installation_scenario
-            ):
-                console.print(
-                    "[yellow]⚠ Some configuration missing or invalid, "
-                    "entering interactive setup[/yellow]"
-                )
-                _interactive_configuration_setup(config_manager)
-                # Re-validate after interactive setup
-                if not config_manager.validate_scenario_setup(installation_scenario):
-                    console.print(
-                        "[red]❌ Configuration validation failed after "
-                        "interactive setup[/red]"
-                    )
-                    raise typer.Exit(1)
-
-        console.print("[green]✓ Configuration validated successfully[/green]")
-
-        # Determine services to install
+        installation_scenario = _validate_and_get_scenario(scenario)
+        _setup_configuration(installation_scenario)
         services_to_install = _get_services_for_scenario(installation_scenario)
-        services_str = ', '.join([s.value for s in services_to_install])
-        console.print(
-            f"Services to install: [bold]{services_str}[/bold]"
+
+        _print_services_to_install(services_to_install)
+
+        deployment_config = _create_deployment_config(
+            services_to_install,
+            {
+                "environment": environment,
+                "version": version,
+                "region": region,
+                "dry_run": dry_run,
+                "verbose": verbose,
+                "force": force,
+                "auto_setup_cloudflare": auto_setup_cloudflare,
+                "cloudflare_domain": cloudflare_domain,
+            },
         )
 
-        # Create deployment configuration
-        deployment_config = DeploymentConfig(
-            environment=environment,
-            version=version,
-            strategy=DeploymentStrategy.ROLLING,
-            services=services_to_install,
-            region=region,
-            dry_run=dry_run,
-            verbose=verbose,
-            force=force,
-            cloudflare_setup=auto_setup_cloudflare,
-            cloudflare_domain=cloudflare_domain,
-            service_overrides=None,
-            tags=None,
-        )
-
-        # Execute deployment
-        deployment_manager = DeploymentManager(deployment_config)
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            progress.add_task("Executing deployment...", total=None)
-
-            deployment_result = deployment_manager.execute_deployment()
-
-            if deployment_result["success"]:
-                console.print(
-                    "\n[green]🎉 Installation completed successfully![/green]"
-                )
-
-                # Display results
-                _display_installation_results(deployment_result)
-
-            else:
-                console.print("\n[red]💥 Installation failed![/red]")
-                for error in deployment_result["errors"]:
-                    console.print(f"[red]  • {error}[/red]")
-                raise typer.Exit(1)
+        deployment_result = _execute_deployment(deployment_config)
+        _handle_deployment_result(deployment_result)
 
     except KeyboardInterrupt as exc:
         console.print("\n[yellow]⚠ Installation interrupted by user[/yellow]")
         raise typer.Exit(130) from exc
+    except (ValueError, ValidationError) as e:
+        console.print(f"\n[red]💥 Configuration error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+    except (FileNotFoundError, OSError) as e:
+        console.print(f"\n[red]💥 File system error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"\n[red]💥 Installation failed: {str(e)}[/red]")
         if verbose:
@@ -193,14 +240,14 @@ _DEFAULT_SERVICES = ["alexa", "ios_companion", "cloudflare_proxy"]
 
 
 def deploy(
-    services: list[str],
-    region: str = typer.Option("us-east-1", "--region", "-r"),
-    environment: str = typer.Option("prod", "--environment", "-e"),
-    version: str = typer.Option("1.0.0", "--version"),
+    service: str,
     strategy: str = typer.Option("rolling", "--strategy", "-s"),
-    verbose: bool = typer.Option(False, "--verbose"),
+    cloudflare_domain: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--domain", "-d"
+    ),
     dry_run: bool = typer.Option(False, "--dry-run"),
-):
+    verbose: bool = typer.Option(False, "--verbose"),
+) -> None:
     """
     Deploy specific services to AWS Lambda.
 
@@ -214,25 +261,22 @@ def deploy(
 
     Available services: alexa, ios_companion, cloudflare_proxy
     """
-    console.print(f"🚀 Deploying services: [bold]{', '.join(services)}[/bold]")
+    console.print(f"🚀 Deploying service: [bold]{service}[/bold]")
 
     try:
-        # Validate services
+        # Validate service
         service_mapping = {
             "alexa": ServiceType.ALEXA,
             "ios_companion": ServiceType.IOS_COMPANION,
             "cloudflare_proxy": ServiceType.CLOUDFLARE_PROXY,
         }
 
-        service_types = []
-        for service in services:
-            if service not in service_mapping:
-                console.print(f"[red]❌ Invalid service: {service}[/red]")
-                console.print(
-                    f"Supported services: {', '.join(service_mapping.keys())}"
-                )
-                raise typer.Exit(1)
-            service_types.append(service_mapping[service])
+        if service not in service_mapping:
+            console.print(f"[red]❌ Invalid service: {service}[/red]")
+            console.print(f"Supported services: {', '.join(service_mapping.keys())}")
+            raise typer.Exit(1)
+
+        service_type = service_mapping[service]
 
         # Validate strategy
         strategy_mapping = {
@@ -249,16 +293,16 @@ def deploy(
 
         deployment_strategy = strategy_mapping[strategy]
 
-        # Create deployment configuration
+        # Create deployment configuration with defaults
         deployment_config = DeploymentConfig(
-            environment=environment,
-            version=version,
+            environment="prod",
+            version="1.0.0",
             strategy=deployment_strategy,
-            services=service_types,
-            region=region,
+            services=[service_type],
+            region="us-east-1",
             dry_run=dry_run,
             verbose=verbose,
-            cloudflare_domain=None,
+            cloudflare_domain=cloudflare_domain,
             service_overrides=None,
             tags=None,
         )
@@ -276,6 +320,12 @@ def deploy(
                 console.print(f"[red]  • {error}[/red]")
             raise typer.Exit(1)
 
+    except (ValueError, ValidationError) as e:
+        console.print(f"\n[red]💥 Configuration error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+    except (FileNotFoundError, OSError) as e:
+        console.print(f"\n[red]💥 File system error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"\n[red]💥 Deployment failed: {str(e)}[/red]")
         raise typer.Exit(1) from e
@@ -285,7 +335,7 @@ def configure(
     scenario: Optional[str] = typer.Option(None, "--scenario", "-s"),  # noqa: UP045
     interactive: bool = typer.Option(False, "--interactive", "-i"),
     validate_only: bool = typer.Option(False, "--validate-only"),
-):
+) -> None:
     """
     Configure Home Assistant External Connector settings.
 
@@ -325,6 +375,12 @@ def configure(
                 console.print("[red]❌ Configuration validation failed[/red]")
                 raise typer.Exit(1)
 
+    except (ValueError, ValidationError) as e:
+        console.print(f"\n[red]💥 Configuration error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+    except (FileNotFoundError, OSError) as e:
+        console.print(f"\n[red]💥 File system error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"\n[red]💥 Configuration failed: {str(e)}[/red]")
         raise typer.Exit(1) from e
@@ -333,7 +389,7 @@ def configure(
 def status(
     region: str = typer.Option("us-east-1", "--region", "-r"),
     verbose: bool = typer.Option(False, "--verbose"),
-):
+) -> None:
     """
     Check status of deployed services.
 
@@ -368,6 +424,12 @@ def status(
         else:
             console.print("[yellow]ℹ No services currently deployed[/yellow]")
 
+    except (ValueError, ValidationError) as e:
+        console.print(f"\n[red]💥 Configuration error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+    except (ConnectionError, OSError) as e:
+        console.print(f"\n[red]💥 Network connectivity error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"\n[red]💥 Status check failed: {str(e)}[/red]")
         raise typer.Exit(1) from e
@@ -378,7 +440,7 @@ def remove(
     region: str = typer.Option("us-east-1", "--region", "-r"),
     force: bool = typer.Option(False, "--force", "-f"),
     dry_run: bool = typer.Option(False, "--dry-run"),
-):
+) -> None:
     """
     Remove deployed services.
 
@@ -404,7 +466,7 @@ def remove(
             "cloudflare_proxy": "ha-cloudflare-proxy",
         }
 
-        functions_to_remove = []
+        functions_to_remove: list[str] = []
         for service in services:
             if service not in service_mapping:
                 console.print(f"[red]❌ Invalid service: {service}[/red]")
@@ -418,9 +480,13 @@ def remove(
         # Remove duplicates
         functions_to_remove = list(set(functions_to_remove))
 
-        if not force and not dry_run and not Confirm.ask(
-            f"Are you sure you want to remove {len(functions_to_remove)} "
-            "service(s)?"
+        if (
+            not force
+            and not dry_run
+            and not Confirm.ask(
+                f"Are you sure you want to remove {len(functions_to_remove)} "
+                "service(s)?"
+            )
         ):
             console.print("Operation cancelled")
             raise typer.Exit(0)
@@ -440,6 +506,12 @@ def remove(
             f"{len(functions_to_remove)} services[/green]"
         )
 
+    except (ValueError, ValidationError) as e:
+        console.print(f"\n[red]💥 Configuration error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+    except (ConnectionError, OSError) as e:
+        console.print(f"\n[red]💥 Network connectivity error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"\n[red]💥 Removal failed: {str(e)}[/red]")
         raise typer.Exit(1) from e
@@ -452,21 +524,22 @@ def _get_services_for_scenario(scenario: InstallationScenario) -> list[ServiceTy
     """Get list of services for installation scenario"""
     if scenario == InstallationScenario.DIRECT_ALEXA:
         return [ServiceType.ALEXA]
-    elif scenario == InstallationScenario.CLOUDFLARE_ALEXA:
+    if scenario == InstallationScenario.CLOUDFLARE_ALEXA:
         return [ServiceType.ALEXA, ServiceType.CLOUDFLARE_PROXY]
-    elif scenario == InstallationScenario.CLOUDFLARE_IOS:
+    if scenario == InstallationScenario.CLOUDFLARE_IOS:
         return [ServiceType.IOS_COMPANION, ServiceType.CLOUDFLARE_PROXY]
-    elif scenario == InstallationScenario.ALL:
+    if scenario == InstallationScenario.ALL:
         return [
             ServiceType.ALEXA,
             ServiceType.IOS_COMPANION,
             ServiceType.CLOUDFLARE_PROXY,
         ]
-    else:
-        return [ServiceType.ALEXA]
+
+    # This should never happen, but provide explicit handling
+    raise ValueError(f"Unknown installation scenario: {scenario}")
 
 
-def _interactive_configuration_setup(config_manager: ConfigurationManager):
+def _interactive_configuration_setup(config_manager: ConfigurationManager) -> None:
     """Interactive configuration setup"""
     console.print("\n[bold]Interactive Configuration Setup[/bold]")
 
@@ -491,7 +564,7 @@ def _interactive_configuration_setup(config_manager: ConfigurationManager):
     console.print("[green]✓ Interactive configuration completed[/green]")
 
 
-def _display_installation_results(result: dict[str, Any]):
+def _display_installation_results(result: dict[str, Any]) -> None:
     """Display installation results"""
     table = Table(title="Installation Results")
     table.add_column("Service", style="cyan")
@@ -521,7 +594,7 @@ def _display_installation_results(result: dict[str, Any]):
         console.print(cf_panel)
 
 
-def _display_deployment_results(result: dict[str, Any]):
+def _display_deployment_results(result: dict[str, Any]) -> None:
     """Display deployment results"""
     _display_installation_results(result)
 
@@ -532,7 +605,7 @@ def _display_deployment_results(result: dict[str, Any]):
     console.print(f"Environment: [bold]{result['environment']}[/bold]")
 
 
-def _display_configuration_summary(_config_manager: ConfigurationManager):
+def _display_configuration_summary(_config_manager: ConfigurationManager) -> None:
     """Display configuration summary"""
     table = Table(title="Configuration Summary")
     table.add_column("Setting", style="cyan")
@@ -550,7 +623,7 @@ def _display_configuration_summary(_config_manager: ConfigurationManager):
     console.print(table)
 
 
-def _display_service_status(services: list[dict[str, Any]], verbose: bool):
+def _display_service_status(services: list[dict[str, Any]], verbose: bool) -> None:
     """Display service status"""
     table = Table(title="Service Status")
     table.add_column("Service", style="cyan")

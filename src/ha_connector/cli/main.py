@@ -5,7 +5,6 @@ This module provides the main command-line interface using Typer.
 Modern Python CLI for Home Assistant External Connector.
 """
 
-
 import os
 
 import typer
@@ -14,6 +13,13 @@ from rich.panel import Panel
 from rich.text import Text
 
 from ..utils import HAConnectorLogger
+from .commands import (
+    configure_command,
+    deploy_command,
+    install_command,
+    remove_command,
+    status_command,
+)
 
 # Initialize console and logger
 console = Console()
@@ -40,7 +46,7 @@ __version__ = "3.0.0"
 def main(
     verbose: bool = typer.Option(False, "--verbose"),
     dry_run: bool = typer.Option(False, "--dry-run"),
-):
+) -> None:
     """
     Home Assistant External Connector CLI
 
@@ -54,7 +60,7 @@ def main(
         logger.logger.setLevel(10 if verbose else 20)  # 10=DEBUG, 20=INFO
 
     if dry_run:
-        os.environ['DRY_RUN'] = 'true'
+        os.environ["DRY_RUN"] = "true"
 
     # Show welcome banner
     welcome_text = Text()
@@ -73,7 +79,7 @@ def main(
 
 # Add version as a separate command instead of a callback
 @app.command()
-def version():
+def version() -> None:
     """Show version information."""
     console.print(f"Home Assistant External Connector v{__version__}")
     console.print(
@@ -81,16 +87,6 @@ def version():
         "with automated deployment"
     )
 
-
-# Import commands and register them directly
-# pylint: disable=wrong-import-position
-from .commands import (  # noqa: E402
-    configure_command,
-    deploy_command,
-    install_command,
-    remove_command,
-    status_command,
-)
 
 # Register commands with the main app
 app.command(name="install")(install_command)
