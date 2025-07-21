@@ -2,6 +2,7 @@
 Service Installer module for Home Assistant Lambda deployments.
 Provides build, deploy, and configuration logic for AWS Lambda services.
 """
+
 import os
 import zipfile
 from enum import Enum
@@ -16,6 +17,7 @@ from ..utils import AWSError, HAConnectorLogger, ValidationError
 
 class ServiceType(str, Enum):
     """Supported service types"""
+
     ALEXA = "alexa"
     IOS_COMPANION = "ios_companion"
     CLOUDFLARE_PROXY = "cloudflare_proxy"
@@ -24,54 +26,30 @@ class ServiceType(str, Enum):
 
 class ServiceConfig(BaseModel):
     """Configuration for a service deployment"""
-    service_type: ServiceType = Field(
-        ..., description="Type of service to deploy"
-    )
-    function_name: str = Field(
-        ..., description="Lambda function name"
-    )
-    handler: str = Field(
-        ..., description="Lambda handler function"
-    )
-    source_path: str = Field(
-        ..., description="Path to source code"
-    )
-    runtime: str = Field(
-        default="python3.11",
-        description="Lambda runtime"
-    )
-    timeout: int = Field(
-        default=30,
-        description="Function timeout in seconds"
-    )
-    memory_size: int = Field(
-        default=512,
-        description="Memory size in MB"
-    )
-    description: str | None = Field(
-        default=None,
-        description="Function description"
-    )
+
+    service_type: ServiceType = Field(..., description="Type of service to deploy")
+    function_name: str = Field(..., description="Lambda function name")
+    handler: str = Field(..., description="Lambda handler function")
+    source_path: str = Field(..., description="Path to source code")
+    runtime: str = Field(default="python3.11", description="Lambda runtime")
+    timeout: int = Field(default=30, description="Function timeout in seconds")
+    memory_size: int = Field(default=512, description="Memory size in MB")
+    description: str | None = Field(default=None, description="Function description")
     environment_variables: dict[str, str] | None = Field(
-        default=None,
-        description="Environment variables"
+        default=None, description="Environment variables"
     )
     create_url: bool = Field(
-        default=False,
-        description="Whether to create function URL"
+        default=False, description="Whether to create function URL"
     )
-    url_auth_type: str = Field(
-        default="NONE",
-        description="Function URL auth type"
-    )
+    url_auth_type: str = Field(default="NONE", description="Function URL auth type")
     role_arn: str | None = Field(
-        default=None,
-        description="IAM role ARN (will be created if not provided)"
+        default=None, description="IAM role ARN (will be created if not provided)"
     )
 
 
 class DeploymentResult(BaseModel):
     """Result of a service deployment"""
+
     success: bool = Field(..., description="Whether deployment was successful")
     function_name: str = Field(..., description="Deployed function name")
     function_arn: str | None = Field(None, description="Function ARN")
@@ -88,10 +66,9 @@ class DeploymentResult(BaseModel):
 class ServiceInstaller:
     """Service installer for AWS Lambda functions"""
 
-    def __init__(self,
-                 region: str = "us-east-1",
-                 dry_run: bool = False,
-                 verbose: bool = False):
+    def __init__(
+        self, region: str = "us-east-1", dry_run: bool = False, verbose: bool = False
+    ):
         self.region = region
         self.dry_run = dry_run
         self.verbose = verbose
@@ -99,7 +76,7 @@ class ServiceInstaller:
         self.aws_manager = AWSResourceManager(region)
 
         # Default service configurations
-        self._default_configs = {
+        self._default_configs: dict[ServiceType, dict[str, Any]] = {
             ServiceType.ALEXA: {
                 "function_name": "ha-alexa-proxy",
                 "handler": "alexa_wrapper.lambda_handler",
@@ -136,7 +113,7 @@ class ServiceInstaller:
         config = self._default_configs.get(service_type, None)
         if config is None:
             return {}
-        return config
+        return config.copy()  # Return a copy to prevent mutations
 
     def create_deployment_package(
         self,
@@ -151,7 +128,7 @@ class ServiceInstaller:
 
         # Determine output path
         if output_path is None:
-            output_path = f"/tmp/{src_path.stem}-deployment.zip"
+            output_path = f"/tmp/{src_path.stem}-deployment.zip"  # nosec B108
         out_path = Path(output_path)
 
         if self.dry_run:
@@ -200,25 +177,23 @@ class ServiceInstaller:
             return f"arn:aws:iam::123456789012:role/{role_name}"
 
         # Basic Lambda execution role policy
-        assume_role_policy = {
+        assume_role_policy: dict[str, Any] = {
             "Version": "2012-10-17",
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Principal": {
-                        "Service": "lambda.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
+                    "Principal": {"Service": "lambda.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
                 }
-            ]
+            ],
         }
 
         # Service-specific policies would go here
-        role_spec = {
+        role_spec: dict[str, Any] = {
             "resource_type": "role",
             "name": role_name,
             "assume_role_policy": assume_role_policy,
-            "description": f"Lambda execution role for {service_type} service"
+            "description": f"Lambda execution role for {service_type} service",
         }
 
         self.logger.info(f"Creating IAM role: {role_name}")
@@ -228,12 +203,12 @@ class ServiceInstaller:
             raise AWSError(f"Failed to create IAM role: {', '.join(result.errors)}")
 
         # Extract ARN from result
-        if result.resource and 'Role' in result.resource:
-            role_arn = result.resource['Role']['Arn']
+        if result.resource and "Role" in result.resource:
+            role_arn = str(result.resource["Role"]["Arn"])
             self.logger.info(f"Created IAM role: {role_arn}")
             return role_arn
-        else:
-            raise AWSError("Failed to get IAM role ARN from AWS response")
+
+        raise AWSError("Failed to get IAM role ARN from AWS response")
 
     def deploy_service(self, config: ServiceConfig) -> DeploymentResult:
         """Deploy a service to AWS Lambda"""
@@ -314,9 +289,7 @@ class ServiceInstaller:
                         if function_url_config and "FunctionUrl" in function_url_config:
                             result.function_url = function_url_config["FunctionUrl"]
 
-                    self.logger.success(
-                        f"Successfully deployed {config.function_name}"
-                    )
+                    self.logger.success(f"Successfully deployed {config.function_name}")
                 else:
                     result.errors = deploy_result.errors
                     self.logger.error(
@@ -344,8 +317,7 @@ class ServiceInstaller:
         default_config = self.get_default_config(service_type)
         if not default_config:
             raise ValidationError(
-                f"No default configuration for service type: "
-                f"{service_type}"
+                f"No default configuration for service type: " f"{service_type}"
             )
 
         # Apply overrides
@@ -381,17 +353,15 @@ class ServiceInstaller:
         result = self.aws_manager.delete_resource(AWSResourceType.LAMBDA, function_name)
 
         if result.status == "error":
-            self.logger.error(
-                f"Failed to remove service: {', '.join(result.errors)}"
-            )
+            self.logger.error(f"Failed to remove service: {', '.join(result.errors)}")
             return False
 
         self.logger.success(f"Successfully removed service: {function_name}")
         return True
 
 
-# Module-level singleton instance for ServiceInstaller
-_service_installer_instance: ServiceInstaller | None = None
+# Module-level singleton registry for ServiceInstaller instances
+_service_installer_registry: dict[tuple[str, bool, bool], ServiceInstaller] = {}
 
 
 def get_service_installer(
@@ -399,14 +369,12 @@ def get_service_installer(
     dry_run: bool = False,
     verbose: bool = False,
 ) -> ServiceInstaller:
-    """Get or create singleton service installer instance (no global statement)"""
-    if (
-        not hasattr(get_service_installer, "instance")
-        or get_service_installer.instance is None
-        or get_service_installer.instance.region != region
-        or get_service_installer.instance.dry_run != dry_run
-    ):
-        get_service_installer.instance = ServiceInstaller(
+    """Get or create singleton service installer instance"""
+    key = (region, dry_run, verbose)
+
+    if key not in _service_installer_registry:
+        _service_installer_registry[key] = ServiceInstaller(
             region=region, dry_run=dry_run, verbose=verbose
         )
-    return get_service_installer.instance
+
+    return _service_installer_registry[key]

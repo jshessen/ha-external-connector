@@ -1,4 +1,3 @@
-
 """
 Deployment Manager Module
 
@@ -22,6 +21,7 @@ from .service_installer import DeploymentResult, ServiceInstaller, ServiceType
 
 class DeploymentStrategy(str, Enum):
     """Deployment strategies"""
+
     ROLLING = "rolling"
     BLUE_GREEN = "blue-green"
     CANARY = "canary"
@@ -30,6 +30,7 @@ class DeploymentStrategy(str, Enum):
 
 class DeploymentConfig(BaseModel):
     """Configuration for orchestrated deployment"""
+
     environment: str = Field(
         ..., description="Deployment environment (dev, staging, prod)"
     )
@@ -43,9 +44,7 @@ class DeploymentConfig(BaseModel):
     verbose: bool = Field(default=False, description="Verbose logging")
     skip_tests: bool = Field(default=False, description="Skip tests")
     force: bool = Field(default=False, description="Force deployment")
-    rollback_on_failure: bool = Field(
-        default=True, description="Rollback on failure"
-    )
+    rollback_on_failure: bool = Field(default=True, description="Rollback on failure")
     health_check_timeout: int = Field(
         default=300, description="Health check timeout in seconds"
     )
@@ -68,13 +67,11 @@ class DeploymentManager:
         self.config = config
         self.logger = HAConnectorLogger("deployment_manager", verbose=config.verbose)
         self.service_installer = ServiceInstaller(
-            region=config.region,
-            dry_run=config.dry_run,
-            verbose=config.verbose
+            region=config.region, dry_run=config.dry_run, verbose=config.verbose
         )
         self.deployment_results: list[DeploymentResult] = []
-        self.start_time = None
-        self.end_time = None
+        self.start_time: float | None = None
+        self.end_time: float | None = None
 
     def validate_deployment_config(self) -> None:
         """Validate deployment configuration"""
@@ -90,8 +87,8 @@ class DeploymentManager:
 
         # Validate version format (semantic versioning with pre-release support)
         # Support formats like: 1.0.0, 1.0.0-alpha, 1.0.0-test, 1.0.0-rc.1
-        version_base = self.config.version.split('-')[0]  # Get base version part
-        version_parts = version_base.split('.')
+        version_base = self.config.version.split("-")[0]  # Get base version part
+        version_parts = version_base.split(".")
         if len(version_parts) < 2 or not all(part.isdigit() for part in version_parts):
             raise ValidationError(
                 f"Invalid version format: {self.config.version}. "
@@ -140,20 +137,14 @@ class DeploymentManager:
         # Additional environment-specific checks
         if self.config.environment == "prod" and not self.config.force:
             if self.config.skip_tests:
-                self.logger.warning(
-                    "⚠ Skipping tests in production deployment"
-                )
+                self.logger.warning("⚠ Skipping tests in production deployment")
             if self.config.dry_run:
-                self.logger.info(
-                    "ℹ Production deployment in dry-run mode"
-                )
+                self.logger.info("ℹ Production deployment in dry-run mode")
 
         return checks_passed
 
     def deploy_service_with_strategy(
-        self,
-        service_type: ServiceType,
-        overrides: dict[str, Any] | None = None
+        self, service_type: ServiceType, overrides: dict[str, Any] | None = None
     ) -> DeploymentResult:
         """Deploy a service using the configured strategy"""
         self.logger.info(
@@ -161,21 +152,22 @@ class DeploymentManager:
         )
 
         # Prepare service overrides
-        final_overrides = {}
-        if (self.config.service_overrides and
-                service_type in self.config.service_overrides):
+        final_overrides: dict[str, Any] = {}
+        if (
+            self.config.service_overrides
+            and service_type in self.config.service_overrides
+        ):
             final_overrides.update(self.config.service_overrides[service_type])
         if overrides:
             final_overrides.update(overrides)
 
         # Add environment-specific configuration
-        final_overrides.update({
-            "environment_variables": {
-                "ENVIRONMENT": self.config.environment,
-                "VERSION": self.config.version,
-                **(final_overrides.get("environment_variables", {}))
-            }
-        })
+        env_vars: dict[str, Any] = {
+            "ENVIRONMENT": self.config.environment,
+            "VERSION": self.config.version,
+            **final_overrides.get("environment_variables", {}),
+        }
+        final_overrides.update({"environment_variables": env_vars})
 
         # Add tags
         if self.config.tags:
@@ -183,37 +175,31 @@ class DeploymentManager:
                 **self.config.tags,
                 "Environment": self.config.environment,
                 "Version": self.config.version,
-                "Service": service_type
+                "Service": service_type,
             }
 
         # Deploy based on strategy
         if self.config.strategy == DeploymentStrategy.IMMEDIATE:
             return self._deploy_immediate(service_type, final_overrides)
-        elif self.config.strategy == DeploymentStrategy.ROLLING:
+        if self.config.strategy == DeploymentStrategy.ROLLING:
             return self._deploy_rolling(service_type, final_overrides)
-        elif self.config.strategy == DeploymentStrategy.BLUE_GREEN:
+        if self.config.strategy == DeploymentStrategy.BLUE_GREEN:
             return self._deploy_blue_green(service_type, final_overrides)
-        elif self.config.strategy == DeploymentStrategy.CANARY:
+        if self.config.strategy == DeploymentStrategy.CANARY:
             return self._deploy_canary(service_type, final_overrides)
-        else:
-            raise ValidationError(
-                f"Unsupported deployment strategy: {self.config.strategy}"
-            )
 
-    def _deploy_immediate(
-        self,
-        service_type: ServiceType,
-        overrides: dict[str, Any]
-    ) -> DeploymentResult:
-        """Deploy service immediately"""
-        return self.service_installer.deploy_predefined_service(
-            service_type, overrides
+        raise ValidationError(
+            f"Unsupported deployment strategy: {self.config.strategy}"
         )
 
+    def _deploy_immediate(
+        self, service_type: ServiceType, overrides: dict[str, Any]
+    ) -> DeploymentResult:
+        """Deploy service immediately"""
+        return self.service_installer.deploy_predefined_service(service_type, overrides)
+
     def _deploy_rolling(
-        self,
-        service_type: ServiceType,
-        overrides: dict[str, Any]
+        self, service_type: ServiceType, overrides: dict[str, Any]
     ) -> DeploymentResult:
         """Deploy service with rolling strategy"""
         # For Lambda functions, rolling deployment is essentially immediate
@@ -225,22 +211,16 @@ class DeploymentManager:
         if result.success and not self.config.dry_run:
             # Perform health check
             if self._health_check_service(result.function_name):
-                self.logger.info(
-                    f"✓ Health check passed for {service_type}"
-                )
+                self.logger.info(f"✓ Health check passed for {service_type}")
             else:
                 result.success = False
                 result.errors.append("Health check failed")
-                self.logger.error(
-                    f"✗ Health check failed for {service_type}"
-                )
+                self.logger.error(f"✗ Health check failed for {service_type}")
 
         return result
 
     def _deploy_blue_green(
-        self,
-        service_type: ServiceType,
-        overrides: dict[str, Any]
+        self, service_type: ServiceType, overrides: dict[str, Any]
     ) -> DeploymentResult:
         """Deploy service with blue-green strategy"""
         # For this implementation, we'll create a new version and switch alias
@@ -248,7 +228,7 @@ class DeploymentManager:
         # infrastructure
 
         # Add version suffix for blue-green deployment
-        function_name = overrides.get('function_name', f'ha-{service_type}')
+        function_name = overrides.get("function_name", f"ha-{service_type}")
         overrides["function_name"] = f"{function_name}-{self.config.version}"
 
         result = self.service_installer.deploy_predefined_service(
@@ -256,28 +236,22 @@ class DeploymentManager:
         )
 
         if result.success:
-            self.logger.info(
-                f"✓ Blue-green deployment completed for {service_type}"
-            )
+            self.logger.info(f"✓ Blue-green deployment completed for {service_type}")
 
         return result
 
     def _deploy_canary(
-        self,
-        service_type: ServiceType,
-        overrides: dict[str, Any]
+        self, service_type: ServiceType, overrides: dict[str, Any]
     ) -> DeploymentResult:
         """Deploy service with canary strategy"""
         # For this implementation, we'll deploy with a canary suffix
         # Real canary deployments would require weighted routing
 
-        self.logger.info(
-            f"Starting canary deployment for {service_type}"
-        )
+        self.logger.info(f"Starting canary deployment for {service_type}")
 
         # Deploy canary version
         canary_overrides = {**overrides}
-        function_name = overrides.get('function_name', f'ha-{service_type}')
+        function_name = overrides.get("function_name", f"ha-{service_type}")
         canary_overrides["function_name"] = f"{function_name}-canary"
 
         canary_result = self.service_installer.deploy_predefined_service(
@@ -286,9 +260,7 @@ class DeploymentManager:
 
         if canary_result.success and not self.config.dry_run:
             # Run canary health checks
-            self.logger.info(
-                "Running canary health checks..."
-            )
+            self.logger.info("Running canary health checks...")
             if self._health_check_service(canary_result.function_name):
                 self.logger.info(
                     "✓ Canary health checks passed, promoting to production"
@@ -297,60 +269,48 @@ class DeploymentManager:
                 return self.service_installer.deploy_predefined_service(
                     service_type, overrides
                 )
-            else:
-                canary_result.success = False
-                canary_result.errors.append("Canary health check failed")
-                self.logger.error(
-                    "✗ Canary health checks failed, aborting deployment"
-                )
+
+            canary_result.success = False
+            canary_result.errors.append("Canary health check failed")
+            self.logger.error("✗ Canary health checks failed, aborting deployment")
 
         return canary_result
 
     def _health_check_service(self, function_name: str) -> bool:
         """Perform health check on deployed service"""
         if self.config.dry_run:
-            self.logger.info(
-                f"[DRY RUN] Would perform health check on {function_name}"
-            )
+            self.logger.info(f"[DRY RUN] Would perform health check on {function_name}")
             return True
 
-        self.logger.info(
-            f"Performing health check on {function_name}"
-        )
+        self.logger.info(f"Performing health check on {function_name}")
 
         # Simple health check - verify function exists and is active
         try:
             result = self.service_installer.aws_manager.read_resource(
-                AWSResourceType.LAMBDA,
-                function_name
+                AWSResourceType.LAMBDA, function_name
             )
 
             # Use hasattr to check for 'exists' or fallback to 'resource' presence
-            exists = getattr(result, 'exists', None)
+            exists = getattr(result, "exists", None)
             if exists is not None:
                 exists_flag = exists
             else:
-                exists_flag = bool(getattr(result, 'resource', None))
+                exists_flag = bool(getattr(result, "resource", None))
 
             if exists_flag and result.resource:
-                function_config = result.resource.get('Configuration', {})
-                state = function_config.get('State', 'Unknown')
+                function_config = result.resource.get("Configuration", {})
+                state = function_config.get("State", "Unknown")
 
-                if state == 'Active':
+                if state == "Active":
                     return True
-                self.logger.warning(
-                    f"Function {function_name} state: {state}"
-                )
+                self.logger.warning(f"Function {function_name} state: {state}")
                 return False
-            self.logger.error(
-                f"Function {function_name} not found"
-            )
+
+            self.logger.error(f"Function {function_name} not found")
             return False
 
         except (KeyError, AttributeError, RuntimeError) as e:
-            self.logger.error(
-                f"Health check failed for {function_name}: {str(e)}"
-            )
+            self.logger.error(f"Health check failed for {function_name}: {str(e)}")
             return False
 
     def setup_cloudflare_access(self) -> dict[str, Any]:
@@ -382,26 +342,26 @@ class DeploymentManager:
                     app_spec, account_id
                 )
 
-                if getattr(result, 'status', None) == "success":
-                    self.logger.success(
-                        f"✓ CloudFlare Access configured: {domain}"
-                    )
+                if getattr(result, "status", None) == "success":
+                    self.logger.success(f"✓ CloudFlare Access configured: {domain}")
                 else:
                     self.logger.error(
                         "CloudFlare Access setup failed: "
                         f"{getattr(result, 'errors', None)}"
                     )
-                # Always return a dict
-                if hasattr(result, 'dict'):
-                    return result.dict()
-                if isinstance(result, dict):
-                    return result
-                return {"result": str(result)}
+
+                # Convert result to dict for consistent return type
+                try:
+                    return result.model_dump()
+                except AttributeError:
+                    try:
+                        # Try model_dump again for newer pydantic
+                        return result.model_dump()
+                    except AttributeError:
+                        return {"result": str(result)}
 
         except (KeyError, AttributeError, RuntimeError) as e:
-            self.logger.error(
-                f"CloudFlare setup failed: {str(e)}"
-            )
+            self.logger.error(f"CloudFlare setup failed: {str(e)}")
             raise
 
     def rollback_deployment(self) -> bool:
@@ -409,9 +369,7 @@ class DeploymentManager:
         if not self.config.rollback_on_failure:
             return False
 
-        self.logger.warning(
-            "Rolling back deployment..."
-        )
+        self.logger.warning("Rolling back deployment...")
 
         # For this implementation, rollback removes the deployed functions
         # In a real system, you'd restore previous versions
@@ -421,9 +379,7 @@ class DeploymentManager:
             if result.success:
                 try:
                     self.service_installer.remove_service(result.function_name)
-                    self.logger.info(
-                        f"✓ Rolled back {result.function_name}"
-                    )
+                    self.logger.info(f"✓ Rolled back {result.function_name}")
                 except (KeyError, AttributeError, RuntimeError) as e:
                     self.logger.error(
                         f"✗ Failed to rollback {result.function_name}: {str(e)}"
@@ -432,23 +388,59 @@ class DeploymentManager:
 
         return rollback_success
 
+    def _handle_service_deployment(
+        self,
+        service_type: ServiceType,
+        deployment_errors: list[str],
+        lambda_urls: dict[str, str],
+    ) -> None:
+        """Handle deployment of a single service"""
+        try:
+            result = self.deploy_service_with_strategy(service_type)
+            self.deployment_results.append(result)
+
+            if result.success:
+                self.logger.success(f"✓ Successfully deployed {service_type}")
+                if result.function_url:
+                    lambda_urls[service_type] = result.function_url
+            else:
+                error_msg = (
+                    f"Failed to deploy {service_type}: " f"{', '.join(result.errors)}"
+                )
+                self.logger.error(f"✗ {error_msg}")
+                deployment_errors.append(error_msg)
+                if self.config.rollback_on_failure:
+                    self.rollback_deployment()
+        except (
+            KeyError,
+            AttributeError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+        ) as e:
+            error_msg = f"Failed to deploy {service_type}: {str(e)}"
+            self.logger.error(f"✗ {error_msg}")
+            deployment_errors.append(error_msg)
+            # Create a failed result for this service
+            failed_result = DeploymentResult(
+                success=False,
+                function_name=f"ha-{service_type.value}-proxy",
+                function_arn=None,
+                function_url=None,
+                role_arn=None,
+                errors=[str(e)],
+            )
+            self.deployment_results.append(failed_result)
+
     def execute_deployment(self) -> dict[str, Any]:
         """Execute the complete deployment process"""
         self.start_time = time.time()
 
         try:
-            self.logger.info(
-                f"🚀 Starting {self.config.strategy} deployment"
-            )
-            self.logger.info(
-                f"Environment: {self.config.environment}"
-            )
-            self.logger.info(
-                f"Version: {self.config.version}"
-            )
-            self.logger.info(
-                f"Services: {', '.join(self.config.services)}"
-            )
+            self.logger.info(f"🚀 Starting {self.config.strategy} deployment")
+            self.logger.info(f"Environment: {self.config.environment}")
+            self.logger.info(f"Version: {self.config.version}")
+            self.logger.info(f"Services: {', '.join(self.config.services)}")
 
             # Validate configuration
             self.validate_deployment_config()
@@ -459,51 +451,19 @@ class DeploymentManager:
                     raise ValidationError(
                         "Pre-deployment checks failed. Use --force to override."
                     )
-                else:
-                    self.logger.warning(
-                        "⚠ Pre-deployment checks failed but forced deployment continues"
-                    )
+
+                self.logger.warning(
+                    "⚠ Pre-deployment checks failed but forced deployment continues"
+                )
 
             # Deploy services
-            lambda_urls = {}
-            deployment_errors = []
+            lambda_urls: dict[str, str] = {}
+            deployment_errors: list[str] = []
 
             for service_type in self.config.services:
-                try:
-                    result = self.deploy_service_with_strategy(service_type)
-                    self.deployment_results.append(result)
-
-                    if result.success:
-                        self.logger.success(
-                            f"✓ Successfully deployed {service_type}"
-                        )
-                        if result.function_url:
-                            lambda_urls[service_type] = result.function_url
-                    else:
-                        error_msg = (
-                            f"Failed to deploy {service_type}: "
-                            f"{', '.join(result.errors)}"
-                        )
-                        self.logger.error(f"✗ {error_msg}")
-                        deployment_errors.append(error_msg)
-                        if self.config.rollback_on_failure:
-                            self.rollback_deployment()
-                except (
-                    KeyError, AttributeError, RuntimeError, ValueError, TypeError
-                ) as e:
-                    error_msg = f"Failed to deploy {service_type}: {str(e)}"
-                    self.logger.error(f"✗ {error_msg}")
-                    deployment_errors.append(error_msg)
-                    # Create a failed result for this service
-                    failed_result = DeploymentResult(
-                        success=False,
-                        function_name=f"ha-{service_type.value}-proxy",
-                        function_arn=None,
-                        function_url=None,
-                        role_arn=None,
-                        errors=[str(e)]
-                    )
-                    self.deployment_results.append(failed_result)
+                self._handle_service_deployment(
+                    service_type, deployment_errors, lambda_urls
+                )
 
             # If there were deployment errors, include them in final result
             if deployment_errors and not self.config.force:
@@ -516,7 +476,8 @@ class DeploymentManager:
                 cloudflare_result = self.setup_cloudflare_access()
 
             self.end_time = time.time()
-            deployment_time = self.end_time - self.start_time
+            # start_time is guaranteed to be set at beginning of method
+            deployment_time = self.end_time - (self.start_time or 0.0)
 
             # Determine overall success
             overall_success = len(deployment_errors) == 0
@@ -556,8 +517,8 @@ class DeploymentManager:
                 "version": self.config.version,
                 "strategy": self.config.strategy,
                 "deployment_time": (
-                    self.end_time - self.start_time
-                ) if self.start_time else 0,
+                    (self.end_time - self.start_time) if self.start_time else 0
+                ),
                 "dry_run": self.config.dry_run,
                 "services": [result.model_dump() for result in self.deployment_results],
                 "results": self.deployment_results,  # For test compatibility
