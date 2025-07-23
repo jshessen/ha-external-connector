@@ -4,13 +4,18 @@ Unit Tests for Configuration Module
 Tests configuration manager and installation scenario functionality.
 """
 
-from unittest.mock import patch
+import secrets
+from typing import TYPE_CHECKING
+from unittest.mock import Mock, patch
 
 from ha_connector.config import (
     ConfigurationManager,
     ConfigurationState,
     InstallationScenario,
 )
+
+if TYPE_CHECKING:
+    pass  # MagicMock not needed
 
 
 class TestConfigurationManagerBasics:
@@ -92,7 +97,7 @@ class TestConfigurationManagerValidation:
     @patch.object(
         ConfigurationManager, "check_prerequisites_for_scenario", return_value=True
     )
-    def test_validate_direct_alexa_scenario(self, mock_prereq):
+    def test_validate_direct_alexa_scenario(self, mock_prereq: Mock) -> None:
         """Test direct Alexa scenario validation"""
         manager = ConfigurationManager()
 
@@ -109,7 +114,9 @@ class TestConfigurationManagerValidation:
     @patch.object(
         ConfigurationManager, "check_prerequisites_for_scenario", return_value=True
     )
-    def test_validate_direct_alexa_scenario_invalid_url(self, mock_prereq):
+    def test_validate_direct_alexa_scenario_invalid_url(
+        self, mock_prereq: Mock
+    ) -> None:
         """Test direct Alexa scenario validation with invalid URL"""
         manager = ConfigurationManager()
 
@@ -159,7 +166,9 @@ class TestConfigurationManagerInteraction:
 
     @patch.object(ConfigurationManager, "check_aws_credentials", return_value=True)
     @patch("shutil.which", return_value="/usr/bin/aws")
-    def test_check_prerequisites_success(self, _mock_which, _mock_aws_check):
+    def test_check_prerequisites_success(
+        self, _mock_which: Mock, _mock_aws_check: Mock
+    ) -> None:
         """Test successful prerequisites check"""
         manager = ConfigurationManager()
         result = manager.check_prerequisites_for_scenario(
@@ -168,8 +177,15 @@ class TestConfigurationManagerInteraction:
         assert result is True
 
     @patch.object(ConfigurationManager, "check_aws_credentials", return_value=True)
-    @patch("shutil.which", side_effect=lambda x: "/usr/bin/aws" if x == "jq" else None)
-    def test_check_prerequisites_missing_aws_cli(self, _mock_which, _mock_aws_check):
+    @patch(  # type: ignore[misc]
+        "shutil.which",
+        side_effect=lambda x: (  # type: ignore[misc]
+            "/usr/bin/aws" if x == "jq" else None
+        ),
+    )
+    def test_check_prerequisites_missing_aws_cli(
+        self, _mock_which: Mock, _mock_aws_check: Mock
+    ) -> None:
         """Test prerequisites check with missing AWS CLI"""
         manager = ConfigurationManager()
         result = manager.check_prerequisites_for_scenario(
@@ -180,8 +196,8 @@ class TestConfigurationManagerInteraction:
     @patch.object(ConfigurationManager, "check_aws_credentials", return_value=False)
     @patch("shutil.which", return_value="/usr/bin/aws")
     def test_check_prerequisites_invalid_aws_credentials(
-        self, _mock_which, _mock_aws_check
-    ):
+        self, _mock_which: Mock, _mock_aws_check: Mock
+    ) -> None:
         """Test prerequisites check with invalid AWS credentials"""
         manager = ConfigurationManager()
         result = manager.check_prerequisites_for_scenario(
@@ -341,35 +357,37 @@ class TestScenarioValidation:
     @patch.object(
         ConfigurationManager, "check_prerequisites_for_scenario", return_value=True
     )
-    def test_validate_cloudflare_alexa_scenario(self, mock_prereq):
+    def test_validate_cloudflare_alexa_scenario(self, mock_prereq: Mock) -> None:
         """Test CloudFlare Alexa scenario validation"""
         config = self.manager.init_config(InstallationScenario.CLOUDFLARE_ALEXA)
         config.ha_base_url = "https://homeassistant.example.com"
         config.alexa_secret = "a" * 32
         config.aws_region = "us-east-1"
-        config.cf_client_id = "test-client-id"
-        config.cf_client_secret = "test-client-secret"
+        config.cf_client_id = f"test-client-{secrets.token_urlsafe(8)}"
+        # Dynamic test secret generation - not a real password  # noqa: S105
+        config.cf_client_secret = f"test-secret-{secrets.token_urlsafe(16)}"
 
         result = self.manager.validate_scenario_setup(
             InstallationScenario.CLOUDFLARE_ALEXA
         )
-        assert result is True
+        assert result
         mock_prereq.assert_called_once_with(InstallationScenario.CLOUDFLARE_ALEXA)
 
     @patch.object(
         ConfigurationManager, "check_prerequisites_for_scenario", return_value=True
     )
-    def test_validate_cloudflare_ios_scenario(self, mock_prereq):
+    def test_validate_cloudflare_ios_scenario(self, mock_prereq: Mock) -> None:
         """Test CloudFlare iOS scenario validation"""
         config = self.manager.init_config(InstallationScenario.CLOUDFLARE_IOS)
         config.ha_base_url = "https://homeassistant.example.com"
-        config.cf_client_id = "test-client-id"
-        config.cf_client_secret = "test-client-secret"
+        config.cf_client_id = f"test-client-{secrets.token_urlsafe(8)}"
+        # Dynamic test secret generation - not a real password  # noqa: S105
+        config.cf_client_secret = f"test-secret-{secrets.token_urlsafe(16)}"
 
         result = self.manager.validate_scenario_setup(
             InstallationScenario.CLOUDFLARE_IOS
         )
-        assert result is True
+        assert result
         mock_prereq.assert_called_once_with(InstallationScenario.CLOUDFLARE_IOS)
 
     def test_validate_all_scenarios(self):
@@ -406,7 +424,7 @@ class TestResourceManagement:
         assert "us-west-2" in self.manager.ALEXA_VALID_REGIONS
 
     @patch("ha_connector.config.manager.safe_exec")
-    def test_get_scenario_resource_requirements(self, mock_safe_exec):
+    def test_get_scenario_resource_requirements(self, mock_safe_exec: Mock) -> None:
         """Test getting resource requirements for a scenario"""
         mock_safe_exec.return_value = (0, "[]", "")
 
@@ -418,7 +436,7 @@ class TestResourceManagement:
         assert isinstance(requirements, list)
 
     @patch("ha_connector.config.manager.safe_exec")
-    def test_check_aws_resources_for_scenario(self, mock_safe_exec):
+    def test_check_aws_resources_for_scenario(self, mock_safe_exec: Mock) -> None:
         """Test checking AWS resources for a scenario"""
         mock_safe_exec.return_value = (0, "[]", "")
 
