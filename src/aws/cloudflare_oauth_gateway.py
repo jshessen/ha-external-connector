@@ -165,6 +165,8 @@ Original Copyright and License:
   Licensed under the Apache License, Version 2.0
 """
 
+# pylint: disable=too-many-lines  # OAuth gateway with comprehensive security features
+
 import json
 import logging
 import os

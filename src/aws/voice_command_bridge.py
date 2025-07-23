@@ -104,6 +104,8 @@ Original Copyright and License:
   Licensed under the Apache License, Version 2.0
 """
 
+# pylint: disable=too-many-lines  # Intentionally verbose for non-technical users
+
 import configparser
 import json
 import logging
