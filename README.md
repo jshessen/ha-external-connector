@@ -23,7 +23,7 @@ This is the Python migration of the bash-based Home Assistant External Connector
 
 ## 🏗️ Architecture
 
-```
+```tree
 ha-external-connector-py/
 ├── src/ha_connector/              # Main package
 │   ├── cli/                       # Click-based command line interface
