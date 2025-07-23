@@ -35,12 +35,20 @@ from ha_connector.deployment import (
 # Import AWS fixtures to make them available to tests
 try:
     from tests.fixtures.aws_fixtures import (
+        boto3_session_fixture,  # Function name, exports as 'boto3_session'
+    )
+    from tests.fixtures.aws_fixtures import (
+        mock_iam_client_fixture,  # Function name, exports as 'mock_iam_client'
+    )
+    from tests.fixtures.aws_fixtures import (
+        mock_lambda_client_fixture,  # Function name, exports as 'mock_lambda_client'
+    )
+    from tests.fixtures.aws_fixtures import (
+        mock_ssm_client_fixture,  # Function name, exports as 'mock_ssm_client'
+    )
+    from tests.fixtures.aws_fixtures import (
         aws_environment,
         aws_test_framework,
-        boto3_session_fixture,  # Function name, exports as 'boto3_session'
-        mock_iam_client_fixture,  # Function name, exports as 'mock_iam_client'
-        mock_lambda_client_fixture,  # Function name, exports as 'mock_lambda_client'
-        mock_ssm_client_fixture,  # Function name, exports as 'mock_ssm_client'
     )
 except ImportError:
     aws_environment = None
