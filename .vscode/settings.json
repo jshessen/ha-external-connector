@@ -1,0 +1,226 @@
+{
+    // Python interpreter and environment
+    "python.defaultInterpreterPath": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/python",
+    "python.analysis.extraPaths": [
+        "src"
+    ],
+
+    // Type checking with Pylance (OPTIMIZED)
+    "python.analysis.typeCheckingMode": "basic",  // Changed from "strict" to reduce memory
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "openFilesOnly",  // CRITICAL: Changed from "workspace"
+    "python.analysis.autoFormatOnType": false,  // Disabled to reduce processing
+
+    // Linting configuration (DISABLED - Use modern extensions)
+    "python.linting.enabled": false,  // CRITICAL: Disable duplicate linting
+    "python.linting.lintOnSave": false,
+    "python.linting.maxNumberOfProblems": 500,  // Reduced from 1000
+    "python.linting.ignorePatterns": [
+        ".venv/**/*.py",
+        "**/migrations/**/*.py"
+    ],
+
+    // MyPy integration
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyPath": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/mypy",
+    "python.linting.mypyArgs": [
+        "--strict",
+        "--show-error-codes",
+        "--no-error-summary"
+    ],
+
+    // Flake8 integration
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Path": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/flake8",
+    "python.linting.flake8Args": ["--max-line-length=88"],
+
+    // Bandit security linting
+    "python.linting.banditEnabled": true,
+    "python.linting.banditPath": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/bandit",
+    "python.linting.banditArgs": [
+        "--configfile", "pyproject.toml",
+        "-r"
+    ],
+
+    // Pylint integration (legacy Python extension settings)
+    "python.linting.pylintEnabled": true,
+    "python.linting.pylintPath": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/pylint",
+    "python.linting.pylintArgs": [
+        "--max-line-length=88",
+        "--disable=C0114,C0116,R0903,R0913",
+        "--load-plugins=pylint_pydantic"
+    ],
+    "python.linting.pylintCategorySeverity.convention": "Information",
+    "python.linting.pylintCategorySeverity.refactor": "Warning",
+    "python.linting.pylintCategorySeverity.warning": "Warning",
+    "python.linting.pylintCategorySeverity.error": "Error",
+
+    // Modern Pylint extension settings
+    "pylint.interpreter": ["/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/python"],
+    "pylint.path": ["/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/pylint"],
+    "pylint.args": [
+        "--max-line-length=88",
+        "--disable=C0114,C0116,R0903,R0913",
+        "--load-plugins=pylint_pydantic"
+    ],
+    "pylint.severity": {
+        "convention": "Information",
+        "refactor": "Information",  // Reduced from Warning to reduce noise
+        "warning": "Warning",
+        "error": "Error",
+        "fatal": "Error"
+    },
+
+    // Python language server features
+    "python.analysis.completeFunctionParens": true,
+    "python.analysis.include": ["src/**"],
+    "python.analysis.stubPath": "./typings",
+
+    // Ruff configuration (modern native language server)
+    "ruff.enable": true,
+    "ruff.organizeImports": true,
+    "ruff.fixAll": true,
+    "ruff.showNotifications": "onError",
+    "ruff.nativeServer": true,
+
+    // Primary formatter: Black (via Black Formatter extension)
+    "python.formatting.provider": "none",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.formatOnType": false,
+        "editor.formatOnPaste": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports.ruff": "explicit",
+            "source.fixAll.ruff": "explicit",
+            "source.fixAll": "explicit"
+        }
+    },
+
+    // Black Formatter specific settings
+    "black-formatter.path": ["/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/black"],
+    "black-formatter.args": ["--line-length=88"],
+    "black-formatter.showNotifications": "onError",
+    "black-formatter.importStrategy": "fromEnvironment",
+
+    // Enable code actions and quick fixes (OPTIMIZED)
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll": "explicit"
+    },
+
+    // Enable code action providers (REDUCED for performance)
+    "editor.suggest.showMethods": true,
+    "editor.suggest.showFunctions": true,
+    "editor.codeActionsOnSaveTimeout": 1000,  // Reduced from 3000ms
+    "python.analysis.fixAll": [
+        "source.convertImportFormat",
+        "source.unusedImports"
+    ],
+
+    // Enable lightbulb (quick fix) on hover and focus
+    "editor.lightbulb.enabled": "onCode",
+    "editor.suggest.insertMode": "replace",
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": false
+    },
+    "editor.quickSuggestionsDelay": 10,
+
+    // Enable all code action kinds for lightbulb
+    "editor.codeActionWidget.includeNearbyQuickFixes": true,
+    "editor.codeActionWidget.showHeaders": true,
+
+    // CRITICAL: Enable formatting actions in problems view
+    "editor.action.formatDocument.multiple": true,
+    "editor.suggest.showKeywords": true,
+
+    // Additional formatting controls
+    "editor.formatOnType": false,
+    "editor.formatOnPaste": true,
+
+    // Problem matcher configuration
+    "problems.showCurrentInStatus": true,
+    "problems.sortOrder": "severity",
+
+    // File associations and workspace settings
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        ".mypy_cache": true,
+        ".pytest_cache": true,
+        ".ruff_cache": true,
+        "**/node_modules": true,
+        "**/.git": true
+    },
+
+    // PERFORMANCE: Reduce file watching overhead
+    "files.watcherExclude": {
+        "**/__pycache__/**": true,
+        "**/.mypy_cache/**": true,
+        "**/.pytest_cache/**": true,
+        "**/.ruff_cache/**": true,
+        "**/node_modules/**": true
+    },
+
+    // File associations for synchronized scripts
+    "files.associations": {
+        "lint.py": "python",
+        "lint.sh": "shellscript"
+    },
+
+    // Related files configuration
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+        "lint.py": "lint.sh"
+    },
+
+    // Test discovery
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestPath": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/pytest",
+    "python.testing.pytestArgs": [
+        "tests/"
+    ],
+    "python.testing.unittestEnabled": false,
+
+    // Terminal settings
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+    },
+    "terminal.integrated.shellIntegration.enabled": false,
+
+    // GitHub Copilot configuration (OPTIMIZED)
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": false,  // Disabled for non-code files to save memory
+        "markdown": true,
+        "scminput": false
+    },
+    "github.copilot.editor.enableAutoCompletions": true,
+    "github.copilot.advanced": {
+        "length": 1500,      // Reduced from 3000 to save memory
+        "temperature": 0.1,
+        "top_p": 1,
+        "inlineSuggestEnable": true
+    },
+
+    // Agent mode settings
+    "chat.agent.enabled": true,
+    "chat.agent.maxRequests": 25,
+    "github.copilot.chat.agent.autoFix": true,
+    "github.copilot.chat.agent.runTasks": true,
+
+    // Note: Terminal allowlist is configured at user level (~/.config/Code/User/settings.json)
+    // Python development tools from this project have been added to user settings for global availability
+
+    // Accessibility settings to fix terminal output issues
+    "accessibility.signals.terminalCommandFailed": { "sound": "off" },
+    "accessibility.signals.terminalCommandSucceeded": { "sound": "off" },
+    "accessibility.verbosity.terminal": false,
+
+    // Standalone Bandit extension configuration (if installed)
+    "bandit.args": ["-c", "pyproject.toml"],
+    "bandit.path": ["/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/bandit"]
+}

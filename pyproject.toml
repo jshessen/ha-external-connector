@@ -72,6 +72,41 @@ exclude = [
     "dist/",
 ]
 
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+include = ["src", "tests", "scripts"]
+exclude = [
+    ".coveragerc",
+    ".venv",
+    "build",
+    "dist",
+    "**/__pycache__",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+]
+reportMissingImports = "none"  # Align with mypy's ignore-missing-imports behavior
+reportMissingTypeStubs = "none"
+reportUnknownMemberType = "warning"
+reportUnknownArgumentType = "warning"
+reportUnknownVariableType = "warning"
+reportGeneralTypeIssues = "error"
+reportOptionalMemberAccess = "error"
+reportOptionalSubscript = "error"
+reportOptionalIterable = "error"
+reportOptionalContextManager = "error"
+reportOptionalOperand = "error"
+reportUntypedFunctionDecorator = "error"
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+reportUntypedNamedTuple = "error"
+reportPrivateUsage = "warning"
+reportConstantRedefinition = "error"
+reportIncompatibleMethodOverride = "error"
+reportIncompatibleVariableOverride = "error"
+reportDuplicateImport = "warning"
+reportWildcardImportFromLibrary = "error"
+
 [tool.black]
 line-length = 88
 target-version = ['py311']
@@ -180,24 +215,65 @@ line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "UP", "B", "SIM", "I"]
+select = ["E", "F", "UP", "B", "SIM", "I", "W"]
 ignore = []
-fixable = ["A", "B", "C", "D", "E", "F", "UP", "SIM", "I"]
+fixable = ["A", "B", "C", "D", "E", "F", "UP", "SIM", "I", "W"]
 unfixable = []
+
+# === RUFF / PYLINT / FLAKE8 RULE MAPPING ===
+# Verified 1:1 mappings where Ruff handles rules more efficiently:
+#
+# PYLINT DELEGATIONS:
+# - line-too-long (R0301) → Ruff E501 (with auto-fix capability)
+# - unused-import (W0611) → Ruff F401 (more precise detection)
+# - undefined-variable (F821) → Ruff F821 (faster execution)
+#
+# FLAKE8 DELEGATIONS:
+# - All E-family (pycodestyle errors) → Ruff E*** (with auto-fix)
+# - All W-family (pycodestyle warnings) → Ruff W*** (with auto-fix)
+# - All F-family (Pyflakes) → Ruff F*** (faster execution)
+# - Import sorting → Ruff I*** (can potentially replace isort)
+#
+# PERFORMANCE BENEFITS:
+# - Ruff processes these rules ~10-100x faster than individual tools
+# - Auto-fix capability eliminates manual remediation
+# - Single tool execution vs multiple tool chain
+#
+# FUTURE CONSIDERATIONS:
+# - PL family (Pylint rules in Ruff) - Not yet fully mature
+# - Consider replacing isort entirely with Ruff I family
+# - Consider removing Flake8 entirely (E/W/F families fully covered by Ruff)
+# - Monitor Ruff development for duplicate-code detection
 
 [tool.pylint.main]
 load-plugins = ["pylint_pydantic"]
+init-hook = "import sys; sys.path.append('.')"
 
 [tool.pylint.messages_control]
+# PHILOSOPHY: Enable all checks by default, disable only with specific justification
+# Prefer per-file disables over global ones when possible
 disable = [
-    "missing-module-docstring",
-    "missing-class-docstring",
-    "missing-function-docstring",
-    "too-few-public-methods",
-    "too-many-arguments",
-    "too-many-instance-attributes",
-    "too-many-lines",  # Voice command bridge is intentionally verbose for non-technical users
-    "line-too-long",  # Let ruff handle this
+    # === DEFERRED TO RUFF (More performant, better fixes) ===
+    "line-too-long",        # R0301: Ruff E501 handles this more efficiently with auto-fix
+    "unused-import",        # W0611: Ruff F401 provides more precise detection
+    "undefined-variable",   # E0602: Ruff F821 provides faster execution
+    "trailing-whitespace",  # C0303: Ruff W291 handles with auto-fix
+    "missing-final-newline", # C0304: Ruff W292 handles with auto-fix
+
+    # === DOCUMENTATION STYLE (Consider enabling these in future) ===
+    # These could be re-enabled once comprehensive docstring guidelines are established
+    "missing-module-docstring",   # C0114: TODO: Enable after docstring style guide
+    "missing-class-docstring",    # C0115: TODO: Enable after docstring style guide
+    "missing-function-docstring", # C0116: TODO: Enable after docstring style guide
+
+    # === DESIGN PATTERNS (Project-specific decisions) ===
+    "too-few-public-methods",     # R0903: Acceptable for data classes and simple interfaces
+
+    # === FILE-SPECIFIC OVERRIDES (Document per-file exceptions below) ===
+    # Per-file overrides should be documented here for transparency:
+    # - voice_command_bridge.py: "too-many-lines" (intentionally verbose for non-technical documentation)
+    # - cloudflare_oauth_gateway.py: "too-many-lines" (OAuth gateway with comprehensive security features)
+    # - Future files with specific needs should be listed here
 ]
 
 [tool.pylint.format]

@@ -1,0 +1,237 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Code Quality: All Tools",
+            "type": "shell",
+            "command": "/bin/bash",
+            "args": [
+                "-c",
+                "source .venv/bin/activate && python scripts/code_quality.py"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint: All Tools (With Output Capture)",
+            "type": "shell",
+            "command": "/bin/bash",
+            "args": [
+                "-c",
+                "source .venv/bin/activate && python scripts/lint.py 2>&1 | tee .vscode/last_lint_output.log"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint: With Standard Logging",
+            "type": "shell",
+            "command": "/bin/bash",
+            "args": [
+                "-c",
+                "source .venv/bin/activate && python scripts/lint.py 2>&1 | tee .vscode/vs_code_task.log"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint: With Marker Detection",
+            "type": "shell",
+            "command": "/bin/bash",
+            "args": [
+                "-c",
+                "echo '*  Task starting...' > ${workspaceFolder}/.vscode/lint_with_markers.log && ${workspaceFolder}/.venv/bin/python scripts/lint.py 2>&1 | tee -a ${workspaceFolder}/.vscode/lint_with_markers.log && echo '*  Task completed.' >> ${workspaceFolder}/.vscode/lint_with_markers.log"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Test: Simple Directory List",
+            "type": "shell",
+            "command": "ls",
+            "args": ["-la", "."],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "MyPy: Type Check",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["-m", "mypy", "src/", "tests/", "scripts/", "setup.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                {
+                    "owner": "mypy",
+                    "fileLocation": "absolute",
+                    "pattern": {
+                        "regexp": "^(.+?):(\\d+):(\\d+):\\s+(error|warning|note):\\s+(.+)\\s+\\[(.+)\\]$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "severity": 4,
+                        "message": 5,
+                        "code": 6
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Ruff: Check",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["-m", "ruff", "check", "src/", "tests/", "scripts/", "setup.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": [
+                {
+                    "owner": "ruff",
+                    "fileLocation": "absolute",
+                    "pattern": {
+                        "regexp": "^(.+?):(\\d+):(\\d+):\\s+(.+?)\\s+(.+)$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "severity": 4,
+                        "message": 5
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Ruff: Fix",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["-m", "ruff", "check", "--fix", "src/", "tests/", "scripts/", "setup.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Test: Run All",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["-m", "pytest", "tests/", "-v"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Validate Lint Scripts Sync",
+            "type": "shell",
+            "command": "echo",
+            "args": ["⚠️ Remember to sync lint.py and lint.sh when modifying linting tools!"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Quick: Python Version",
+            "type": "shell",
+            "command": "/bin/bash",
+            "args": ["-c", "source .venv/bin/activate && python --version"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Quick: Ruff Check",
+            "type": "shell",
+            "command": "/bin/bash",
+            "args": ["-c", "source .venv/bin/activate && ruff check src/ --no-fix"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Quick: Environment Info",
+            "type": "shell",
+            "command": "/bin/bash",
+            "args": ["-c", "echo 'Python:' && source .venv/bin/activate && python --version && echo 'Ruff:' && ruff --version && echo 'Working Directory:' && pwd"],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

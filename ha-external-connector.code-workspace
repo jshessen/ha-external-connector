@@ -1,0 +1,238 @@
+{
+    "folders": [
+        {
+            "name": "HA External Connector (Python)",
+            "path": "."
+        },
+        {
+            "name": "HA External Connector (Bash)",
+            "path": "../ha-external-connector-bash"
+        }
+    ],
+    "settings": {
+        "files.associations": {
+            "*.py": "python",
+            "*.yaml": "yaml",
+            "*.yml": "yaml",
+            "*.js": "javascript",
+            "*.json": "json",
+            "*.md": "markdown",
+            "*.conf": "nginx",
+            "*.log": "log",
+            "*.sh": "shellscript",
+            "*.bash": "shellscript",
+            "Dockerfile*": "dockerfile"
+        },
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "python.analysis.autoImportCompletions": true,
+        "python.analysis.typeCheckingMode": "basic",
+
+        // Bash/Shell script settings
+        "shellcheck.enable": true,
+        "shellcheck.executablePath": "shellcheck",
+        "shellformat.flag": "-i 4 -ci",
+
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+        "yaml.schemas": {},
+        "yaml.validate": false,
+        "yaml.schemaStore.enable": false,
+        "yaml.customTags": [
+            "!include scalar",
+            "!include_dir_list scalar",
+            "!include_dir_merge_list scalar",
+            "!include_dir_named scalar",
+            "!include_dir_merge_named scalar",
+            "!secret scalar"
+        ],
+        "files.exclude": {
+            "**/__pycache__": true,
+            "**/*.pyc": true,
+            "**/node_modules": true,
+            "**/.git": true,
+            "**/.DS_Store": true,
+            "**/Thumbs.db": true,
+            "config/.storage": true,
+            "config/home-assistant.log*": true,
+            "config/OZW_Log.txt": true
+        },
+        "search.exclude": {
+            "**/node_modules": true,
+            "**/bower_components": true,
+            "**/*.code-search": true,
+            "config/.storage": true,
+            "config/deps": true
+        },
+        "git.ignoreLimitWarning": true,
+        "editor.rulers": [88, 120],
+        "editor.wordWrap": "on",
+        "editor.wordWrapColumn": 88,
+        "workbench.colorCustomizations": {
+            "editorRuler.foreground": "#ff4444"
+        },
+        "makefile.configureOnOpen": false,
+        "github.copilot.chat.agent.terminal.denyList": {
+            "chmod": false
+        },
+
+        // Bandit security linting configuration
+        "python.linting.banditEnabled": true,
+        "python.linting.banditArgs": [
+            "--configfile", "pyproject.toml"
+        ],
+        "bandit.importStrategy": "fromEnvironment"
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "redhat.vscode-yaml",
+            "ms-vscode.vscode-json",
+            "esbenp.prettier-vscode",
+            "ms-python.black-formatter",
+            "ms-python.isort",
+            "ms-python.pylint",
+            "keesschollaart.vscode-home-assistant",
+            "bradlc.vscode-tailwindcss",
+            "timonwong.shellcheck",
+            "foxundermoon.shell-format",
+            "mads-hartmann.bash-ide-vscode",
+            "ms-vscode.vscode-dockerfile"
+        ]
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Check Home Assistant Config",
+                "type": "shell",
+                "command": "docker",
+                "args": [
+                    "exec",
+                    "homeassistant",
+                    "python",
+                    "-m",
+                    "homeassistant",
+                    "--script",
+                    "check_config",
+                    "-c",
+                    "/config"
+                ],
+                "group": "test",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "Restart Home Assistant",
+                "type": "shell",
+                "command": "docker",
+                "args": [
+                    "restart",
+                    "homeassistant"
+                ],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                }
+            },
+            {
+                "label": "Deploy Lambda Function",
+                "type": "shell",
+                "command": "cd apple-ios && zip -r iOS-Companion-Wrapper.zip iOS-Companion-Wrapper.py && aws lambda update-function-code --function-name iOS-Companion-Wrapper --zip-file fileb://iOS-Companion-Wrapper.zip && aws lambda update-function-configuration --function-name iOS-Companion-Wrapper --handler iOS-Companion-Wrapper.lambda_handler",
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                }
+            },
+            {
+                "label": "Test iOS Lambda Locally",
+                "type": "shell",
+                "command": "cd apple-ios && python3 -c \"import iOS-Companion-Wrapper; print('Syntax OK')\"",
+                "group": "test",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                }
+            },
+            {
+                "label": "Lint Bash Scripts",
+                "type": "shell",
+                "command": "find",
+                "args": [
+                    "${workspaceFolder}/../ha-external-connector-bash",
+                    "-name",
+                    "*.sh",
+                    "-exec",
+                    "shellcheck",
+                    "{}",
+                    "+"
+                ],
+                "group": "test",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "Format Bash Scripts",
+                "type": "shell",
+                "command": "find",
+                "args": [
+                    "${workspaceFolder}/../ha-external-connector-bash",
+                    "-name",
+                    "*.sh",
+                    "-exec",
+                    "shfmt",
+                    "-i",
+                    "4",
+                    "-w",
+                    "{}",
+                    "+"
+                ],
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": false,
+                    "panel": "shared"
+                }
+            }
+        ]
+    },
+    "launch": {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Test Lambda Function",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "${workspaceFolder}/apple-ios/iOS-Companion-Wrapper.py",
+                "console": "integratedTerminal",
+                "env": {
+                    "DEBUG": "1",
+                    "APP_CONFIG_PATH": "/home-assistant/config",
+                    "ALLOWED_HA_BASE_URL": "https://your-homeassistant.domain.com"
+                }
+            }
+        ]
+    }
+}

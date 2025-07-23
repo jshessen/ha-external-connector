@@ -1,0 +1,17 @@
+[
+    {
+        "key": "ctrl+shift+f",
+        "command": "editor.action.formatDocument",
+        "when": "editorTextFocus && !editorReadonly"
+    },
+    {
+        "key": "ctrl+k ctrl+f",
+        "command": "editor.action.formatSelection",
+        "when": "editorTextFocus && !editorReadonly"
+    },
+    {
+        "key": "ctrl+shift+alt+f",
+        "command": "black-formatter.format",
+        "when": "editorTextFocus && !editorReadonly && resourceExtname == '.py'"
+    }
+]
