@@ -17,10 +17,16 @@ This document defines the established standards, patterns, and philosophical app
 
 **🎯 QUALITY PRINCIPLES:**
 
-- **No suppression without justification**: Avoid `# pylint: disable` comments
+- **No suppression without justification**: Avoid `# pylint: disable` comments except for architectural constraints which cannot be resolved with proper coding practices.
 - **Fix root causes, not symptoms**: Address underlying issues, not warnings
 - **Modern Python patterns**: Use current best practices over legacy approaches
 - **Security first**: Always prioritize security over convenience
+
+**🚨 ARCHITECTURAL EXEMPTIONS:**
+
+- **AWS Lambda Functions**: May use `# pylint: disable=duplicate-code` due to standalone requirements
+- **CLI Commands**: May use `# pylint: disable=too-many-arguments` for legitimate user interfaces
+- **Context Objects**: May use `# pylint: disable=too-many-arguments` for initialization parameters
 
 ### Type Safety Standards
 
@@ -184,11 +190,47 @@ ALEXA_SECRET = "hardcoded-secret-123"  # ❌ Security violation
 
 ## Architectural Standards
 
+### AWS Lambda Function Constraints
+
+**🚨 CRITICAL AWS LAMBDA RULES:**
+
+- **Lambda functions MUST be standalone**: Files in `src/aws/` cannot import from local modules
+- **No shared modules in AWS directory**: Lambda functions are deployed as isolated units
+- **Duplicate code is acceptable**: Lambda functions require self-contained code
+- **Use `# pylint: disable=duplicate-code` liberally**: Lambda architectural constraints override DRY principles
+- **Security headers duplication**: Each Lambda must contain its own security constants
+
+**✅ LAMBDA-SPECIFIC PATTERNS:**
+
+```python
+# In each Lambda function file - this is REQUIRED duplication
+# pylint: disable=duplicate-code
+SECURITY_HEADERS = {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    # ... other headers
+}
+```
+
+**❌ PROHIBITED IN AWS LAMBDA DIRECTORY:**
+
+- Local imports between Lambda functions (`from .other_lambda import something`)
+- Shared utility modules within `src/aws/`
+- Cross-Lambda dependencies
+- Refactoring that breaks Lambda isolation
+
+**🔧 LAMBDA DUPLICATION GUIDELINES:**
+
+- Security headers, constants, and utility functions MUST be duplicated
+- Each Lambda function is deployed independently and cannot share code
+- Use `# pylint: disable=duplicate-code` to suppress warnings for required duplication
+- Document why duplication is necessary (deployment architecture)
+
 ### Modular Design Patterns
 
-**✅ MODULARITY PRINCIPLES:**
+**✅ MODULARITY PRINCIPLES (NON-LAMBDA CODE):**
 
-- Separate concerns into focused modules
+- Separate concerns into focused modules (except AWS Lambda functions)
 - Use dependency injection for testability
 - Design for extensibility and maintainability
 - Follow single responsibility principle
