@@ -12,6 +12,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from ..adapters import AWSResourceManager, AWSResourceType, LambdaResourceSpec
+from ..config.manager import (
+    ConfigurationManager,
+    InstallationScenario,
+    ResourceRequirement,
+)
+from ..constants import LAMBDA_ASSUME_ROLE_POLICY
 from ..utils import AWSError, HAConnectorLogger, ValidationError
 
 
@@ -64,7 +70,7 @@ class DeploymentResult(BaseModel):
 
 
 class ServiceInstaller:
-    """Service installer for AWS Lambda functions"""
+    """Enhanced service installer with resource discovery and conflict resolution"""
 
     def __init__(
         self, region: str = "us-east-1", dry_run: bool = False, verbose: bool = False
@@ -75,14 +81,17 @@ class ServiceInstaller:
         self.logger = HAConnectorLogger("service_installer", verbose=verbose)
         self.aws_manager = AWSResourceManager(region)
 
+        # Initialize Configuration Manager for enhanced resource discovery
+        self.config_manager = ConfigurationManager()
+
         # Default service configurations
         self._default_configs: dict[ServiceType, dict[str, Any]] = {
             ServiceType.ALEXA: {
                 "function_name": "ha-alexa-proxy",
-                "handler": "alexa_wrapper.lambda_handler",
-                "source_path": "src/alexa/alexa_wrapper.py",
+                "handler": "voice_command_bridge.lambda_handler",
+                "source_path": "src/aws/voice_command_bridge.py",
                 "runtime": "python3.11",
-                "description": "Home Assistant Alexa Skills Proxy",
+                "description": "Home Assistant Alexa Skills Voice Command Bridge",
                 "timeout": 30,
                 "memory_size": 512,
                 "create_url": True,
@@ -98,13 +107,14 @@ class ServiceInstaller:
                 "create_url": True,
             },
             ServiceType.CLOUDFLARE_PROXY: {
-                "function_name": "ha-cloudflare-proxy",
-                "handler": "cloudflare_proxy.lambda_handler",
-                "source_path": "src/cloudflare/cloudflare_proxy.py",
-                "description": "Home Assistant CloudFlare Access Proxy",
+                "function_name": "ha-cloudflare-oauth-gateway",
+                "handler": "cloudflare_oauth_gateway.lambda_handler",
+                "source_path": "src/aws/cloudflare_oauth_gateway.py",
+                "runtime": "python3.11",
+                "description": "Home Assistant CloudFlare OAuth Gateway",
                 "timeout": 30,
                 "memory_size": 256,
-                "create_url": False,
+                "create_url": True,
             },
         }
 
@@ -177,16 +187,7 @@ class ServiceInstaller:
             return f"arn:aws:iam::123456789012:role/{role_name}"
 
         # Basic Lambda execution role policy
-        assume_role_policy: dict[str, Any] = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {"Service": "lambda.amazonaws.com"},
-                    "Action": "sts:AssumeRole",
-                }
-            ],
-        }
+        assume_role_policy: dict[str, Any] = LAMBDA_ASSUME_ROLE_POLICY
 
         # Service-specific policies would go here
         role_spec: dict[str, Any] = {
@@ -342,6 +343,188 @@ class ServiceInstaller:
         # For now, return empty list as placeholder
         self.logger.info("Listing deployed services...")
         return []
+
+    def plan_enhanced_installation(
+        self, scenario: InstallationScenario
+    ) -> dict[str, Any]:
+        """Plan installation using Configuration Manager resource discovery"""
+        self.logger.info(
+            f"Planning enhanced installation for scenario: {scenario.value}"
+        )
+
+        # Initialize configuration for the scenario
+        self.config_manager.init_config(scenario)
+
+        # Define resource requirements based on scenario
+        requirements: list[ResourceRequirement] = []
+
+        if scenario in [InstallationScenario.DIRECT_ALEXA, InstallationScenario.ALL]:
+            requirements.append(
+                ResourceRequirement(
+                    resource_type="lambda",
+                    resource_id="ha-alexa-proxy",
+                    description="Home Assistant Alexa Skills Proxy",
+                )
+            )
+
+        if scenario in [InstallationScenario.CLOUDFLARE_IOS, InstallationScenario.ALL]:
+            requirements.append(
+                ResourceRequirement(
+                    resource_type="lambda",
+                    resource_id="ha-ios-proxy",
+                    description="Home Assistant iOS Companion Proxy",
+                )
+            )
+
+        # Use Configuration Manager for resource matching
+        matched_resources = self.config_manager.match_resources_to_requirements(
+            requirements
+        )
+
+        # Analyze conflicts and plan installation steps
+        conflicts: list[dict[str, Any]] = []
+        installation_steps: list[dict[str, Any]] = []
+        user_decisions_needed: list[dict[str, Any]] = []
+
+        # Check for conflicts and required user decisions
+        for match in matched_resources:
+            if match.exists:
+                conflicts.append(
+                    {
+                        "resource": match.resource_id,
+                        "issue": "Existing resource found",
+                        "resource_type": match.resource_type,
+                    }
+                )
+                user_decisions_needed.append(
+                    {
+                        "type": "conflict_resolution",
+                        "message": (
+                            f"Resource {match.resource_id} already exists. "
+                            "Replace or update?"
+                        ),
+                        "options": ["replace", "update", "skip"],
+                    }
+                )
+
+        # Plan installation steps for missing resources
+        missing_requirements = [
+            req
+            for req in requirements
+            if not any(
+                match.resource_id == req.resource_id and match.exists
+                for match in matched_resources
+            )
+        ]
+
+        for requirement in missing_requirements:
+            installation_steps.append(
+                {
+                    "action": "create",
+                    "resource_type": requirement.resource_type,
+                    "resource_id": requirement.resource_id,
+                    "service_type": self._get_service_type_for_lambda(
+                        requirement.resource_id
+                    ),
+                }
+            )
+
+        installation_plan = {
+            "scenario": scenario.value,
+            "region": self.region,
+            "requirements": len(requirements),
+            "matched_resources": len(matched_resources),
+            "conflicts": conflicts,
+            "installation_steps": installation_steps,
+            "user_decisions_needed": user_decisions_needed,
+        }
+
+        plan_steps = len(installation_steps)
+        self.logger.info(f"Installation plan created with {plan_steps} steps")
+        return installation_plan
+
+    def execute_enhanced_installation(
+        self,
+        installation_plan: dict[str, Any],
+        user_choices: dict[str, str] | None = None,
+    ) -> DeploymentResult:
+        """Execute installation plan with user interaction handling"""
+        self.logger.info("Executing enhanced installation plan...")
+
+        user_choices = user_choices or {}
+        results = DeploymentResult(
+            success=True,
+            function_name="enhanced-installation-batch",
+            function_arn=None,
+            function_url=None,
+            role_arn=None,
+        )
+
+        # Handle user decisions for conflicts
+        for decision in installation_plan.get("user_decisions_needed", []):
+            resource_key = f"conflict_{decision.get('message', '').split()[1]}"
+            user_choice = user_choices.get(resource_key, "skip")
+
+            if user_choice == "skip":
+                results.warnings.append(
+                    "Skipped conflicted resource due to user choice"
+                )
+                continue
+            if user_choice == "replace":
+                results.warnings.append("Will replace existing resource")
+            if user_choice == "update":
+                results.warnings.append("Will update existing resource")
+
+        # Execute installation steps
+        for step in installation_plan.get("installation_steps", []):
+            if step["action"] == "create":
+                service_type = step["service_type"]
+                resource_id = step["resource_id"]
+
+                try:
+                    # Deploy the service using existing methods
+                    deploy_result = self.deploy_predefined_service(service_type)
+
+                    if deploy_result.success:
+                        results.metadata[f"deployed_{resource_id}"] = True
+                        self.logger.success(f"Successfully deployed {resource_id}")
+                    else:
+                        results.errors.extend(deploy_result.errors)
+                        results.warnings.extend(deploy_result.warnings)
+                        results.success = False
+
+                except (ValidationError, AWSError, OSError, KeyError) as e:
+                    error_msg = f"Failed to deploy {resource_id}: {str(e)}"
+                    results.errors.append(error_msg)
+                    results.success = False
+                    self.logger.error(error_msg)
+
+        # Store summary in metadata
+        if results.success:
+            deployed_count = len(
+                [k for k in results.metadata if k.startswith("deployed_")]
+            )
+            results.metadata["summary"] = (
+                f"Enhanced installation completed successfully. "
+                f"Deployed {deployed_count} services."
+            )
+        else:
+            error_count = len(results.errors)
+            results.metadata["summary"] = (
+                f"Enhanced installation completed with {error_count} errors"
+            )
+
+        return results
+
+    def _get_service_type_for_lambda(self, lambda_name: str) -> ServiceType:
+        """Map Lambda function name to ServiceType"""
+        if "alexa" in lambda_name.lower():
+            return ServiceType.ALEXA
+        if "ios" in lambda_name.lower():
+            return ServiceType.IOS_COMPANION
+        if "cloudflare" in lambda_name.lower():
+            return ServiceType.CLOUDFLARE_PROXY
+        return ServiceType.ALEXA  # Default fallback
 
     def remove_service(self, function_name: str) -> bool:
         """Remove a deployed service"""

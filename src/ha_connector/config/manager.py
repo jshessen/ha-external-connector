@@ -11,8 +11,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, NoReturn
 
-from ..adapters.aws_manager import get_aws_manager
+from ..adapters.aws_manager import AWSResourceType, get_aws_manager
+from ..constants import DEFAULT_AWS_REGION, LAMBDA_ASSUME_ROLE_POLICY
 from ..utils import HAConnectorError, logger, safe_exec
+from .cloudflare_helpers import validate_cloudflare_domain_setup
 
 
 def _assert_never(value: object) -> NoReturn:
@@ -40,7 +42,7 @@ class ConfigurationState:
     alexa_secret: str | None = None
     cf_client_id: str | None = None
     cf_client_secret: str | None = None
-    aws_region: str = "us-east-1"
+    aws_region: str = DEFAULT_AWS_REGION
 
     def __post_init__(self) -> None:
         """Initialize from environment variables if not provided."""
@@ -53,7 +55,7 @@ class ConfigurationState:
         if not self.cf_client_secret:
             self.cf_client_secret = os.getenv("CF_CLIENT_SECRET")
         if not self.aws_region:
-            self.aws_region = os.getenv("AWS_REGION", "us-east-1")
+            self.aws_region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
 
 
 @dataclass
@@ -93,20 +95,6 @@ class ConfigurationManager:
 
     # Valid AWS regions for Alexa Smart Home
     ALEXA_VALID_REGIONS = ["us-east-1", "eu-west-1", "us-west-2"]
-
-    # Resource patterns for possible matches
-    IAM_PATTERNS = {
-        "ha-lambda-alexa": r"alexa|homeassistant|home.assistant|lambda.*execution",
-        "ha-lambda-ios": r"ios|companion|wrapper|lambda.*execution",
-    }
-    LAMBDA_PATTERNS = {
-        "ha-alexa-proxy": r"homeassistant|home.assistant|alexa|smarthome|smart.home",
-        "ha-ios-proxy": r"ios|companion|wrapper|home.assistant|homeassistant",
-    }
-    SSM_PATTERNS = {
-        "/ha-alexa/config": r"alexa.*config|alexa.*app|/ha-alexa/",
-        "/ha-ios/config": r"ios.*config|ios.*app|/ha-ios/",
-    }
 
     def init_config(self, scenario: InstallationScenario) -> ConfigurationState:
         """Initialize configuration for a scenario."""
@@ -175,36 +163,14 @@ class ConfigurationManager:
 
     def _validate_cloudflare_domain_setup(self, domain: str) -> None:
         """Validate CloudFlare domain setup.
-        
+
         Args:
             domain: Domain to validate CloudFlare setup for
-            
+
         Raises:
-            Exception: If validation fails
+            ValueError: If validation fails
         """
-        # For now, this is a placeholder that logs validation attempts
-        # In a full implementation, this would:
-        # 1. Check if domain is behind CloudFlare
-        # 2. Validate Access policies exist
-        # 3. Check service token configuration
-        
-        logger.debug(f"Validating CloudFlare setup for domain: {domain}")
-        
-        # Basic domain format validation
-        if not domain or "." not in domain:
-            raise ValueError(f"Invalid domain format: {domain}")
-            
-        # Check if we have API access for validation
-        cf_api_token = os.getenv("CF_API_TOKEN")
-        cf_api_key = os.getenv("CF_API_KEY")
-        
-        if not cf_api_token and not cf_api_key:
-            logger.info("No CloudFlare API credentials - skipping deep validation")
-            return
-            
-        # TODO: Implement actual CloudFlare API validation
-        # This would use the CloudFlare adapter when implemented
-        logger.debug("CloudFlare API validation placeholder - assuming valid setup")
+        validate_cloudflare_domain_setup(domain)
 
     def check_prerequisites_for_scenario(self, scenario: InstallationScenario) -> bool:
         """Check prerequisites for a scenario."""
@@ -292,12 +258,12 @@ class ConfigurationManager:
             # Extract domain from URL
             ha_domain = self.config.ha_base_url.replace("https://", "").split("/")[0]
             logger.info(f"Validating existing CloudFlare Access setup for: {ha_domain}")
-            
+
             # Basic CloudFlare Access validation
             try:
                 self._validate_cloudflare_domain_setup(ha_domain)
                 logger.info("CloudFlare Access validation completed")
-            except Exception as e:
+            except (ValueError, ConnectionError, OSError) as e:
                 logger.warning(f"CloudFlare Access validation warning: {e}")
                 logger.info("This may be normal for manual CloudFlare setups")
 
@@ -485,9 +451,9 @@ class ConfigurationManager:
             logger.info(
                 "CF_API_TOKEN found - CloudFlare can be configured automatically"
             )
-            auto_setup = input(
-                "Use automatic CloudFlare setup? (y/N): "
-            ).strip().lower()
+            auto_setup = (
+                input("Use automatic CloudFlare setup? (y/N): ").strip().lower()
+            )
             if auto_setup in ["y", "yes"]:
                 logger.info(
                     "CloudFlare will be configured automatically during deployment"
@@ -504,16 +470,14 @@ class ConfigurationManager:
             if client_id:
                 self.config.cf_client_id = client_id
                 break
-            else:
-                logger.error("CloudFlare Client ID is required")
+            logger.error("CloudFlare Client ID is required")
 
         while True:
             client_secret = input("CloudFlare Client Secret: ").strip()
             if client_secret:
                 self.config.cf_client_secret = client_secret
                 break
-            else:
-                logger.error("CloudFlare Client Secret is required")
+            logger.error("CloudFlare Client Secret is required")
 
     def collect_config(self) -> None:
         """Collect configuration interactively."""
@@ -633,7 +597,7 @@ class ConfigurationManager:
                     f"{req_resource.resource_id}"
                 )
 
-        except Exception as e:
+        except (ValueError, ConnectionError, OSError) as e:
             logger.error(f"Error during AWS resource discovery: {e}")
             # Add all as missing if we can't check
             result.missing_resources.extend(required_resources)
@@ -717,16 +681,7 @@ class ConfigurationManager:
                     "type": "iam",
                     "spec": {
                         "role_name": "ha-lambda-alexa",
-                        "trust_policy": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Principal": {"Service": "lambda.amazonaws.com"},
-                                    "Action": "sts:AssumeRole",
-                                }
-                            ],
-                        },
+                        "trust_policy": LAMBDA_ASSUME_ROLE_POLICY,
                     },
                 }
             )
@@ -771,23 +726,14 @@ class ConfigurationManager:
 
         elif scenario == InstallationScenario.CLOUDFLARE_ALEXA:
             # Same as direct Alexa but with CloudFlare configuration included
-            
+
             # IAM Role
             specs.append(
                 {
                     "type": "iam",
                     "spec": {
                         "role_name": "ha-lambda-alexa",
-                        "trust_policy": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Principal": {"Service": "lambda.amazonaws.com"},
-                                    "Action": "sts:AssumeRole",
-                                }
-                            ],
-                        },
+                        "trust_policy": LAMBDA_ASSUME_ROLE_POLICY,
                         "policies": [
                             (
                                 "arn:aws:iam::aws:policy/service-role/"
@@ -841,23 +787,14 @@ class ConfigurationManager:
 
         elif scenario == InstallationScenario.CLOUDFLARE_IOS:
             # iOS scenario with CloudFlare
-            
+
             # IAM Role for iOS
             specs.append(
                 {
                     "type": "iam",
                     "spec": {
                         "role_name": "ha-lambda-ios",
-                        "trust_policy": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Principal": {"Service": "lambda.amazonaws.com"},
-                                    "Action": "sts:AssumeRole",
-                                }
-                            ],
-                        },
+                        "trust_policy": LAMBDA_ASSUME_ROLE_POLICY,
                         "policies": [
                             (
                                 "arn:aws:iam::aws:policy/service-role/"
@@ -909,6 +846,227 @@ class ConfigurationManager:
             )
 
         return specs
+
+    def discover_aws_resources(self) -> ResourceDiscoveryResult:
+        """Discover existing AWS resources using CRUD operations.
+
+        Returns:
+            ResourceDiscoveryResult with found and missing resources
+        """
+        logger.info("🔍 Discovering existing AWS resources using CRUD interface...")
+
+        try:
+            aws_manager = get_aws_manager()
+            result = ResourceDiscoveryResult()
+
+            # Use scenario requirements to check for specific resources
+            if self.config:
+                requirements = self._get_scenario_requirements()
+
+                for requirement in requirements:
+                    discovered_resource = self._check_specific_resource(
+                        aws_manager, requirement
+                    )
+                    if discovered_resource:
+                        result.possible_resources.append(discovered_resource)
+
+            logger.info(
+                f"📋 Found {len(result.possible_resources)} existing AWS resources"
+            )
+            return result
+
+        except (ImportError, AttributeError, ValueError, KeyError) as e:
+            logger.error(f"❌ Resource discovery failed: {e}")
+            return ResourceDiscoveryResult()
+
+    def _check_specific_resource(
+        self, aws_manager: Any, requirement: ResourceRequirement
+    ) -> dict[str, Any] | None:
+        """Check if a specific resource exists using CRUD read operations."""
+        try:
+            # Map requirement types to AWS resource types
+            resource_type_map = {
+                "iam": AWSResourceType.IAM,
+                "lambda": AWSResourceType.LAMBDA,
+                "ssm": AWSResourceType.SSM,
+                "logs": AWSResourceType.LOGS,
+                "url": AWSResourceType.TRIGGER,  # Function URLs are triggers
+            }
+
+            aws_resource_type = resource_type_map.get(requirement.resource_type)
+            if not aws_resource_type:
+                logger.debug(f"Unknown resource type: {requirement.resource_type}")
+                return None
+
+            # Try to read the specific resource
+            response = aws_manager.read_resource(
+                aws_resource_type, requirement.resource_id
+            )
+
+            if response.status == "success" and response.resource:
+                logger.info(
+                    f"✅ Found existing {requirement.resource_type}: "
+                    f"{requirement.resource_id}"
+                )
+                return {
+                    "resource_type": requirement.resource_type,
+                    "resource_id": requirement.resource_id,
+                    "arn": response.resource.get("Arn", ""),
+                    "exists": True,
+                    "details": response.resource,
+                    "discovered_patterns": [requirement.resource_id],  # Exact match
+                }
+
+            logger.debug(
+                f"Resource not found: {requirement.resource_type}:"
+                f"{requirement.resource_id}"
+            )
+            return None
+
+        except (ImportError, AttributeError, ValueError, KeyError) as e:
+            logger.debug(f"Error checking resource {requirement.resource_id}: {e}")
+            return None
+
+    def match_resources_to_requirements(
+        self, requirements: list[ResourceRequirement]
+    ) -> list[MatchedResource]:
+        """Match discovered resources to scenario requirements using CRUD operations.
+
+        Args:
+            requirements: List of required resources for the scenario
+
+        Returns:
+            List of matched resources that exist
+        """
+        logger.info("🔍 Matching requirements to existing resources...")
+
+        matched_resources: list[MatchedResource] = []
+
+        for requirement in requirements:
+            # Use CRUD-based discovery to check if specific resource exists
+            discovery_result = self.discover_aws_resources()
+
+            # Look for exact matches first
+            exact_match = None
+            for possible_resource in discovery_result.possible_resources:
+                if (
+                    possible_resource["resource_type"] == requirement.resource_type
+                    and possible_resource["resource_id"] == requirement.resource_id
+                ):
+                    exact_match = possible_resource
+                    break
+
+            if exact_match:
+                matched_resources.append(
+                    MatchedResource(
+                        resource_type=requirement.resource_type,
+                        resource_id=exact_match["resource_id"],
+                        resource=exact_match,
+                        exists=True,
+                    )
+                )
+                logger.info(
+                    f"✅ Found match for {requirement.resource_type}: "
+                    f"{exact_match['resource_id']}"
+                )
+            else:
+                logger.info(
+                    f"❌ No match found for {requirement.resource_type}: "
+                    f"{requirement.resource_id}"
+                )
+
+        return matched_resources
+
+    def collect_config_with_discovery(self) -> None:
+        """Collect configuration with automatic resource discovery."""
+        if not self.config:
+            logger.error("Configuration not initialized")
+            return
+
+        logger.info(
+            "🚀 Starting enhanced configuration collection with resource discovery..."
+        )
+
+        # First collect basic configuration
+        self.collect_config()
+
+        # Then perform resource discovery
+        if self.config.scenario != InstallationScenario.ALL:
+            requirements = self._get_scenario_requirements()
+            matched_resources = self.match_resources_to_requirements(requirements)
+
+            if matched_resources:
+                logger.info("💡 Found existing resources that could be reused:")
+                for match in matched_resources:
+                    logger.info(f"  • {match.resource_type}: {match.resource_id}")
+
+                # Ask user if they want to use existing resources
+                use_existing = (
+                    input("Use existing resources where possible? (Y/n): ")
+                    .strip()
+                    .lower()
+                )
+                if use_existing in ["", "y", "yes"]:
+                    self._apply_discovered_resources(matched_resources)
+            else:
+                logger.info("ℹ️  No existing resources found - will create new ones")
+
+    def _get_scenario_requirements(self) -> list[ResourceRequirement]:
+        """Get resource requirements for the current scenario."""
+        if not self.config:
+            return []
+
+        requirements: list[ResourceRequirement] = []
+        scenario = self.config.scenario
+
+        if scenario in [
+            InstallationScenario.DIRECT_ALEXA,
+            InstallationScenario.CLOUDFLARE_ALEXA,
+        ]:
+            requirements.extend(
+                [
+                    ResourceRequirement(
+                        "iam", "ha-lambda-alexa", "IAM role for Alexa Lambda"
+                    ),
+                    ResourceRequirement(
+                        "lambda", "ha-alexa-proxy", "Lambda function for Alexa"
+                    ),
+                    ResourceRequirement(
+                        "ssm", "/ha-alexa/config", "SSM parameter for Alexa config"
+                    ),
+                ]
+            )
+
+        if scenario in [InstallationScenario.CLOUDFLARE_IOS]:
+            requirements.extend(
+                [
+                    ResourceRequirement(
+                        "iam", "ha-lambda-ios", "IAM role for iOS Lambda"
+                    ),
+                    ResourceRequirement(
+                        "lambda", "ha-ios-proxy", "Lambda function for iOS"
+                    ),
+                    ResourceRequirement(
+                        "ssm", "/ha-ios/config", "SSM parameter for iOS config"
+                    ),
+                ]
+            )
+
+        return requirements
+
+    def _apply_discovered_resources(
+        self, matched_resources: list[MatchedResource]
+    ) -> None:
+        """Apply discovered resources to avoid creating duplicates."""
+        logger.info("🔧 Applying discovered resources to configuration...")
+
+        for match in matched_resources:
+            logger.info(
+                f"📌 Will reuse existing {match.resource_type}: {match.resource_id}"
+            )
+
+        # This could be enhanced to store the matched resources
+        # for use during deployment. For now, we just log the matches
 
     # Ensure a list is always returned (dead code, remove)
 
