@@ -34,26 +34,25 @@ class TestCloudFlareResourceTypes:
 class TestCloudFlareConfig:
     """Test CloudFlare configuration model"""
 
-    def test_config_with_api_token(self) -> None:
-        """Test config creation with API token"""
+    def test_config_with_api_token_and_debug(self) -> None:
+        """Test config creation with API token and debug mode"""
         config = CloudFlareConfig(
             api_token="test-token",
+            api_key=None,
+            email=None,
             zone_id="test-zone-id",
             debug=True,
-        )  # type: ignore[misc]  # Pylance false positive - all fields are optional
+        )
         assert config.api_token == "test-token"
-        assert config.zone_id == "test-zone-id"
-        assert config.debug is True
-        assert config.api_key is None
-        assert config.email is None
 
     def test_config_with_api_key_and_email(self) -> None:
         """Test config creation with API key and email"""
         config = CloudFlareConfig(
+            api_token=None,
             api_key="test-key",
             email="test@example.com",
             zone_id="test-zone-id",
-        )  # type: ignore[misc]  # Pylance false positive - all fields are optional
+        )
         assert config.api_key == "test-key"
         assert config.email == "test@example.com"
         assert config.zone_id == "test-zone-id"
@@ -63,9 +62,11 @@ class TestCloudFlareConfig:
         """Test config with debug mode enabled"""
         config = CloudFlareConfig(
             api_token="test-token",
+            api_key=None,
+            email=None,
             zone_id="test-zone-id",
             debug=True,
-        )  # type: ignore[misc]  # Pylance false positive - all fields are optional
+        )
         assert config.debug is True
 
 

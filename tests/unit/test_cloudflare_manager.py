@@ -19,6 +19,8 @@ def create_test_cloudflare_config() -> CloudFlareConfig:
     """Create a valid CloudFlare config for testing."""
     return CloudFlareConfig(
         api_token="test-token",
+        api_key="test-api-key",
+        email="test@example.com",
         zone_id="test-zone-id",
         debug=True,
     )

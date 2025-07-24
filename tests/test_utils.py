@@ -42,9 +42,9 @@ class MockDeploymentConfig:
 
     success: bool = True
     result: MockDeploymentResult = field(default_factory=MockDeploymentResult)
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    errors: list[str] = field(default_factory=lambda: [])
+    warnings: list[str] = field(default_factory=lambda: [])
+    metadata: dict[str, Any] = field(default_factory=lambda: {})
 
 
 @contextmanager

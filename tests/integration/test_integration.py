@@ -29,12 +29,12 @@ from ha_connector.deployment import (
 class TestCLIIntegration:
     """Test CLI integration with backend services"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.runner = CliRunner()
         self.temp_dir = Path(tempfile.mkdtemp())
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up test fixtures"""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -46,7 +46,7 @@ class TestCLIIntegration:
             "AWS_REGION": "us-east-1",
         },
     )
-    def test_cli_install_command_dry_run(self):
+    def test_cli_install_command_dry_run(self) -> None:
         """Test CLI install command in dry run mode"""
         with patch("ha_connector.cli.commands.ConfigurationManager") as mock_config_mgr:
             # Mock configuration manager
@@ -82,7 +82,7 @@ class TestCLIIntegration:
                 assert result.exit_code == 0
                 assert "Installation completed successfully" in result.stdout
 
-    def test_cli_status_command(self):
+    def test_cli_status_command(self) -> None:
         """Test CLI status command"""
         with patch(
             "ha_connector.cli.commands.validate_aws_access"
@@ -111,7 +111,7 @@ class TestCLIIntegration:
                 assert result.exit_code == 0
                 assert "Service Status" in result.stdout
 
-    def test_cli_configure_command(self):
+    def test_cli_configure_command(self) -> None:
         """Test CLI configure command"""
         with patch("ha_connector.cli.commands.ConfigurationManager") as mock_config_mgr:
             mock_manager = Mock()
@@ -124,7 +124,7 @@ class TestCLIIntegration:
 
             assert result.exit_code == 0
 
-    def test_cli_remove_command_dry_run(self):
+    def test_cli_remove_command_dry_run(self) -> None:
         """Test CLI remove command in dry run mode"""
         with patch("ha_connector.cli.commands.ServiceInstaller") as mock_installer:
             mock_service_installer = Mock()
@@ -142,7 +142,7 @@ class TestCLIIntegration:
 
             assert result.exit_code == 0
 
-    def test_cli_deploy_command_dry_run(self):
+    def test_cli_deploy_command_dry_run(self) -> None:
         """Test CLI deploy command in dry run mode"""
         with patch("ha_connector.cli.commands.DeploymentManager") as mock_deploy_mgr:
             mock_deployment = Mock()
@@ -177,12 +177,12 @@ class TestCLIIntegration:
 class TestConfigurationIntegration:
     """Test configuration management integration"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.temp_dir = Path(tempfile.mkdtemp())
         self.config_manager = ConfigurationManager()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up test fixtures"""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -198,11 +198,13 @@ class TestConfigurationIntegration:
     )
     @patch("ha_connector.config.manager.get_aws_manager")
     @patch("shutil.which")
-    def test_configuration_persistence_workflow(self, mock_which, mock_aws_manager):
+    def test_configuration_persistence_workflow(
+        self, mock_which: Mock, mock_aws_manager: Mock
+    ) -> None:
         """Test complete configuration persistence workflow"""
 
         # Mock prerequisites - AWS CLI and jq exist
-        def mock_which_side_effect(cmd):
+        def mock_which_side_effect(cmd: str) -> str | None:
             if cmd == "aws":
                 return "/usr/bin/aws"
             if cmd == "jq":
@@ -245,11 +247,13 @@ class TestConfigurationIntegration:
 
     @patch("ha_connector.adapters.aws_manager.get_aws_manager")
     @patch("shutil.which")
-    def test_configuration_backup_restore_workflow(self, mock_which, mock_aws_manager):
+    def test_configuration_backup_restore_workflow(
+        self, mock_which: Mock, mock_aws_manager: Mock
+    ) -> None:
         """Test configuration backup and restore workflow"""
 
         # Mock prerequisites - AWS CLI and jq exist
-        def mock_which_side_effect(cmd):
+        def mock_which_side_effect(cmd: str) -> str | None:
             if cmd == "aws":
                 return "/usr/bin/aws"
             if cmd == "jq":
@@ -313,14 +317,19 @@ class TestConfigurationIntegration:
     )
     @patch("rich.prompt.Prompt.ask")
     @patch("ha_connector.config.manager.get_aws_manager")
+    @patch("ha_connector.config.cloudflare_helpers.CloudFlareManager")
     @patch("shutil.which")
     def test_interactive_configuration_collection(
-        self, mock_which, mock_aws_manager, mock_prompt
-    ):
+        self,
+        mock_which: Mock,
+        mock_cf_manager: Mock,  # CloudFlareManager in helpers (3rd patch)
+        mock_aws_manager: Mock,  # get_aws_manager (2nd patch)
+        mock_prompt: Mock,  # Prompt.ask (1st patch)
+    ) -> None:
         """Test interactive configuration collection integration"""
 
         # Mock prerequisites - AWS CLI and jq exist
-        def mock_which_side_effect(cmd):
+        def mock_which_side_effect(cmd: str) -> str | None:
             if cmd == "aws":
                 return "/usr/bin/aws"
             if cmd == "jq":
@@ -330,11 +339,18 @@ class TestConfigurationIntegration:
         mock_which.side_effect = mock_which_side_effect
 
         # Mock AWS manager with proper chaining
-        mock_manager = Mock()
+        mock_aws_instance = Mock()
         mock_validation_result = Mock()
         mock_validation_result.status = "success"
-        mock_manager.validate_aws_access.return_value = mock_validation_result
-        mock_aws_manager.return_value = mock_manager
+        mock_aws_instance.validate_aws_access.return_value = mock_validation_result
+        mock_aws_manager.return_value = mock_aws_instance
+
+        # Mock CloudFlare manager to avoid real HTTP calls in helpers
+        mock_cf_instance = Mock()
+        mock_cf_instance.get_account_id.return_value = "test-account-id"
+        mock_cf_instance.get_zone_id.return_value = "test-zone-id"
+        mock_cf_instance.list_access_applications.return_value = []
+        mock_cf_manager.return_value.__enter__.return_value = mock_cf_instance
 
         # Mock user inputs for CloudFlare Alexa scenario
         alexa_secret = "test-alexa-secret-that-is-at-least-32-characters-long"
@@ -372,7 +388,7 @@ class TestDeploymentIntegration:
     """Test deployment integration workflows"""
 
     @pytest.mark.slow
-    def test_full_deployment_workflow_dry_run(self):
+    def test_full_deployment_workflow_dry_run(self) -> None:
         """Test complete deployment workflow in dry run mode"""
         config = DeploymentConfig(
             environment="dev",
@@ -438,7 +454,7 @@ class TestDeploymentIntegration:
             assert all(service.get("dry_run", False) for service in result["services"])
 
     @pytest.mark.slow
-    def test_deployment_error_handling_integration(self):
+    def test_deployment_error_handling_integration(self) -> None:
         """Test deployment error handling and recovery"""
         config = DeploymentConfig(
             environment="dev",
@@ -472,8 +488,7 @@ class TestDeploymentIntegration:
                     success=True,
                     function_name="ha-alexa-proxy",
                     function_arn=(
-                        "arn:aws:lambda:us-east-1:123456789012:function:"
-                        "ha-alexa-proxy"
+                        "arn:aws:lambda:us-east-1:123456789012:function:ha-alexa-proxy"
                     ),
                     function_url="https://test.lambda-url.us-east-1.on.aws/",
                     role_arn=None,
@@ -519,7 +534,7 @@ class TestAWSIntegration:
 
     @pytest.mark.aws
     @pytest.mark.slow
-    def test_aws_credentials_validation(self):
+    def test_aws_credentials_validation(self) -> None:
         """Test AWS credentials validation integration"""
         try:
             # Test AWS manager initialization with mocked validation
@@ -544,7 +559,7 @@ class TestAWSIntegration:
 
     @pytest.mark.aws
     @pytest.mark.slow
-    def test_aws_lambda_operations_integration(self):
+    def test_aws_lambda_operations_integration(self) -> None:
         """Test AWS Lambda operations integration"""
         try:
             # Test lambda operations with mocked AWS manager
@@ -588,7 +603,7 @@ class TestCloudFlareIntegration:
     @patch.dict("os.environ", {"CF_API_TOKEN": "test-token"})
     @pytest.mark.cloudflare
     @pytest.mark.slow
-    def test_cloudflare_api_integration(self):
+    def test_cloudflare_api_integration(self) -> None:
         """Test CloudFlare API integration"""
         try:
             # Use mocked CloudFlare manager
@@ -617,11 +632,11 @@ class TestCloudFlareIntegration:
 class TestEndToEndIntegration:
     """Test complete end-to-end integration scenarios"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         self.temp_dir = Path(tempfile.mkdtemp())
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up test fixtures"""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -638,11 +653,13 @@ class TestEndToEndIntegration:
     )
     @patch("ha_connector.config.manager.get_aws_manager")
     @patch("shutil.which")
-    def test_complete_installation_workflow_dry_run(self, mock_which, mock_aws_manager):
+    def test_complete_installation_workflow_dry_run(
+        self, mock_which: Mock, mock_aws_manager: Mock
+    ) -> None:
         """Test complete installation workflow from CLI to deployment"""
 
         # Mock prerequisites - AWS CLI and jq exist
-        def mock_which_side_effect(cmd):
+        def mock_which_side_effect(cmd: str) -> str | None:
             if cmd == "aws":
                 return "/usr/bin/aws"
             if cmd == "jq":
@@ -719,7 +736,7 @@ class TestEndToEndIntegration:
             assert result["results"][0].metadata["service_type"] == "alexa"
 
     @pytest.mark.slow
-    def test_cli_to_deployment_integration(self):
+    def test_cli_to_deployment_integration(self) -> None:
         """Test CLI command integration with deployment system"""
         runner = CliRunner()
 

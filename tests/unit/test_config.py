@@ -8,11 +8,13 @@ import secrets
 from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
+from ha_connector.adapters.aws_manager import AWSResourceResponse
 from ha_connector.config import (
     ConfigurationManager,
     ConfigurationState,
     InstallationScenario,
 )
+from ha_connector.config.manager import ResourceRequirement
 
 if TYPE_CHECKING:
     pass  # MagicMock not needed
@@ -46,33 +48,33 @@ class TestConfigurationManagerBasics:
 class TestConfigurationManagerValidation:
     """Test Configuration Manager validation functionality"""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures"""
         # pylint: disable=attribute-defined-outside-init
         self.config_manager = ConfigurationManager()
 
-    def test_validate_ha_base_url_valid(self):
+    def test_validate_ha_base_url_valid(self) -> None:
         """Test HA base URL validation with valid URL"""
         manager = ConfigurationManager()
         assert manager.validate_ha_base_url("https://homeassistant.example.com") is True
 
-    def test_validate_ha_base_url_invalid_protocol(self):
+    def test_validate_ha_base_url_invalid_protocol(self) -> None:
         """Test HA base URL validation with invalid protocol"""
         manager = ConfigurationManager()
         assert manager.validate_ha_base_url("http://homeassistant.example.com") is False
 
-    def test_validate_ha_base_url_empty(self):
+    def test_validate_ha_base_url_empty(self) -> None:
         """Test HA base URL validation with empty URL"""
         manager = ConfigurationManager()
         assert manager.validate_ha_base_url("") is False
 
-    def test_validate_alexa_config_valid(self):
+    def test_validate_alexa_config_valid(self) -> None:
         """Test Alexa configuration validation with valid secret"""
         manager = ConfigurationManager()
         valid_secret = "a" * 32
         assert manager.validate_alexa_config(valid_secret) is True
 
-    def test_validate_alexa_config_too_short(self):
+    def test_validate_alexa_config_too_short(self) -> None:
         """Test Alexa configuration validation with short secret"""
         manager = ConfigurationManager()
         short_secret = "short"
@@ -177,11 +179,9 @@ class TestConfigurationManagerInteraction:
         assert result is True
 
     @patch.object(ConfigurationManager, "check_aws_credentials", return_value=True)
-    @patch(  # type: ignore[misc]
+    @patch(
         "shutil.which",
-        side_effect=lambda x: (  # type: ignore[misc]
-            "/usr/bin/aws" if x == "jq" else None
-        ),
+        side_effect=lambda x: ("/usr/bin/aws" if x == "jq" else None),  # type: ignore[no-untyped-def]
     )
     def test_check_prerequisites_missing_aws_cli(
         self, _mock_which: Mock, _mock_aws_check: Mock
@@ -258,8 +258,16 @@ class TestConfigurationManagerInteraction:
             mock_gen.assert_called_once_with(32)
             assert manager.config.alexa_secret == "test-secret-32-chars-long-here"
 
-    def test_collect_cloudflare_config(self):
+    @patch.dict("os.environ", {}, clear=True)  # Clear CF_API_TOKEN
+    @patch("builtins.input")
+    def test_collect_cloudflare_config(self, mock_input: Mock) -> None:
         """Test CloudFlare configuration collection through public interface"""
+        # Mock user inputs for CloudFlare credentials (no automatic setup)
+        mock_input.side_effect = [
+            "test-client-id",  # CloudFlare Client ID
+            "test-client-secret",  # CloudFlare Client Secret
+        ]
+
         manager = ConfigurationManager()
         manager.init_config(InstallationScenario.CLOUDFLARE_ALEXA)
 
@@ -268,12 +276,13 @@ class TestConfigurationManagerInteraction:
             manager.config.ha_base_url = "https://homeassistant.example.com"
             manager.config.alexa_secret = "a" * 32
 
-        # CloudFlare config collection is not implemented yet, just logs warning
+        # Test CloudFlare config collection
         manager.collect_config()
 
-        # Since implementation logs a warning and doesn't collect,
-        # we just verify it doesn't crash
+        # Verify CloudFlare config was collected
         assert manager.config is not None
+        assert manager.config.cf_client_id == "test-client-id"
+        assert manager.config.cf_client_secret == "test-client-secret"
 
     @patch.dict("os.environ", {})
     def test_export_config(self):
@@ -406,22 +415,51 @@ class TestResourceManagement:
         # pylint: disable=attribute-defined-outside-init
         self.manager = ConfigurationManager()
 
-    def test_resource_patterns_exist(self):
-        """Test that resource patterns are defined"""
-        assert hasattr(self.manager, "IAM_PATTERNS")
-        assert hasattr(self.manager, "LAMBDA_PATTERNS")
-        assert hasattr(self.manager, "SSM_PATTERNS")
-
-        assert isinstance(self.manager.IAM_PATTERNS, dict)
-        assert isinstance(self.manager.LAMBDA_PATTERNS, dict)
-        assert isinstance(self.manager.SSM_PATTERNS, dict)
-
     def test_alexa_valid_regions(self):
         """Test that Alexa valid regions are defined"""
         assert hasattr(self.manager, "ALEXA_VALID_REGIONS")
         assert "us-east-1" in self.manager.ALEXA_VALID_REGIONS
         assert "eu-west-1" in self.manager.ALEXA_VALID_REGIONS
         assert "us-west-2" in self.manager.ALEXA_VALID_REGIONS
+
+    @patch("ha_connector.config.manager.get_aws_manager")
+    def test_discover_aws_resources_crud_based(self, mock_get_aws: Mock) -> None:
+        """Test CRUD-based resource discovery"""
+        mock_aws_manager = Mock()
+        mock_get_aws.return_value = mock_aws_manager
+
+        # Mock successful resource read
+        mock_aws_manager.read_resource.return_value = AWSResourceResponse(
+            status="success",
+            resource={
+                "RoleName": "ha-lambda-alexa",
+                "Arn": "arn:aws:iam::123:role/test",
+            },
+        )
+
+        self.manager.init_config(InstallationScenario.DIRECT_ALEXA)
+        result = self.manager.discover_aws_resources()
+
+        assert hasattr(result, "possible_resources")
+        assert isinstance(result.possible_resources, list)
+
+    @patch("ha_connector.config.manager.get_aws_manager")
+    def test_match_resources_to_requirements_crud_based(
+        self, mock_get_aws: Mock
+    ) -> None:
+        """Test CRUD-based resource matching"""
+        mock_aws_manager = Mock()
+        mock_get_aws.return_value = mock_aws_manager
+
+        # Mock resource exists
+        mock_aws_manager.read_resource.return_value = AWSResourceResponse(
+            status="success", resource={"RoleName": "ha-lambda-alexa"}
+        )
+
+        requirements = [ResourceRequirement("iam", "ha-lambda-alexa", "Test IAM role")]
+
+        matched = self.manager.match_resources_to_requirements(requirements)
+        assert isinstance(matched, list)
 
     @patch("ha_connector.config.manager.safe_exec")
     def test_get_scenario_resource_requirements(self, mock_safe_exec: Mock) -> None:

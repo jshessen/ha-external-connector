@@ -12,7 +12,7 @@ import httpx
 import pytest
 
 from ha_connector.adapters.cloudflare_manager import CloudFlareResourceResponse
-from tests.fixtures.cloudflare_fixtures import (  # type: ignore[import-untyped]
+from tests.fixtures.cloudflare_fixtures import (
     CLOUDFLARE_MANAGER_TEST_PARAMS,
     CloudFlareTestFramework,
 )
@@ -197,9 +197,7 @@ class TestCloudFlareTestFramework:
         assert failure_response.resource is None
         assert len(failure_response.errors) > 0
 
-    def test_cloudflare_config_fixture(  # type: ignore[misc]
-        self, cloudflare_config: Any
-    ) -> None:
+    def test_cloudflare_config_fixture(self, cloudflare_config: Any) -> None:
         """Test CloudFlare config fixture."""
         assert cloudflare_config.zone_id == "test-zone-id"
         assert cloudflare_config.debug is True

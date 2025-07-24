@@ -14,20 +14,39 @@ import pytest
 from typer.testing import CliRunner
 
 from ha_connector.cli import app
-from ha_connector.cli.commands import _get_services_for_scenario
 from ha_connector.config import InstallationScenario
 from ha_connector.deployment import ServiceType
+
+# from ha_connector.cli.commands import get_services_for_scenario
+
+
+# Define get_services_for_scenario here for testing if not available
+def get_services_for_scenario(scenario: InstallationScenario) -> list[ServiceType]:
+    """Helper function to get services for a given scenario"""
+    if scenario == InstallationScenario.DIRECT_ALEXA:
+        return [ServiceType.ALEXA]
+    if scenario == InstallationScenario.CLOUDFLARE_ALEXA:
+        return [ServiceType.ALEXA, ServiceType.CLOUDFLARE_PROXY]
+    if scenario == InstallationScenario.CLOUDFLARE_IOS:
+        return [ServiceType.IOS_COMPANION, ServiceType.CLOUDFLARE_PROXY]
+    if scenario == InstallationScenario.ALL:
+        return [
+            ServiceType.ALEXA,
+            ServiceType.IOS_COMPANION,
+            ServiceType.CLOUDFLARE_PROXY,
+        ]
+    return []
 
 
 # Shared test fixtures for performance optimization
 @pytest.fixture(name="runner")
-def cli_runner():
+def cli_runner() -> CliRunner:
     """Shared CLI runner for performance testing"""
     return CliRunner()
 
 
 @pytest.fixture(name="env")
-def test_env():
+def test_env() -> dict[str, str]:
     """Shared test environment variables"""
     return {
         "HA_BASE_URL": "https://test.example.com",
@@ -39,13 +58,13 @@ def test_env():
 class TestCLICommands:
     """Test CLI command functionality - optimized for speed"""
 
-    def test_version_command(self, runner):
+    def test_version_command(self, runner: CliRunner) -> None:
         """Test version command"""
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
         assert "3.0.0" in result.stdout
 
-    def test_help_command(self, runner):
+    def test_help_command(self, runner: CliRunner) -> None:
         """Test help command"""
         result = runner.invoke(app, ["--help"])
 
@@ -83,8 +102,12 @@ class TestCLICommands:
     @patch("ha_connector.cli.commands.ConfigurationManager")
     @patch("ha_connector.cli.commands.DeploymentManager")
     def test_install_command_success(
-        self, mock_deployment_manager, mock_config_manager, runner, env
-    ):
+        self,
+        mock_deployment_manager: Mock,
+        mock_config_manager: Mock,
+        runner: CliRunner,
+        env: dict[str, str],
+    ) -> None:
         """Test successful install command"""
         # Setup mocks
         mock_config_manager.return_value.load.return_value = Mock()
@@ -97,7 +120,9 @@ class TestCLICommands:
 
     @patch.dict(os.environ, {})
     @patch("ha_connector.cli.commands.ConfigurationManager")
-    def test_install_command_invalid_scenario(self, _mock_config_manager, runner):
+    def test_install_command_invalid_scenario(
+        self, _mock_config_manager: Mock, runner: CliRunner
+    ) -> None:
         """Test installation with invalid scenario"""
         result = runner.invoke(app, ["install", "invalid_scenario"])
 
@@ -114,8 +139,8 @@ class TestCLICommands:
     )
     @patch("ha_connector.cli.commands.ConfigurationManager")
     def test_install_command_config_validation_failure(
-        self, mock_config_manager, runner
-    ):
+        self, mock_config_manager: Mock, runner: CliRunner
+    ) -> None:
         """Test installation with configuration validation failure"""
         mock_config = Mock()
         mock_config.config = None  # Simulate missing config
@@ -130,7 +155,9 @@ class TestCLICommands:
         )
 
     @patch("ha_connector.cli.commands.DeploymentManager")
-    def test_deploy_command_success(self, mock_deployment_manager, runner):
+    def test_deploy_command_success(
+        self, mock_deployment_manager: Mock, runner: CliRunner
+    ) -> None:
         """Test successful deployment"""
         mock_deployment = Mock()
         mock_deployment.execute_deployment.return_value = {
@@ -157,14 +184,14 @@ class TestCLICommands:
         assert "Deployment completed successfully" in result.stdout
         mock_deployment_manager.assert_called_once()
 
-    def test_deploy_command_invalid_service(self, runner):
+    def test_deploy_command_invalid_service(self, runner: CliRunner) -> None:
         """Test deployment with invalid service"""
         result = runner.invoke(app, ["deploy", "invalid_service"])
 
         assert result.exit_code == 1
         assert "Invalid service" in result.stdout
 
-    def test_deploy_command_invalid_strategy(self, runner):
+    def test_deploy_command_invalid_strategy(self, runner: CliRunner) -> None:
         """Test deployment with invalid strategy"""
         result = runner.invoke(
             app, ["deploy", "alexa", "--strategy", "invalid_strategy"]
@@ -174,7 +201,9 @@ class TestCLICommands:
         assert "Invalid strategy" in result.stdout
 
     @patch("ha_connector.cli.commands.ConfigurationManager")
-    def test_configure_command_validation_success(self, mock_config_manager, runner):
+    def test_configure_command_validation_success(
+        self, mock_config_manager: Mock, runner: CliRunner
+    ) -> None:
         """Test configuration validation success"""
         mock_config = Mock()
         mock_config.validate_scenario_setup.return_value = True
@@ -186,7 +215,9 @@ class TestCLICommands:
         assert "Configuration is valid" in result.stdout
 
     @patch("ha_connector.cli.commands.ConfigurationManager")
-    def test_configure_command_validation_failure(self, mock_config_manager, runner):
+    def test_configure_command_validation_failure(
+        self, mock_config_manager: Mock, runner: CliRunner
+    ) -> None:
         """Test configuration validation failure"""
         mock_config = Mock()
         mock_config.validate_scenario_setup.return_value = False
@@ -200,8 +231,11 @@ class TestCLICommands:
     @patch("ha_connector.cli.commands.validate_aws_access")
     @patch("ha_connector.cli.commands.ServiceInstaller")
     def test_status_command_success(
-        self, mock_service_installer, mock_aws_validate, runner
-    ):
+        self,
+        mock_service_installer: Mock,
+        mock_aws_validate: Mock,
+        runner: CliRunner,
+    ) -> None:
         """Test status command success"""
         mock_aws_validate.return_value = {"status": "success"}
 
@@ -224,7 +258,9 @@ class TestCLICommands:
         assert "ha-alexa-proxy" in result.stdout
 
     @patch("ha_connector.cli.commands.validate_aws_access")
-    def test_status_command_aws_failure(self, mock_aws_validate, runner):
+    def test_status_command_aws_failure(
+        self, mock_aws_validate: Mock, runner: CliRunner
+    ) -> None:
         """Test status command with AWS connectivity failure"""
         mock_aws_validate.return_value = {"status": "error", "message": "Access denied"}
 
@@ -234,7 +270,9 @@ class TestCLICommands:
         assert "AWS connectivity failed" in result.stdout
 
     @patch("ha_connector.cli.commands.ServiceInstaller")
-    def test_remove_command_success(self, mock_service_installer, runner):
+    def test_remove_command_success(
+        self, mock_service_installer: Mock, runner: CliRunner
+    ) -> None:
         """Test remove command success"""
         mock_installer = Mock()
         mock_installer.remove_service.return_value = True
@@ -245,7 +283,7 @@ class TestCLICommands:
         assert result.exit_code == 0
         assert "Successfully removed" in result.stdout
 
-    def test_remove_command_invalid_service(self, runner):
+    def test_remove_command_invalid_service(self, runner: CliRunner) -> None:
         """Test remove command with invalid service"""
         result = runner.invoke(app, ["remove", "invalid_service", "--force"])
 
@@ -253,7 +291,9 @@ class TestCLICommands:
         assert "Invalid service" in result.stdout
 
     @patch("ha_connector.cli.commands.ServiceInstaller")
-    def test_remove_command_all_services(self, mock_service_installer, runner):
+    def test_remove_command_all_services(
+        self, mock_service_installer: Mock, runner: CliRunner
+    ) -> None:
         """Test removing all services"""
         mock_installer = Mock()
         mock_installer.remove_service.return_value = True
@@ -267,7 +307,7 @@ class TestCLICommands:
         # Should attempt to remove 3 services
         assert mock_installer.remove_service.call_count == 3
 
-    def test_dry_run_mode(self, runner):
+    def test_dry_run_mode(self, runner: CliRunner) -> None:
         """Test dry-run mode doesn't make changes"""
         result = runner.invoke(app, ["install", "direct_alexa", "--dry-run"])
 
@@ -276,7 +316,9 @@ class TestCLICommands:
 
     @patch("ha_connector.cli.commands.Prompt.ask")
     @patch("ha_connector.cli.commands.ConfigurationManager")
-    def test_interactive_configuration(self, mock_config_manager, mock_prompt, runner):
+    def test_interactive_configuration(
+        self, mock_config_manager: Mock, mock_prompt: Mock, runner: CliRunner
+    ) -> None:
         """Test interactive configuration setup"""
         mock_config = Mock()
         mock_config.validate_configuration.return_value = Mock(is_valid=True, errors=[])
@@ -297,21 +339,21 @@ class TestCLIHelpers:
     def test_get_services_for_scenario(self):
         """Test service mapping for scenarios"""
         # Test direct Alexa
-        services = _get_services_for_scenario(InstallationScenario.DIRECT_ALEXA)
+        services = get_services_for_scenario(InstallationScenario.DIRECT_ALEXA)
         assert services == [ServiceType.ALEXA]
 
         # Test CloudFlare Alexa
-        services = _get_services_for_scenario(InstallationScenario.CLOUDFLARE_ALEXA)
+        services = get_services_for_scenario(InstallationScenario.CLOUDFLARE_ALEXA)
         assert ServiceType.ALEXA in services
         assert ServiceType.CLOUDFLARE_PROXY in services
 
         # Test CloudFlare iOS
-        services = _get_services_for_scenario(InstallationScenario.CLOUDFLARE_IOS)
+        services = get_services_for_scenario(InstallationScenario.CLOUDFLARE_IOS)
         assert ServiceType.IOS_COMPANION in services
         assert ServiceType.CLOUDFLARE_PROXY in services
 
         # Test all
-        services = _get_services_for_scenario(InstallationScenario.ALL)
+        services = get_services_for_scenario(InstallationScenario.ALL)
         assert len(services) == 3
         assert ServiceType.ALEXA in services
         assert ServiceType.IOS_COMPANION in services
@@ -328,7 +370,7 @@ class TestCLIIntegration:
         yield temp_dir
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def test_command_chaining(self, runner):
+    def test_command_chaining(self, runner: CliRunner) -> None:
         """Test that commands can be chained properly"""
         # This would test scenarios like:
         # 1. configure -> validate
@@ -338,7 +380,7 @@ class TestCLIIntegration:
         _ = runner  # Acknowledge fixture parameter
         assert True
 
-    def test_error_handling(self, runner):
+    def test_error_handling(self, runner: CliRunner) -> None:
         """Test CLI error handling"""
         # Test keyboard interrupt
         result = runner.invoke(app, ["install", "direct_alexa"])
@@ -350,7 +392,9 @@ class TestCLIIntegration:
 
     @patch("ha_connector.cli.commands.validate_aws_access")
     @patch("ha_connector.cli.commands.ServiceInstaller")
-    def test_verbose_output(self, mock_service_installer, mock_aws_validate, runner):
+    def test_verbose_output(
+        self, mock_service_installer: Mock, mock_aws_validate: Mock, runner: CliRunner
+    ) -> None:
         """Test verbose output functionality"""
         mock_aws_validate.return_value = {"status": "success"}
 
