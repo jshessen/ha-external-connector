@@ -13,5 +13,44 @@
         "key": "ctrl+shift+alt+f",
         "command": "black-formatter.format",
         "when": "editorTextFocus && !editorReadonly && resourceExtname == '.py'"
+    },
+    {
+        "key": "ctrl+alt+f",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Quick Fix: Black + Ruff Fix Current File",
+        "when": "editorTextFocus && resourceExtname == '.py'"
+    },
+    {
+        "key": "ctrl+alt+shift+f",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Quick Fix: Black + Ruff Fix All"
+    },
+    {
+        "key": "ctrl+alt+b",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Quick Fix: Black Format Current File",
+        "when": "editorTextFocus && resourceExtname == '.py'"
+    },
+    {
+        "key": "ctrl+alt+r",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Quick Fix: Ruff Fix Current File",
+        "when": "editorTextFocus && resourceExtname == '.py'"
+    },
+    {
+        "key": "ctrl+alt+i",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Quick Fix: Import Organization"
+    },
+    {
+        "key": "ctrl+alt+l",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Quick Fix: Line Length Issues (W2xx)"
+    },
+    {
+        "key": "ctrl+alt+shift+r",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Quick Fix: Ruff Format Current File",
+        "when": "editorTextFocus && resourceExtname == '.py'"
     }
 ]

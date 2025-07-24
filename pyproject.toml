@@ -1,5 +1,24 @@
 [tool.flake8]
 max-line-length = 88
+# Focus on rules that Ruff doesn't handle as well or plugin-specific rules
+# Disable overlapping rules that Ruff handles better with auto-fix
+extend-ignore = [
+    # Ruff handles these more efficiently with auto-fix:
+    "E501",  # Line too long (Ruff E501 with auto-fix)
+    "F401",  # Unused import (Ruff F401 with auto-fix)
+    "F841",  # Unused variable (Ruff F841 with auto-fix)
+    "W291",  # Trailing whitespace (Ruff W291 with auto-fix)
+    "W292",  # No newline at end of file (Ruff W292 with auto-fix)
+    "W293",  # Blank line contains whitespace (Ruff W293 with auto-fix)
+    "W391",  # Blank line at end of file (Ruff W391 with auto-fix)
+    "E302",  # Expected 2 blank lines (Ruff E302 with auto-fix)
+    "E303",  # Too many blank lines (Ruff E303 with auto-fix)
+    "E305",  # Expected 2 blank lines after class/function (Ruff E305 with auto-fix)
+]
+# Keep Flake8 active for:
+# - Plugin-specific rules (e.g., flake8-bugbear extensions not in Ruff)
+# - Complex analysis that Ruff may not cover yet
+# - Rules that require human judgment vs auto-fix
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

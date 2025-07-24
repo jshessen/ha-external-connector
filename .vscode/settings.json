@@ -1,14 +1,12 @@
 {
     // Python interpreter and environment
     "python.defaultInterpreterPath": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/python",
-    "python.analysis.extraPaths": [
-        "src"
-    ],
+    // Note: python.analysis.extraPaths is configured in pyproject.toml [tool.pyright] section
 
     // Type checking with Pylance (OPTIMIZED)
-    "python.analysis.typeCheckingMode": "basic",  // Changed from "strict" to reduce memory
+    // Note: python.analysis.typeCheckingMode is configured in pyproject.toml [tool.pyright] section
     "python.analysis.autoImportCompletions": true,
-    "python.analysis.autoSearchPaths": true,
+    // Note: python.analysis.autoSearchPaths is configured in pyproject.toml [tool.pyright] section
     "python.analysis.diagnosticMode": "openFilesOnly",  // CRITICAL: Changed from "workspace"
     "python.analysis.autoFormatOnType": false,  // Disabled to reduce processing
 
@@ -30,8 +28,8 @@
         "--no-error-summary"
     ],
 
-    // Flake8 integration
-    "python.linting.flake8Enabled": true,
+    // Flake8 integration (complementary to Ruff for plugin-specific rules)
+    "python.linting.flake8Enabled": true,  // Enabled: Covers rules not yet in Ruff + plugins
     "python.linting.flake8Path": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/flake8",
     "python.linting.flake8Args": ["--max-line-length=88"],
 
@@ -74,8 +72,8 @@
 
     // Python language server features
     "python.analysis.completeFunctionParens": true,
-    "python.analysis.include": ["src/**"],
-    "python.analysis.stubPath": "./typings",
+    // Note: python.analysis.include is configured in pyproject.toml [tool.pyright] section
+    // Note: python.analysis.stubPath is configured in pyproject.toml [tool.pyright] section
 
     // Ruff configuration (modern native language server)
     "ruff.enable": true,
@@ -140,6 +138,17 @@
     // Additional formatting controls
     "editor.formatOnType": false,
     "editor.formatOnPaste": true,
+
+    // Enhanced quick fix and code action settings
+    "editor.suggest.showSnippets": true,
+    "editor.suggest.showWords": true,
+    "editor.acceptSuggestionOnCommitCharacter": true,
+    "editor.acceptSuggestionOnEnter": "on",
+    "editor.tabCompletion": "on",
+
+    // Command palette improvements for quick tasks
+    "workbench.commandPalette.history": 50,
+    "workbench.quickOpen.closeOnFocusLost": false,
 
     // Problem matcher configuration
     "problems.showCurrentInStatus": true,
