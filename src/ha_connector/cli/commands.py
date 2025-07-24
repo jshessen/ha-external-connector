@@ -166,7 +166,7 @@ def _handle_deployment_result(deployment_result: dict[str, Any]) -> None:
         raise typer.Exit(1)
 
 
-def install(  # pylint: disable=too-many-positional-arguments
+def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     scenario: str = typer.Argument(
         "direct_alexa",
         help="Installation scenario: direct_alexa|cloudflare_alexa|cloudflare_ios|all",

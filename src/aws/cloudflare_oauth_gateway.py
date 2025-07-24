@@ -166,6 +166,7 @@ Original Copyright and License:
 """
 
 # pylint: disable=too-many-lines  # OAuth gateway with comprehensive security features
+# pylint: disable=duplicate-code  # Lambda functions must be standalone - no shared modules
 
 import json
 import logging
@@ -720,7 +721,7 @@ class RequestProcessingContext:
     and makes the code easier to understand.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments  # Context object initialization
         self,
         gateway_config: OAuthGatewayConfiguration,
         *,

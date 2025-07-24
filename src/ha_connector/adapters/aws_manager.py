@@ -37,8 +37,8 @@ class AWSResourceResponse(BaseModel):
     """Response model for AWS resource operations."""
 
     status: str
-    resource: Any = None
-    errors: list[str] = []
+    resource: dict[str, Any] | None = None
+    errors: list[str] = Field(default_factory=list)
 
 
 # --- Base Manager ---
@@ -163,9 +163,7 @@ class AWSIAMManager(AWSBaseManager):
 
     def __init__(self, region: str = "us-east-1") -> None:
         super().__init__(region)
-        self.client: IAMClient = boto3.client(  # type: ignore[arg-type]
-            "iam", region_name=region
-        )
+        self.client: IAMClient = boto3.client("iam", region_name=region)  # type: ignore[arg-type]
 
     def create_or_update(self, _spec: IAMResourceSpec) -> AWSResourceResponse:
         """Stub: Create or update IAM resource"""
@@ -247,7 +245,7 @@ class AWSResourceManager:
         """Create a resource based on type and specification"""
         try:
             # Resource type handlers mapping
-            handlers = {
+            handlers: dict[AWSResourceType, Any] = {
                 AWSResourceType.LAMBDA: lambda: self.lambda_manager.create_or_update(
                     LambdaResourceSpec(**resource_spec)
                 ),
@@ -287,7 +285,7 @@ class AWSResourceManager:
         """Read a resource's current state"""
         try:
             # Resource type handlers mapping
-            handlers = {
+            handlers: dict[AWSResourceType, Any] = {
                 AWSResourceType.LAMBDA: lambda: self.lambda_manager.read(resource_id),
                 AWSResourceType.IAM: lambda: self.iam_manager.read(
                     resource_id, kwargs.get("resource_subtype", "role")
@@ -327,7 +325,7 @@ class AWSResourceManager:
         """Delete a resource"""
         try:
             # Resource type handlers mapping
-            handlers = {
+            handlers: dict[AWSResourceType, Any] = {
                 AWSResourceType.LAMBDA: lambda: self.lambda_manager.delete(resource_id),
                 AWSResourceType.IAM: lambda: self.iam_manager.delete(resource_id),
                 AWSResourceType.SSM: lambda: self.ssm_manager.delete(resource_id),
@@ -357,13 +355,11 @@ class AWSResourceManager:
         """Validate AWS access and permissions"""
         try:
             # Basic AWS access validation using STS
-            sts_client: STSClient = boto3.client(  # type: ignore[arg-type]
-                "sts", region_name=self.region
-            )
+            sts_client: STSClient = boto3.client("sts", region_name=self.region)  # type: ignore[arg-type]
             caller_identity = sts_client.get_caller_identity()
             self.logger.info(f"AWS access validated for: {caller_identity['Arn']}")
             return AWSResourceResponse(
-                status="success", resource=caller_identity, errors=[]
+                status="success", resource=dict(caller_identity), errors=[]
             )
         except (ClientError, NoCredentialsError, PartialCredentialsError) as e:
             self.logger.error(f"AWS access validation failed: {str(e)}")

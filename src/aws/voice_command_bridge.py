@@ -105,6 +105,7 @@ Original Copyright and License:
 """
 
 # pylint: disable=too-many-lines  # Intentionally verbose for non-technical users
+# pylint: disable=duplicate-code  # Lambda functions must be standalone - no shared modules
 
 import configparser
 import json
