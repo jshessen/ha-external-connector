@@ -23,11 +23,33 @@ from typing import Any
 class SummaryStats:
     """Container for code quality analysis summary statistics."""
 
-    passed: list[str]
-    issues: list[str]
-    fixed: list[str]
-    errors: list[str]
+    passed: list[tuple[str, str, int, str, str]]
+    issues: list[tuple[str, str, int, str, str]]
+    fixed: list[tuple[str, str, int, str, str]]
+    errors: list[tuple[str, str, int, str, str]]
     total_issues: int
+
+
+@dataclass
+class ToolResult:
+    """Container for tool execution result data."""
+
+    name: str
+    returncode: int
+    stdout: str
+    stderr: str
+    apply_fixes: bool
+    verbose: bool
+
+
+@dataclass
+class SummaryConfig:
+    """Container for summary building configuration."""
+
+    stats: SummaryStats
+    apply_fixes: bool
+    results: list[tuple[str, str, int, str, str]]
+    verbose: bool
 
 
 # =============================================================================
@@ -192,7 +214,7 @@ def get_venv_python() -> str:
 
 def get_all_tools() -> dict[str, dict[str, Any]]:
     """Get all tools from all categories."""
-    all_tools = {}
+    all_tools: dict[str, dict[str, Any]] = {}
     for category_tools in ALL_CATEGORIES.values():
         all_tools.update(category_tools)
     return all_tools
@@ -200,7 +222,7 @@ def get_all_tools() -> dict[str, dict[str, Any]]:
 
 def get_tools_by_categories(categories: list[str]) -> dict[str, dict[str, Any]]:
     """Get tools filtered by categories."""
-    tools = {}
+    tools: dict[str, dict[str, Any]] = {}
     for category in categories:
         if category in ALL_CATEGORIES:
             tools.update(ALL_CATEGORIES[category])
@@ -211,7 +233,7 @@ def get_quality_targets(file_args: list[str] | None = None) -> list[str]:
     """Get list of directories and files to analyze."""
     # If specific files were provided, validate and use those
     if file_args:
-        validated_targets = []
+        validated_targets: list[str] = []
         for target in file_args:
             # Security: Validate file paths to prevent directory traversal
             if ".." in target or target.startswith("/"):
@@ -265,7 +287,7 @@ def run_command(
     print(f"🔍 {description}...")
 
     # Security: Validate command arguments
-    if not cmd or not all(isinstance(arg, str) for arg in cmd):
+    if not cmd:
         return -1, "", "Invalid command arguments"
 
     # Security: Check command length to prevent buffer overflow
@@ -312,32 +334,31 @@ def run_command(
         return -1, "", f"System error executing command: {e}"
 
 
-def process_tool_result(
-    name: str,
-    returncode: int,
-    stdout: str,
-    stderr: str,
-    *,
-    apply_fixes: bool,
-    verbose: bool = False,
-) -> tuple[str, str, int, str, str]:
+def process_tool_result(tool_data: ToolResult) -> tuple[str, str, int, str, str]:
     """Process the result of running a code quality tool."""
+    name = tool_data.name
+    returncode = tool_data.returncode
+    stdout = tool_data.stdout
+    stderr = tool_data.stderr
+    apply_fixes = tool_data.apply_fixes
+    verbose = tool_data.verbose
+
     # Store detailed output for verbose reporting
     detailed_output = ""
 
     if verbose:
-        detailed_output = f"\n{'='*60}\n"
+        detailed_output = f"\n{'=' * 60}\n"
         detailed_output += f"TOOL: {name}\n"
         detailed_output += f"RETURN CODE: {returncode}\n"
-        detailed_output += f"{'='*60}\n"
+        detailed_output += f"{'=' * 60}\n"
 
         if stdout.strip():
-            detailed_output += f"\nSTDOUT:\n{'-'*40}\n{stdout}\n"
+            detailed_output += f"\nSTDOUT:\n{'-' * 40}\n{stdout}\n"
 
         if stderr.strip():
-            detailed_output += f"\nSTDERR:\n{'-'*40}\n{stderr}\n"
+            detailed_output += f"\nSTDERR:\n{'-' * 40}\n{stderr}\n"
 
-        detailed_output += f"\n{'='*60}\n"
+        detailed_output += f"\n{'=' * 60}\n"
 
     if returncode == -1:
         print(f"❌ {name}: {stderr}")
@@ -350,23 +371,9 @@ def process_tool_result(
 
     # Handle specific tool output formats
     if "Black" in name:
-        return _process_black_result(
-            name=name,
-            returncode=returncode,
-            stdout=stdout,
-            stderr=stderr,
-            apply_fixes=apply_fixes,
-            detailed_output=detailed_output,
-        )
+        return _process_black_result(tool_data)
     if "isort" in name:
-        return _process_isort_result(
-            name=name,
-            returncode=returncode,
-            stdout=stdout,
-            stderr=stderr,
-            apply_fixes=apply_fixes,
-            detailed_output=detailed_output,
-        )
+        return _process_isort_result(tool_data)
 
     return _process_generic_result(
         name=name,
@@ -377,16 +384,29 @@ def process_tool_result(
     )
 
 
-def _process_black_result(
-    name: str,
-    returncode: int,
-    stdout: str,
-    stderr: str,
-    *,
-    apply_fixes: bool,
-    detailed_output: str,
-) -> tuple[str, str, int, str, str]:
+def _process_black_result(tool_data: ToolResult) -> tuple[str, str, int, str, str]:
     """Process Black-specific output."""
+    name = tool_data.name
+    returncode = tool_data.returncode
+    stdout = tool_data.stdout
+    stderr = tool_data.stderr
+    apply_fixes = tool_data.apply_fixes
+    detailed_output = ""
+
+    if tool_data.verbose:
+        detailed_output = f"\n{'=' * 60}\n"
+        detailed_output += f"TOOL: {name}\n"
+        detailed_output += f"RETURN CODE: {returncode}\n"
+        detailed_output += f"{'=' * 60}\n"
+
+        if stdout.strip():
+            detailed_output += f"\nSTDOUT:\n{'-' * 40}\n{stdout}\n"
+
+        if stderr.strip():
+            detailed_output += f"\nSTDERR:\n{'-' * 40}\n{stderr}\n"
+
+        detailed_output += f"\n{'=' * 60}\n"
+
     if "would reformat" in stderr:
         # Extract the summary line like "1 file would be reformatted"
         lines = stderr.strip().split("\n")
@@ -428,16 +448,28 @@ def _process_black_result(
     )
 
 
-def _process_isort_result(
-    name: str,
-    returncode: int,
-    stdout: str,
-    stderr: str,
-    *,
-    apply_fixes: bool,
-    detailed_output: str,
-) -> tuple[str, str, int, str, str]:
+def _process_isort_result(tool_data: ToolResult) -> tuple[str, str, int, str, str]:
     """Process isort-specific output."""
+    name = tool_data.name
+    returncode = tool_data.returncode
+    stdout = tool_data.stdout
+    stderr = tool_data.stderr
+    apply_fixes = tool_data.apply_fixes
+    detailed_output = ""
+
+    if tool_data.verbose:
+        detailed_output = f"\n{'=' * 60}\n"
+        detailed_output += f"TOOL: {name}\n"
+        detailed_output += f"RETURN CODE: {returncode}\n"
+        detailed_output += f"{'=' * 60}\n"
+
+        if stdout.strip():
+            detailed_output += f"\nSTDOUT:\n{'-' * 40}\n{stdout}\n"
+
+        if stderr.strip():
+            detailed_output += f"\nSTDERR:\n{'-' * 40}\n{stderr}\n"
+
+        detailed_output += f"\n{'=' * 60}\n"
     if "Fixing" in stdout or "would fix" in stdout:
         # Count import fixes
         lines = stdout.strip().split("\n")
@@ -473,7 +505,12 @@ def _process_generic_result(
 
 def _categorize_results(
     results: list[tuple[str, str, int, str, str]],
-) -> tuple[list, list, list, list]:
+) -> tuple[
+    list[tuple[str, str, int, str, str]],
+    list[tuple[str, str, int, str, str]],
+    list[tuple[str, str, int, str, str]],
+    list[tuple[str, str, int, str, str]],
+]:
     """Categorize results by status."""
     passed = [r for r in results if r[1] == "PASS"]
     issues = [r for r in results if r[1] == "ISSUES"]
@@ -484,7 +521,7 @@ def _categorize_results(
 
 def _build_summary_header(stats: SummaryStats, apply_fixes: bool) -> list[str]:
     """Build the summary header section."""
-    summary_text = []
+    summary_text: list[str] = []
     summary_text.append("\n📊 Code Quality Analysis Summary")
     summary_text.append("=" * 50)
 
@@ -502,8 +539,8 @@ def _build_detailed_results(
     results: list[tuple[str, str, int, str, str]], verbose: bool
 ) -> tuple[list[str], list[str]]:
     """Build detailed results and collect verbose output."""
-    summary_text = ["\n📋 Detailed Results:"]
-    verbose_text = []
+    summary_text: list[str] = ["\n📋 Detailed Results:"]
+    verbose_text: list[str] = []
 
     for name, status, _count, description, detailed_output in results:
         icon = {"PASS": "✅", "ERROR": "❌", "FIXED": "🔧"}.get(status, "⚠️")
@@ -516,35 +553,24 @@ def _build_detailed_results(
     return summary_text, verbose_text
 
 
-def _build_summary_text(
-    passed: list,
-    issues: list,
-    fixed: list,
-    errors: list,
-    *,
-    total_issues: int,
-    apply_fixes: bool,
-    results: list[tuple[str, str, int, str, str]],
-    verbose: bool,
-) -> tuple[list[str], list[str]]:
+def _build_summary_text(config: SummaryConfig) -> tuple[list[str], list[str]]:
     """Build summary and verbose text."""
     # Build header
-    stats = SummaryStats(
-        passed=passed,
-        issues=issues,
-        fixed=fixed,
-        errors=errors,
-        total_issues=total_issues,
-    )
-    summary_text = _build_summary_header(stats, apply_fixes)
+    summary_text = _build_summary_header(config.stats, config.apply_fixes)
 
     # Build detailed results and collect verbose output
-    detailed_results, verbose_text = _build_detailed_results(results, verbose)
+    detailed_results, verbose_text = _build_detailed_results(
+        config.results, config.verbose
+    )
     summary_text.extend(detailed_results)
 
     # Add suggestions
     _add_suggestions_to_summary(
-        summary_text, total_issues, len(errors), apply_fixes, len(fixed)
+        summary_text,
+        config.stats.total_issues,
+        len(config.stats.errors),
+        config.apply_fixes,
+        len(config.stats.fixed),
     )
     return summary_text, verbose_text
 
@@ -573,6 +599,44 @@ def _add_suggestions_to_summary(
         summary_text.append("    .venv/bin/python -m bandit -r src/")
 
 
+def _handle_verbose_output(
+    verbose_text: list[str], output_file: str | None, summary_text: list[str]
+) -> None:
+    """Handle verbose output to file or console."""
+    verbose_content = (
+        [
+            "\n" + "=" * 80,
+            "VERBOSE OUTPUT - DETAILED TOOL RESULTS",
+            "=" * 80,
+            "This section contains the complete output from tools with issues.",
+            "Use this information for detailed remediation and analysis.",
+            "=" * 80,
+        ]
+        + verbose_text
+        + [
+            "\n" + "=" * 80,
+            "END VERBOSE OUTPUT",
+            "=" * 80,
+        ]
+    )
+
+    if output_file:
+        # Write verbose output to file
+        try:
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write("\n".join(summary_text + verbose_content))
+            print(f"\n📄 Detailed report written to: {output_file}")
+        except OSError as e:
+            print(f"\n❌ Error writing to file {output_file}: {e}")
+            print("\n📋 Verbose output:")
+            for line in verbose_content:
+                print(line)
+    else:
+        # Print verbose output to console
+        for line in verbose_content:
+            print(line)
+
+
 def print_enhanced_summary(
     results: list[tuple[str, str, int, str, str]],
     total_issues: int,
@@ -582,16 +646,22 @@ def print_enhanced_summary(
 ) -> None:
     """Print an enhanced summary of code quality results."""
     passed, issues, fixed, errors = _categorize_results(results)
-    summary_text, verbose_text = _build_summary_text(
-        passed,
-        issues,
-        fixed,
-        errors,
+
+    stats = SummaryStats(
+        passed=passed,
+        issues=issues,
+        fixed=fixed,
+        errors=errors,
         total_issues=total_issues,
+    )
+
+    config = SummaryConfig(
+        stats=stats,
         apply_fixes=apply_fixes,
         results=results,
         verbose=verbose,
     )
+    summary_text, verbose_text = _build_summary_text(config)
 
     # Print summary to console
     for line in summary_text:
@@ -599,38 +669,7 @@ def print_enhanced_summary(
 
     # Handle verbose output
     if verbose and verbose_text:
-        verbose_content = (
-            [
-                "\n" + "=" * 80,
-                "VERBOSE OUTPUT - DETAILED TOOL RESULTS",
-                "=" * 80,
-                "This section contains the complete output from tools with issues.",
-                "Use this information for detailed remediation and analysis.",
-                "=" * 80,
-            ]
-            + verbose_text
-            + [
-                "\n" + "=" * 80,
-                "END VERBOSE OUTPUT",
-                "=" * 80,
-            ]
-        )
-
-        if output_file:
-            # Write verbose output to file
-            try:
-                with open(output_file, "w", encoding="utf-8") as f:
-                    f.write("\n".join(summary_text + verbose_content))
-                print(f"\n📄 Detailed report written to: {output_file}")
-            except OSError as e:
-                print(f"\n❌ Error writing to file {output_file}: {e}")
-                print("\n📋 Verbose output:")
-                for line in verbose_content:
-                    print(line)
-        else:
-            # Print verbose output to console
-            for line in verbose_content:
-                print(line)
+        _handle_verbose_output(verbose_text, output_file, summary_text)
 
 
 def show_available_options() -> None:
@@ -825,14 +864,15 @@ def _run_quality_tools(
         )
 
         returncode, stdout, stderr = run_command(cmd, description, tool_config)
-        result = process_tool_result(
-            tool_name.title(),
-            returncode,
-            stdout,
-            stderr,
+        tool_data = ToolResult(
+            name=tool_name.title(),
+            returncode=returncode,
+            stdout=stdout,
+            stderr=stderr,
             apply_fixes=args.fix,
             verbose=args.verbose,
         )
+        result = process_tool_result(tool_data)
         results.append(result)
 
         if result[1] in ["ISSUES", "FIXED"]:
