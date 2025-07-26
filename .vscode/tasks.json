@@ -4,10 +4,9 @@
         {
             "label": "Code Quality: All Tools",
             "type": "shell",
-            "command": "/bin/bash",
+            "command": "${workspaceFolder}/.venv/bin/python",
             "args": [
-                "-c",
-                "source .venv/bin/activate && python scripts/code_quality.py"
+                "scripts/code_quality.py"
             ],
             "group": {
                 "kind": "build",
@@ -29,7 +28,7 @@
             "command": "/bin/bash",
             "args": [
                 "-c",
-                "source .venv/bin/activate && python scripts/lint.py 2>&1 | tee .vscode/last_lint_output.log"
+                "${workspaceFolder}/.venv/bin/python scripts/lint.py 2>&1 | tee .vscode/last_lint_output.log"
             ],
             "group": "build",
             "presentation": {
@@ -48,7 +47,7 @@
             "command": "/bin/bash",
             "args": [
                 "-c",
-                "source .venv/bin/activate && python scripts/lint.py 2>&1 | tee .vscode/vs_code_task.log"
+                "${workspaceFolder}/.venv/bin/python scripts/lint.py 2>&1 | tee .vscode/vs_code_task.log"
             ],
             "group": "build",
             "presentation": {
@@ -194,8 +193,8 @@
         {
             "label": "Quick: Python Version",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && python --version"],
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["--version"],
             "group": "test",
             "presentation": {
                 "echo": true,
@@ -208,8 +207,8 @@
         {
             "label": "Quick: Ruff Check",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && ruff check src/ --no-fix"],
+            "command": "${workspaceFolder}/.venv/bin/ruff",
+            "args": ["check", "src/", "--no-fix"],
             "group": "test",
             "presentation": {
                 "echo": true,
@@ -223,7 +222,7 @@
             "label": "Quick: Environment Info",
             "type": "shell",
             "command": "/bin/bash",
-            "args": ["-c", "echo 'Python:' && source .venv/bin/activate && python --version && echo 'Ruff:' && ruff --version && echo 'Working Directory:' && pwd"],
+            "args": ["-c", "echo 'Python:' && ${workspaceFolder}/.venv/bin/python --version && echo 'Ruff:' && ${workspaceFolder}/.venv/bin/ruff --version && echo 'Working Directory:' && pwd"],
             "group": "test",
             "presentation": {
                 "echo": true,
@@ -236,8 +235,8 @@
         {
             "label": "Quick Fix: Black Format All",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && black src/ tests/ scripts/ setup.py"],
+            "command": "${workspaceFolder}/.venv/bin/black",
+            "args": ["src/", "tests/", "scripts/", "setup.py"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -251,8 +250,8 @@
         {
             "label": "Quick Fix: Black Format Current File",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && black '${file}'"],
+            "command": "${workspaceFolder}/.venv/bin/black",
+            "args": ["${file}"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -266,8 +265,8 @@
         {
             "label": "Quick Fix: Ruff Fix All",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && ruff check --fix src/ tests/ scripts/ setup.py"],
+            "command": "${workspaceFolder}/.venv/bin/ruff",
+            "args": ["check", "--fix", "src/", "tests/", "scripts/", "setup.py"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -281,8 +280,8 @@
         {
             "label": "Quick Fix: Ruff Fix Current File",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && ruff check --fix '${file}'"],
+            "command": "${workspaceFolder}/.venv/bin/ruff",
+            "args": ["check", "--fix", "${file}"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -296,8 +295,8 @@
         {
             "label": "Quick Fix: Ruff Format All",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && ruff format src/ tests/ scripts/ setup.py"],
+            "command": "${workspaceFolder}/.venv/bin/ruff",
+            "args": ["format", "src/", "tests/", "scripts/", "setup.py"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -311,8 +310,8 @@
         {
             "label": "Quick Fix: Ruff Format Current File",
             "type": "shell",
-            "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && ruff format '${file}'"],
+            "command": "${workspaceFolder}/.venv/bin/ruff",
+            "args": ["format", "${file}"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -327,7 +326,7 @@
             "label": "Quick Fix: Black + Ruff Fix All",
             "type": "shell",
             "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && echo '🔧 Running Black formatter...' && black src/ tests/ scripts/ setup.py && echo '🔧 Running Ruff fixes...' && ruff check --fix src/ tests/ scripts/ setup.py && echo '✅ All formatting fixes complete!'"],
+            "args": ["-c", "echo '🔧 Running Black formatter...' && ${workspaceFolder}/.venv/bin/black src/ tests/ scripts/ setup.py && echo '🔧 Running Ruff fixes...' && ${workspaceFolder}/.venv/bin/ruff check --fix src/ tests/ scripts/ setup.py && echo '✅ All formatting fixes complete!'"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -342,7 +341,7 @@
             "label": "Quick Fix: Black + Ruff Fix Current File",
             "type": "shell",
             "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && echo '🔧 Running Black formatter on ${fileBasename}...' && black '${file}' && echo '🔧 Running Ruff fixes on ${fileBasename}...' && ruff check --fix '${file}' && echo '✅ Formatting fixes complete for ${fileBasename}!'"],
+            "args": ["-c", "echo '🔧 Running Black formatter on ${fileBasename}...' && ${workspaceFolder}/.venv/bin/black '${file}' && echo '🔧 Running Ruff fixes on ${fileBasename}...' && ${workspaceFolder}/.venv/bin/ruff check --fix '${file}' && echo '✅ Formatting fixes complete for ${fileBasename}!'"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -357,7 +356,7 @@
             "label": "Quick Fix: Import Organization",
             "type": "shell",
             "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && echo '📦 Organizing imports...' && ruff check --select I --fix src/ tests/ scripts/ setup.py && echo '✅ Import organization complete!'"],
+            "args": ["-c", "echo '📦 Organizing imports...' && ${workspaceFolder}/.venv/bin/ruff check --select I --fix src/ tests/ scripts/ setup.py && echo '✅ Import organization complete!'"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -372,7 +371,7 @@
             "label": "Quick Fix: Line Length Issues (W2xx)",
             "type": "shell",
             "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && echo '📏 Fixing line length issues...' && black --line-length=88 src/ tests/ scripts/ setup.py && ruff check --select E501,W292,W391 --fix src/ tests/ scripts/ setup.py && echo '✅ Line length fixes complete!'"],
+            "args": ["-c", "echo '📏 Fixing line length issues...' && ${workspaceFolder}/.venv/bin/black --line-length=88 src/ tests/ scripts/ setup.py && ${workspaceFolder}/.venv/bin/ruff check --select E501,W292,W391 --fix src/ tests/ scripts/ setup.py && echo '✅ Line length fixes complete!'"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -387,7 +386,7 @@
             "label": "Diagnostics: Show Tool Coverage",
             "type": "shell",
             "command": "/bin/bash",
-            "args": ["-c", "source .venv/bin/activate && echo '🔍 Linting Tool Coverage:' && echo '  Ruff (fast auto-fix): E/W/F/I/UP/B/SIM rules' && ruff --version && echo '  Flake8 (plugins): Complex analysis + plugin rules' && flake8 --version && echo '  Black (formatting): Code style standardization' && black --version && echo '  Pylint (design): Design patterns (overlaps disabled)' && pylint --version | head -1"],
+            "args": ["-c", "echo '🔍 Linting Tool Coverage:' && echo '  Ruff (fast auto-fix): E/W/F/I/UP/B/SIM rules' && ${workspaceFolder}/.venv/bin/ruff --version && echo '  Flake8 (plugins): Complex analysis + plugin rules' && ${workspaceFolder}/.venv/bin/flake8 --version && echo '  Black (formatting): Code style standardization' && ${workspaceFolder}/.venv/bin/black --version && echo '  Pylint (design): Design patterns (overlaps disabled)' && ${workspaceFolder}/.venv/bin/pylint --version | head -1"],
             "group": "test",
             "presentation": {
                 "echo": true,

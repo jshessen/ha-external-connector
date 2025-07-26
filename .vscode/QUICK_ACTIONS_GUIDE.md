@@ -153,4 +153,4 @@ To modify these actions:
 2. Edit `.vscode/keybindings.json` for keyboard shortcuts
 3. Edit `.vscode/settings.json` for behavior modifications
 
-The tasks use your virtual environment automatically (`source .venv/bin/activate`) and provide clear terminal output with emojis for easy identification.
+The tasks use your virtual environment automatically (using direct executable paths like `${workspaceFolder}/.venv/bin/python`) and provide clear terminal output with emojis for easy identification.

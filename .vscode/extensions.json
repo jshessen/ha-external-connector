@@ -9,6 +9,7 @@
         "ms-vscode.test-adapter-converter",
         "littlefoxteam.vscode-python-test-adapter",
         "donjayamanne.githistory",
-        "github.vscode-pull-request-github"
+        "github.vscode-pull-request-github",
+        "nwgh.bandit"
     ]
 }

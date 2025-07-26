@@ -84,7 +84,8 @@
         "python.linting.banditArgs": [
             "--configfile", "pyproject.toml"
         ],
-        "bandit.importStrategy": "fromEnvironment"
+        "bandit.importStrategy": "fromEnvironment",
+        "python.linting.vulturePath": "source ${workspaceFolder}/.venv/bin/activate && ${workspaceFolder}/.venv/bin/vulture"
     },
     "extensions": {
         "recommendations": [
@@ -95,11 +96,8 @@
             "ms-python.black-formatter",
             "ms-python.isort",
             "ms-python.pylint",
-            "keesschollaart.vscode-home-assistant",
-            "bradlc.vscode-tailwindcss",
             "timonwong.shellcheck",
             "foxundermoon.shell-format",
-            "mads-hartmann.bash-ide-vscode",
             "ms-vscode.vscode-dockerfile"
         ]
     },

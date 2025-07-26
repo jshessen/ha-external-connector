@@ -58,35 +58,34 @@ Commands should now run without approval prompts:
 
 ```bash
 echo "Testing allowlist"           # ✅ Works automatically
-source .venv/bin/activate          # ✅ Works automatically
-python --version                   # ✅ Works automatically (after activation)
-ruff check src/                    # ✅ Works automatically (after activation)
+python --version                   # ✅ Works automatically (in VS Code terminal)
+ruff check src/                    # ✅ Works automatically (in VS Code terminal)
 ```
 
 ## Development Workflow Best Practices
 
 ### Virtual Environment Usage
 
-**✅ Recommended Pattern:**
+**✅ Recommended Pattern for VS Code Tasks:**
 
 ```bash
-source .venv/bin/activate    # Activate environment first
-python --version             # Use simple command names
-ruff check src/              # All tools work automatically
+# Use direct executable paths in tasks and scripts
+${workspaceFolder}/.venv/bin/python --version
+${workspaceFolder}/.venv/bin/ruff check src/
 ```
 
-**❌ Avoid This Pattern:**
+**✅ Recommended Pattern for Terminal:**
 
 ```bash
-.venv/bin/python --version   # Requires approval (full path)
-.venv/bin/ruff check src/    # Requires approval (full path)
+python --version             # Use simple command names in VS Code terminal
+ruff check src/              # All tools work automatically
 ```
 
 ### Command Matching Rules
 
 - **Simple names work**: `"python": true` covers both system and venv Python
 - **Full paths don't match**: `.venv/bin/python` requires separate allowlist entry
-- **Use activation pattern**: `source .venv/bin/activate` then simple commands
+- **VS Code handles activation**: Environment is automatically available in terminal
 
 ## File Locations
 
@@ -133,7 +132,11 @@ Agent → run_in_terminal → Direct Process → Complete Output → Agent
 #### Direct Terminal (Recommended)
 
 ```bash
-source .venv/bin/activate && python scripts/lint.py
+# In VS Code terminal (environment is automatically available)
+python scripts/lint.py
+
+# Or using explicit path in scripts/tasks
+${workspaceFolder}/.venv/bin/python scripts/lint.py
 ```
 
 **Advantages:**

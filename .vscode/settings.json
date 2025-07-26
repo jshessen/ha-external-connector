@@ -231,5 +231,14 @@
 
     // Standalone Bandit extension configuration (if installed)
     "bandit.args": ["-c", "pyproject.toml"],
-    "bandit.path": ["/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/bandit"]
+    "bandit.path": [
+        "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/bandit"
+    ],
+    "python-envs.pythonProjects": [
+        {
+            "path": "",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
 }
