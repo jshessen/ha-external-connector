@@ -117,8 +117,8 @@ TYPE_CHECKERS = {
 SECURITY_TOOLS = {
     "bandit": {
         "description": "Security vulnerability scanner",
-        "cmd_check": ["bandit", "-r"],
-        "cmd_fix": ["bandit", "-r"],  # No auto-fix
+        "cmd_check": ["bandit", "-c", "pyproject.toml", "-r"],
+        "cmd_fix": ["bandit", "-c", "pyproject.toml", "-r"],  # No auto-fix
         "python_tool": True,
         "supports_fix": False,
     },
@@ -131,8 +131,8 @@ SECURITY_TOOLS = {
     },
     "pip-audit": {
         "description": "OWASP dependency vulnerability check",
-        "cmd_check": ["pip-audit"],
-        "cmd_fix": ["pip-audit"],  # No auto-fix
+        "cmd_check": ["pip_audit"],
+        "cmd_fix": ["pip_audit"],  # No auto-fix
         "python_tool": True,
         "supports_fix": False,
     },
@@ -374,6 +374,8 @@ def process_tool_result(tool_data: ToolResult) -> tuple[str, str, int, str, str]
         return _process_black_result(tool_data)
     if "isort" in name:
         return _process_isort_result(tool_data)
+    if "Bandit" in name:
+        return _process_bandit_result(tool_data)
 
     return _process_generic_result(
         name=name,
@@ -492,6 +494,40 @@ def _process_isort_result(tool_data: ToolResult) -> tuple[str, str, int, str, st
         _stderr=stderr,
         detailed_output=detailed_output,
     )
+
+
+def _process_bandit_result(tool_data: ToolResult) -> tuple[str, str, int, str, str]:
+    """Process Bandit-specific output to correctly count security issues."""
+    name = tool_data.name
+    returncode = tool_data.returncode
+    stdout = tool_data.stdout
+    stderr = tool_data.stderr
+    detailed_output = ""
+
+    if tool_data.verbose:
+        detailed_output = f"\n{'=' * 60}\n"
+        detailed_output += f"TOOL: {name}\n"
+        detailed_output += f"RETURN CODE: {returncode}\n"
+        detailed_output += f"{'=' * 60}\n"
+
+        if stdout.strip():
+            detailed_output += f"\nSTDOUT:\n{'-' * 40}\n{stdout}\n"
+
+        if stderr.strip():
+            detailed_output += f"\nSTDERR:\n{'-' * 40}\n{stderr}\n"
+
+        detailed_output += f"\n{'=' * 60}\n"
+
+    # Count actual issues by looking for ">> Issue:" markers
+    issue_count = stdout.count(">> Issue:") if stdout else 0
+
+    if issue_count > 0:
+        print(f"⚠️ {name}: {issue_count} issues found")
+        return (name, "ISSUES", issue_count, f"{issue_count} issues", detailed_output)
+
+    # No issues found
+    print(f"✅ {name}: No issues found")
+    return (name, "PASS", 0, "No issues found", detailed_output)
 
 
 def _process_generic_result(
