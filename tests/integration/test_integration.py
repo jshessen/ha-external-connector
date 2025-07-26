@@ -24,6 +24,7 @@ from ha_connector.deployment import (
     DeploymentStrategy,
     ServiceType,
 )
+from tests.fixtures.test_secrets import get_deterministic_secret
 
 
 class TestCLIIntegration:
@@ -225,9 +226,7 @@ class TestConfigurationIntegration:
 
         # Set configuration values manually
         config.ha_base_url = "https://homeassistant.local:8123"
-        config.alexa_secret = (
-            "test-secret-that-is-at-least-32-characters-long-for-validation"
-        )
+        config.alexa_secret = get_deterministic_secret("alexa_secret")
         config.aws_region = "us-east-1"
 
         # Validate scenario setup
@@ -274,8 +273,11 @@ class TestConfigurationIntegration:
         original_config = self.config_manager.init_config(
             InstallationScenario.DIRECT_ALEXA
         )
+        original_secret = get_deterministic_secret("original_secret")
+        modified_secret = get_deterministic_secret("modified_secret")
+
         original_config.ha_base_url = "https://homeassistant.local:8123"
-        original_config.alexa_secret = "original-secret"
+        original_config.alexa_secret = original_secret
         original_config.aws_region = "us-east-1"
 
         # Mock backup creation
@@ -290,7 +292,7 @@ class TestConfigurationIntegration:
             InstallationScenario.DIRECT_ALEXA
         )
         modified_config.ha_base_url = "https://modified.homeassistant.local:8123"
-        modified_config.alexa_secret = "modified-secret"
+        modified_config.alexa_secret = modified_secret
         modified_config.aws_region = "us-west-2"
 
         # Mock restoration from backup
@@ -353,13 +355,14 @@ class TestConfigurationIntegration:
         mock_cf_manager.return_value.__enter__.return_value = mock_cf_instance
 
         # Mock user inputs for CloudFlare Alexa scenario
-        alexa_secret = "test-alexa-secret-that-is-at-least-32-characters-long"
+        alexa_secret = get_deterministic_secret("alexa_secret")
+        cf_client_secret = get_deterministic_secret("cf_client_secret")
         mock_prompt.side_effect = [
             "https://homeassistant.local:8123",  # HA base URL
             alexa_secret,  # Alexa secret (needs 32+ chars)
             "us-east-1",  # AWS region
             "test-client-id",  # CF client ID
-            "test-client-secret",  # CF client secret
+            cf_client_secret,  # CF client secret
             "example.com",  # CloudFlare domain
         ]
 
@@ -371,7 +374,7 @@ class TestConfigurationIntegration:
         config.alexa_secret = alexa_secret
         config.aws_region = "us-east-1"
         config.cf_client_id = "test-client-id"
-        config.cf_client_secret = "test-client-secret"
+        config.cf_client_secret = cf_client_secret
 
         scenario = InstallationScenario.CLOUDFLARE_ALEXA
         assert self.config_manager.validate_scenario_setup(scenario)
@@ -680,9 +683,7 @@ class TestEndToEndIntegration:
 
         config = config_manager.init_config(InstallationScenario.DIRECT_ALEXA)
         config.ha_base_url = "https://homeassistant.local:8123"
-        config.alexa_secret = (
-            "test-secret-that-is-at-least-32-characters-long-for-validation"
-        )
+        config.alexa_secret = get_deterministic_secret("alexa_secret")
         config.aws_region = "us-east-1"
 
         # Step 2: Validate configuration

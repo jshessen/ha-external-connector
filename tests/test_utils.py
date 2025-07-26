@@ -20,7 +20,7 @@ from ha_connector.config import InstallationScenario
 from ha_connector.deployment import DeploymentResult, ServiceConfig, ServiceType
 
 # Test constants - clearly marked as test data
-TEST_SECRET_PREFIX = "test-"
+TEST_SECRET_PREFIX = "test-"  # nosec B105
 TEST_DOMAIN = "test.homeassistant.local"
 
 

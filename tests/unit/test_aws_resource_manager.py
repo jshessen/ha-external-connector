@@ -6,6 +6,7 @@ These tests focus on manager coordination and resource routing, not individual
 service implementation.
 """
 
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -24,8 +25,8 @@ from ha_connector.adapters.aws_manager import (
 
 
 # Shared test fixtures
-@pytest.fixture(name="boto3_session")
-def mock_boto3_session():
+@pytest.fixture(name="_boto3_session")
+def mock_boto3_session() -> Generator[Mock, None, None]:
     """Mock boto3 session to avoid real AWS connections"""
     with patch("ha_connector.adapters.aws_manager.boto3.Session") as mock_session:
         mock_session.return_value.client.return_value = Mock()
@@ -33,15 +34,15 @@ def mock_boto3_session():
 
 
 @pytest.fixture(name="aws_manager")
-def fast_aws_manager(  # pylint: disable=unused-argument
-    boto3_session: Mock,
+def fast_aws_manager(
+    _boto3_session: Mock,
 ) -> AWSResourceManager:
     """Fast AWS manager using mocked boto3 for performance testing"""
     return AWSResourceManager(region="us-east-1")
 
 
 @pytest.fixture(name="lambda_spec")
-def sample_lambda_spec():
+def sample_lambda_spec() -> dict[str, str]:
     """Shared Lambda resource spec for testing"""
     return {
         "function_name": "test-function",
@@ -55,16 +56,12 @@ def sample_lambda_spec():
 class TestAWSResourceManager:
     """Test AWS Resource Manager orchestration functionality"""
 
-    def test_init_with_valid_region(  # pylint: disable=unused-argument
-        self, boto3_session: Mock
-    ) -> None:
+    def test_init_with_valid_region(self, _boto3_session: Mock) -> None:
         """Test initialization with valid region"""
         manager = AWSResourceManager(region="us-east-1")
         assert manager.region == "us-east-1"
 
-    def test_init_with_different_region(  # pylint: disable=unused-argument
-        self, boto3_session: Mock
-    ) -> None:
+    def test_init_with_different_region(self, _boto3_session: Mock) -> None:
         """Test initialization with different region"""
         manager = AWSResourceManager(region="us-west-2")
         assert manager.region == "us-west-2"

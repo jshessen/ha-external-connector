@@ -13,13 +13,14 @@ import pytest
 
 from ha_connector.adapters.cloudflare_manager import CloudFlareConfig, CloudFlareManager
 from ha_connector.utils import HAConnectorError
+from tests.fixtures.test_secrets import get_deterministic_secret
 
 
 def create_test_cloudflare_config() -> CloudFlareConfig:
     """Create a valid CloudFlare config for testing."""
     return CloudFlareConfig(
-        api_token="test-token",
-        api_key="test-api-key",
+        api_token=get_deterministic_secret("api_token"),
+        api_key=get_deterministic_secret("api_token"),
         email="test@example.com",
         zone_id="test-zone-id",
         debug=True,
@@ -51,7 +52,8 @@ class TestCloudFlareManager:
         mock_create_client.return_value = Mock()
 
         manager = CloudFlareManager(config=self.config)
-        assert manager.config.api_token == "test-token"
+        expected_token = get_deterministic_secret("api_token")
+        assert manager.config.api_token == expected_token
         assert manager.config.zone_id == "test-zone-id"
         assert manager.config.debug is True
 
@@ -84,13 +86,14 @@ class TestCloudFlareManager:
         with patch.dict(
             os.environ,
             {
-                "CF_API_TOKEN": "env-token",
+                "CF_API_TOKEN": get_deterministic_secret("api_token"),
                 "CF_ZONE_ID": "env-zone-id",
                 "CF_DEBUG": "true",
             },
         ):
             manager = CloudFlareManager()
-            assert manager.config.api_token == "env-token"
+            expected_env_token = get_deterministic_secret("api_token")
+            assert manager.config.api_token == expected_env_token
             assert manager.config.zone_id == "env-zone-id"
             assert manager.config.debug is True
 

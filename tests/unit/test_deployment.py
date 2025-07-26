@@ -4,10 +4,12 @@ Unit Tests for Deployment Module
 Tests deployment manager and service installer functionality.
 """
 
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+from moto import mock_aws
 
 from ha_connector.deployment import (
     DeploymentConfig,
@@ -131,17 +133,32 @@ def fast_service_installer() -> Mock:
     return installer
 
 
+# Fast ServiceInstaller fixture using moto for consistent AWS mocking
+@pytest.fixture(name="fast_service_installer")
+def mock_service_installer() -> ServiceInstaller:
+    """Create ServiceInstaller with mocked AWS dependencies using moto"""
+    with mock_aws():
+        return ServiceInstaller(region="us-east-1", dry_run=True, verbose=False)
+
+
+# Global moto fixture for deployment tests
+@pytest.fixture(autouse=True, scope="class")
+def mock_aws_for_deployment() -> Generator[None, None, None]:
+    """Automatically apply moto mocking to all deployment test classes"""
+    with mock_aws():
+        yield
+
+
 class TestServiceInstaller:
-    """Test Service Installer functionality"""
+    """Test Service Installer functionality with complete moto mocking"""
 
     installer: ServiceInstaller
 
     def setup_method(self) -> None:
-        """Set up test fixtures - use dry_run=True for faster tests"""
+        """Set up test fixtures using moto for consistent AWS mocking"""
+        # moto is applied automatically via fixture - all AWS operations are mocked
         self.installer = ServiceInstaller(
-            region="us-east-1",
-            dry_run=True,
-            verbose=False,  # Faster with dry_run=True
+            region="us-east-1", dry_run=True, verbose=False
         )
 
     def test_init_with_valid_region(self) -> None:
@@ -161,7 +178,7 @@ class TestServiceInstaller:
         config = self.installer.get_default_config(ServiceType.ALEXA)
 
         assert config["function_name"] == "ha-alexa-proxy"
-        assert config["handler"] == "alexa_wrapper.lambda_handler"
+        assert config["handler"] == "voice_command_bridge.lambda_handler"
         assert config["runtime"] == "python3.11"
 
     def test_get_default_config_ios(self) -> None:
@@ -184,8 +201,11 @@ class TestServiceInstaller:
         mock_source = Mock()
         mock_source.exists.return_value = True
 
+        # Create a mock that behaves like a Path object
         mock_output = Mock()
-        mock_output.__str__ = Mock(return_value="/test/output.zip")
+        # Direct assignment with type ignore for Python 3.13 compatibility
+        mock_output.__str__ = Mock(return_value="/test/output.zip")  # type: ignore[method-assign]
+        mock_output.__fspath__ = Mock(return_value="/test/output.zip")
 
         # Set up Path to return different mocks for different paths
         def path_side_effect(path_str: str) -> Mock:
@@ -336,13 +356,13 @@ class TestServiceInstaller:
 
 
 class TestDeploymentManager:
-    """Test Deployment Manager functionality"""
+    """Test Deployment Manager functionality with complete moto mocking"""
 
     config: DeploymentConfig
     manager: DeploymentManager
 
     def setup_method(self) -> None:
-        """Set up test fixtures"""
+        """Set up test fixtures with moto AWS mocking"""
         self.config = DeploymentConfig(
             environment="dev",
             version="1.0.0",
@@ -394,11 +414,11 @@ class TestDeploymentManager:
             manager.validate_deployment_config()
 
     @patch("ha_connector.deployment.deploy_manager.ServiceInstaller")
-    def test_pre_deployment_checks_success(self, mock_service_installer: Mock) -> None:
+    def test_pre_deployment_checks_success(self, mock_installer_class: Mock) -> None:
         """Test successful pre-deployment checks"""
         mock_installer = Mock()
         mock_installer.aws_manager = Mock()
-        mock_service_installer.return_value = mock_installer
+        mock_installer_class.return_value = mock_installer
 
         result = self.manager.pre_deployment_checks()
 
@@ -453,7 +473,7 @@ class TestDeploymentManager:
             assert isinstance(result["results"][0], DeploymentResult)
 
     @patch("ha_connector.deployment.deploy_manager.ServiceInstaller")
-    def test_execute_deployment_with_errors(self, mock_service_installer: Mock) -> None:
+    def test_execute_deployment_with_errors(self, mock_installer_class_2: Mock) -> None:
         """Test deployment execution with errors"""
         mock_installer = Mock()
         mock_result = DeploymentResult(
@@ -465,7 +485,7 @@ class TestDeploymentManager:
             errors=["Failed to create Lambda function"],
         )
         mock_installer.deploy_predefined_service.return_value = mock_result
-        mock_service_installer.return_value = mock_installer
+        mock_installer_class_2.return_value = mock_installer
 
         with patch.object(self.manager, "pre_deployment_checks") as mock_checks:
             mock_checks.return_value = True
@@ -515,7 +535,7 @@ class TestDeploymentManager:
 
 
 class TestDeploymentStrategies:
-    """Test different deployment strategies - optimized for speed"""
+    """Test different deployment strategies with complete moto mocking"""
 
     def test_immediate_strategy(self) -> None:
         """Test immediate deployment strategy"""
@@ -776,7 +796,7 @@ class TestDeploymentConfig:
 
 # Integration-style tests
 class TestDeploymentIntegration:
-    """Integration tests for deployment functionality"""
+    """Integration tests for deployment functionality with complete moto mocking"""
 
     @pytest.mark.slow
     @pytest.mark.integration

@@ -1,207 +1,155 @@
-"""Unified AWS testing framework and fixtures."""
+"""AWS test fixtures for moto integration."""
 
-import secrets
-from collections.abc import Generator
-from typing import Any
-from unittest.mock import MagicMock, Mock
+from __future__ import annotations
 
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any
+
+import boto3
 import pytest
+from moto import mock_aws
 
-from ha_connector.adapters.aws_manager import AWSResourceResponse
+if TYPE_CHECKING:
+    # Import AWS client types from types-boto3 packages
+    from types_boto3_iam.client import IAMClient
+    from types_boto3_lambda.client import LambdaClient
+    from types_boto3_ssm.client import SSMClient
+
+# Test parameters
+AWS_MANAGER_TEST_PARAMS: dict[str, Any] = {
+    "test_region": "us-east-1",
+    "test_account_id": "123456789012",
+    "lambda_function_name": "ha-external-connector-test-function",
+    "lambda_function_arn": (
+        "arn:aws:lambda:us-east-1:123456789012:"
+        "function:ha-external-connector-test-function"
+    ),
+    "iam_role_name": "ha-external-connector-test-role",
+    "iam_role_arn": ("arn:aws:iam::123456789012:role/ha-external-connector-test-role"),
+    "ssm_parameter_name": "/ha-external-connector/test/config",
+    "lambda_timeout": 30,
+    "lambda_memory_size": 128,
+    "lambda_runtime": "python3.13",
+    "lambda_handler": "lambda_function.lambda_handler",
+    "lambda_environment_vars": {"TEST_MODE": "true", "LOG_LEVEL": "INFO"},
+    "tags": {"Environment": "test", "Project": "ha-external-connector"},
+}
 
 
 class AWSTestFramework:
-    """Unified framework for AWS service testing."""
+    """AWS testing framework with moto integration."""
 
     def __init__(self, region: str = "us-east-1") -> None:
+        """Initialize the framework with a specific AWS region."""
         self.region = region
-        self.mock_session = self._create_mock_session()
-        self.lambda_client = self._create_mock_lambda_client()
-        self.iam_client = self._create_mock_iam_client()
-        self.ssm_client = self._create_mock_ssm_client()
 
-    def _create_mock_session(self) -> MagicMock:
-        """Create a mock boto3 session."""
-        mock_session = MagicMock()
-        mock_session.region_name = self.region
-
-        def client_factory(  # pylint: disable=unused-argument
-            service_name: str, **kwargs: Any  # noqa: ARG002
-        ) -> Mock:
-            if service_name == "lambda":
-                return self.lambda_client
-            if service_name == "iam":
-                return self.iam_client
-            if service_name == "ssm":
-                return self.ssm_client
-            return Mock()
-
-        mock_session.client.side_effect = client_factory
-        return mock_session
-
-    def _create_mock_lambda_client(self) -> Mock:
-        """Create a mock Lambda client with realistic responses."""
-        mock_client = Mock()
-
-        # Configure Lambda responses
-        mock_client.list_functions.return_value = {
-            "Functions": [],
-            "ResponseMetadata": {"HTTPStatusCode": 200},
-        }
-
-        function_arn = (
-            f"arn:aws:lambda:{self.region}:123456789012:function:ha-test-function"
-        )
-        mock_client.create_function.return_value = {
-            "FunctionName": "ha-test-function",
-            "FunctionArn": function_arn,
-            "Runtime": "python3.11",
-            "State": "Active",
-            "ResponseMetadata": {"HTTPStatusCode": 201},
-        }
-
-        mock_client.update_function_code.return_value = {
-            "FunctionName": "ha-test-function",
-            "LastModified": "2025-01-01T00:00:00.000+0000",
-            "ResponseMetadata": {"HTTPStatusCode": 200},
-        }
-
-        return mock_client
-
-    def _create_mock_iam_client(self) -> Mock:
-        """Create a mock IAM client with realistic responses."""
-        mock_client = Mock()
-
-        # Configure IAM responses
-        mock_client.get_role.side_effect = mock_client.exceptions.NoSuchEntityException(
-            {"Error": {"Code": "NoSuchEntity", "Message": "Role not found"}}, "GetRole"
+    @property
+    def iam_client(self) -> IAMClient:
+        """Get IAM client with explicit type annotation."""
+        return boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+            "iam", region_name=self.region
         )
 
-        mock_client.create_role.return_value = {
-            "Role": {
-                "RoleName": "ha-test-role",
-                "Arn": "arn:aws:iam::123456789012:role/ha-test-role",
-                "CreateDate": "2025-01-01T00:00:00Z",
-            },
-            "ResponseMetadata": {"HTTPStatusCode": 200},
-        }
-
-        return mock_client
-
-    def _create_mock_ssm_client(self) -> Mock:
-        """Create a mock SSM client with realistic responses."""
-        mock_client = Mock()
-
-        # Configure SSM responses
-        param_not_found = mock_client.exceptions.ParameterNotFound(
-            {"Error": {"Code": "ParameterNotFound", "Message": "Parameter not found"}},
-            "GetParameter",
+    @property
+    def lambda_client(self) -> LambdaClient:
+        """Lambda client factory with proper type hints."""
+        return boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+            "lambda", region_name=self.region
         )
-        mock_client.get_parameter.side_effect = param_not_found
 
-        mock_client.put_parameter.return_value = {
-            "Version": 1,
-            "ResponseMetadata": {"HTTPStatusCode": 200},
-        }
-
-        return mock_client
-
-    def _get_client(self, service_name: str) -> Mock:
-        """Get a mock client for the specified service."""
-        return self.mock_session.client(service_name)
-
-    def create_stub_response(self, success: bool = True) -> AWSResourceResponse:
-        """Create a stub AWS resource response for testing."""
-        if success:
-            return AWSResourceResponse(
-                status="success",
-                resource={"message": "Test operation successful"},
-                errors=[],
-            )
-        return AWSResourceResponse(
-            status="not_implemented", resource=None, errors=["Not implemented"]
+    @property
+    def ssm_client(self) -> SSMClient:
+        """Get SSM client with explicit type annotation."""
+        return boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+            "ssm", region_name=self.region
         )
 
 
-class DummyManager:
-    """Dummy AWS manager for testing framework validation."""
-
-    def __init__(self, region: str):
-        self.region = region
-        self.session = None
-
-    def create_or_update(self, spec: Any) -> AWSResourceResponse:  # noqa: ARG002
-        """Stub implementation that returns not_implemented response."""
-        # pylint: disable=unused-argument
-        return AWSResourceResponse(
-            status="not_implemented", resource=None, errors=["Not implemented"]
-        )
-
-    def delete(self, resource_id: str) -> AWSResourceResponse:  # noqa: ARG002
-        """Stub implementation that returns not_implemented response."""
-        # pylint: disable=unused-argument
-        return AWSResourceResponse(
-            status="not_implemented", resource=None, errors=["Not implemented"]
-        )
+def create_tags(tags_data: dict[str, Any]) -> list[dict[str, str]]:
+    """Create a list of tags in the format required by AWS."""
+    return [{"Key": str(key), "Value": str(value)} for key, value in tags_data.items()]
 
 
-# Test parameters for parameterized tests across AWS managers
-AWS_MANAGER_TEST_PARAMS = [
-    (DummyManager, dict, {"key": "value", "test_param": "test_value"}),
-]
+def _get_test_tags_for_ssm() -> list[dict[str, str]]:
+    """Get test tags formatted for SSM."""
+    return create_tags(AWS_MANAGER_TEST_PARAMS["tags"])
 
 
-@pytest.fixture(scope="session")
-def aws_test_framework() -> Generator[AWSTestFramework, None, None]:
-    """Session-scoped AWS test framework fixture."""
-    framework = AWSTestFramework()
-    yield framework
-
-
-@pytest.fixture(scope="function", name="boto3_session")
-def boto3_session_fixture(  # pylint: disable=redefined-outer-name
-    aws_test_framework: AWSTestFramework,
-) -> MagicMock:
-    """Function-scoped boto3 session fixture."""
-    return aws_test_framework.mock_session
-
-
-@pytest.fixture(scope="function")
-def aws_environment() -> Generator[dict[str, str], None, None]:
-    """AWS environment variables for testing."""
-    # Generate secure test credentials
-    access_key = f"AKIA{secrets.token_hex(8).upper()}"
-    secret_key = secrets.token_urlsafe(32)
-
-    env_vars = {
-        "AWS_REGION": "us-east-1",
-        "AWS_ACCESS_KEY_ID": access_key,
-        "AWS_SECRET_ACCESS_KEY": secret_key,
-        "AWS_DEFAULT_REGION": "us-east-1",
+def _get_iam_role_config() -> dict[str, Any]:
+    """Get IAM role configuration."""
+    return {
+        "RoleName": str(AWS_MANAGER_TEST_PARAMS["iam_role_name"]),
+        "AssumeRolePolicyDocument": """{
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "lambda.amazonaws.com"},
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        }""",
+        "Tags": create_tags(AWS_MANAGER_TEST_PARAMS["tags"]),
     }
 
-    yield env_vars
+
+def _get_ssm_parameter_config() -> dict[str, Any]:
+    """Get SSM parameter configuration."""
+    return {
+        "Name": str(AWS_MANAGER_TEST_PARAMS["ssm_parameter_name"]),
+        "Value": '{"test": "config"}',
+        "Type": "SecureString",
+        "Tags": _get_test_tags_for_ssm(),
+    }
 
 
-@pytest.fixture(scope="function", name="mock_lambda_client")
-def mock_lambda_client_fixture(  # pylint: disable=redefined-outer-name
-    aws_test_framework: AWSTestFramework,
-) -> Mock:
-    """Function-scoped Lambda client fixture."""
-    return aws_test_framework.lambda_client
+def _get_lambda_function_config() -> dict[str, Any]:
+    """Get Lambda function configuration."""
+    return {
+        "FunctionName": str(AWS_MANAGER_TEST_PARAMS["lambda_function_name"]),
+        "Runtime": str(AWS_MANAGER_TEST_PARAMS["lambda_runtime"]),
+        "Role": str(AWS_MANAGER_TEST_PARAMS["iam_role_arn"]),
+        "Handler": str(AWS_MANAGER_TEST_PARAMS["lambda_handler"]),
+        "Code": {"ZipFile": b"fake code"},
+        "Description": "Test Lambda function for HA External Connector",
+        "Timeout": int(AWS_MANAGER_TEST_PARAMS["lambda_timeout"]),
+        "MemorySize": int(AWS_MANAGER_TEST_PARAMS["lambda_memory_size"]),
+        "Environment": {
+            "Variables": dict(AWS_MANAGER_TEST_PARAMS["lambda_environment_vars"])
+        },
+    }
 
 
-@pytest.fixture(scope="function", name="mock_iam_client")
-def mock_iam_client_fixture(  # pylint: disable=redefined-outer-name
-    aws_test_framework: AWSTestFramework,
-) -> Mock:
-    """Function-scoped IAM client fixture."""
-    return aws_test_framework.iam_client
+@pytest.fixture
+def aws_framework() -> Iterator[AWSTestFramework]:
+    """Provide an AWS test framework instance."""
+    with mock_aws():
+        framework = AWSTestFramework()
+        yield framework
 
 
-@pytest.fixture(scope="function", name="mock_ssm_client")
-def mock_ssm_client_fixture(  # pylint: disable=redefined-outer-name
-    aws_test_framework: AWSTestFramework,
-) -> Mock:
-    """Function-scoped SSM client fixture."""
-    return aws_test_framework.ssm_client
+@pytest.fixture
+def aws_lambda_function(aws_framework_instance: AWSTestFramework) -> dict[str, Any]:
+    """Create a test Lambda function."""
+    config = _get_lambda_function_config()
+    response = aws_framework_instance.lambda_client.create_function(**config)
+    # Convert TypedDict to regular dict for compatibility
+    return dict(response)
+
+
+@pytest.fixture
+def aws_iam_role(aws_framework_instance: AWSTestFramework) -> dict[str, Any]:
+    """Create a test IAM role."""
+    config = _get_iam_role_config()
+    response = aws_framework_instance.iam_client.create_role(**config)
+    # Convert TypedDict to regular dict for compatibility
+    return dict(response)
+
+
+@pytest.fixture
+def aws_ssm_parameter(aws_framework_instance: AWSTestFramework) -> dict[str, Any]:
+    """Create a test SSM parameter."""
+    config = _get_ssm_parameter_config()
+    response = aws_framework_instance.ssm_client.put_parameter(**config)
+    # Convert TypedDict to regular dict for compatibility
+    return dict(response)

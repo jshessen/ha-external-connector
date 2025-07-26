@@ -13,6 +13,7 @@ from ha_connector.adapters.cloudflare_manager import (
     CloudFlareResourceType,
     DNSRecordSpec,
 )
+from tests.fixtures.test_secrets import get_deterministic_secret
 
 
 class TestCloudFlareResourceTypes:
@@ -20,8 +21,8 @@ class TestCloudFlareResourceTypes:
 
     def test_resource_type_values(self) -> None:
         """Test that resource types have expected values"""
-        assert CloudFlareResourceType.ACCESS_APPLICATION == "access_application"
-        assert CloudFlareResourceType.DNS_RECORD == "dns_record"
+        assert CloudFlareResourceType.ACCESS_APPLICATION.value == "access_application"
+        assert CloudFlareResourceType.DNS_RECORD.value == "dns_record"
 
     def test_resource_type_iteration(self) -> None:
         """Test that we can iterate over resource types"""
@@ -36,14 +37,15 @@ class TestCloudFlareConfig:
 
     def test_config_with_api_token_and_debug(self) -> None:
         """Test config creation with API token and debug mode"""
+        test_token = get_deterministic_secret("api_token")
         config = CloudFlareConfig(
-            api_token="test-token",
+            api_token=test_token,
             api_key=None,
             email=None,
             zone_id="test-zone-id",
             debug=True,
         )
-        assert config.api_token == "test-token"
+        assert config.api_token == test_token
 
     def test_config_with_api_key_and_email(self) -> None:
         """Test config creation with API key and email"""
@@ -60,8 +62,9 @@ class TestCloudFlareConfig:
 
     def test_config_with_debug_enabled(self) -> None:
         """Test config with debug mode enabled"""
+        test_token = get_deterministic_secret("api_token")
         config = CloudFlareConfig(
-            api_token="test-token",
+            api_token=test_token,
             api_key=None,
             email=None,
             zone_id="test-zone-id",

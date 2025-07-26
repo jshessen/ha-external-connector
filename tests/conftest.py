@@ -31,24 +31,50 @@ from ha_connector.deployment import (
     ServiceInstaller,
     ServiceType,
 )
+from tests.fixtures.test_secrets import get_deterministic_secret
 
 # Import AWS fixtures to make them available to tests
 try:
-    from tests.fixtures.aws_fixtures import (
-        aws_environment,
-        aws_test_framework,
-        boto3_session_fixture,  # Function name, exports as 'boto3_session'
-        mock_iam_client_fixture,  # Function name, exports as 'mock_iam_client'
-        mock_lambda_client_fixture,  # Function name, exports as 'mock_lambda_client'
-        mock_ssm_client_fixture,  # Function name, exports as 'mock_ssm_client'
+    from tests.fixtures.aws_fixtures import (  # noqa: F401
+        aws_framework,
+        aws_iam_role,
+        aws_lambda_function,
+        aws_ssm_parameter,
     )
 except ImportError:
-    aws_environment = None
-    aws_test_framework = None
-    boto3_session_fixture = None
-    mock_lambda_client_fixture = None
-    mock_iam_client_fixture = None
-    mock_ssm_client_fixture = None
+    # Graceful fallback when AWS fixtures are not available
+    # Define stub functions that return None for missing AWS dependencies
+
+    @pytest.fixture(name="aws_framework")
+    def aws_framework_fallback() -> None:
+        """Fallback fixture when AWS fixtures are unavailable."""
+        return None
+
+    @pytest.fixture(name="aws_lambda_function")
+    def aws_lambda_function_fallback() -> None:
+        """Fallback fixture when AWS fixtures are unavailable."""
+        return None
+
+    @pytest.fixture(name="aws_iam_role")
+    def aws_iam_role_fallback() -> None:
+        """Fallback fixture when AWS fixtures are unavailable."""
+        return None
+
+    @pytest.fixture(name="aws_ssm_parameter")
+    def aws_ssm_parameter_fallback() -> None:
+        """Fallback fixture when AWS fixtures are unavailable."""
+        return None
+
+    @pytest.fixture(name="mock_lambda_response")
+    def mock_lambda_response_fallback() -> None:
+        """Fallback fixture when AWS fixtures are unavailable."""
+        return None
+
+    @pytest.fixture(name="mock_iam_response")
+    def mock_iam_response_fallback() -> None:
+        """Fallback fixture when AWS fixtures are unavailable."""
+        return None
+
 
 # Import CloudFlare fixtures to make them available to tests
 try:
@@ -58,9 +84,25 @@ try:
         cloudflare_test_framework,
     )
 except ImportError:
-    cloudflare_config = None
-    cloudflare_environment = None
-    cloudflare_test_framework = None
+    # Graceful fallback when CloudFlare fixtures are not available
+    @pytest.fixture(name="cloudflare_config")
+    def cloudflare_config_fallback() -> None:
+        """Fallback fixture when CloudFlare dependencies are unavailable."""
+        return None
+
+    @pytest.fixture(name="cloudflare_environment")
+    def cloudflare_environment_fallback() -> None:
+        """Fallback fixture when CloudFlare dependencies are unavailable."""
+        return None
+
+    @pytest.fixture(name="cloudflare_test_framework")
+    def cloudflare_test_framework_fallback() -> None:
+        """Fallback fixture when CloudFlare dependencies are unavailable."""
+        return None
+
+    cloudflare_config = cloudflare_config_fallback
+    cloudflare_environment = cloudflare_environment_fallback
+    cloudflare_test_framework = cloudflare_test_framework_fallback
 
 
 class MockAWSResponse(BaseModel):
@@ -112,9 +154,9 @@ def mock_config_manager() -> ConfigurationManager:
     config_manager.config = ConfigurationState(
         scenario=InstallationScenario.DIRECT_ALEXA,
         ha_base_url="https://test.homeassistant.local:8123",
-        alexa_secret="test-alexa-secret-123",
+        alexa_secret=get_deterministic_secret("alexa_secret"),
         cf_client_id="test-cf-client-id",
-        cf_client_secret="test-cf-client-secret",
+        cf_client_secret=get_deterministic_secret("cf_client_secret"),
         aws_region="us-east-1",
     )
     return config_manager
@@ -126,7 +168,7 @@ def mock_service_config() -> ServiceConfig:
     return ServiceConfig(
         service_type=ServiceType.ALEXA,
         function_name="ha-alexa-proxy",
-        source_path="/tmp/alexa-source",
+        source_path=tempfile.mkdtemp(prefix="alexa-source-"),
         handler="lambda_function.lambda_handler",
         runtime="python3.11",
         timeout=30,
@@ -165,7 +207,7 @@ def mock_deployment_config() -> DeploymentConfig:
 
 
 @pytest.fixture
-def mock_aws_client():
+def mock_aws_client() -> Mock:
     """Mock AWS client with common responses"""
     mock_client = Mock()
 
@@ -228,7 +270,7 @@ def mock_aws_client():
 
 
 @pytest.fixture
-def mock_cloudflare_client():
+def mock_cloudflare_client() -> Mock:
     """Mock CloudFlare client with common responses"""
     mock_client = Mock()
 
@@ -259,33 +301,33 @@ def mock_cloudflare_client():
     return mock_client
 
 
-@pytest.fixture
+@pytest.fixture(name="service_installer")
 def mock_service_installer(
-    mock_deployment_config: DeploymentConfig,  # pylint: disable=redefined-outer-name
+    _mock_deployment_config: DeploymentConfig,
 ) -> ServiceInstaller:
     """Create a mock service installer"""
     with patch("ha_connector.deployment.service_installer.boto3") as mock_boto3:
         mock_boto3.client.return_value = Mock()
         installer = ServiceInstaller(
-            region=mock_deployment_config.region,
-            dry_run=mock_deployment_config.dry_run,
-            verbose=mock_deployment_config.verbose,
+            region="us-east-1",
+            dry_run=True,
+            verbose=_mock_deployment_config.verbose,
         )
         return installer
 
 
-@pytest.fixture
+@pytest.fixture(name="deployment_manager")
 def mock_deployment_manager(
-    mock_deployment_config: DeploymentConfig,  # pylint: disable=redefined-outer-name
+    _mock_deployment_config: DeploymentConfig,
 ) -> DeploymentManager:
     """Create a mock deployment manager"""
     with patch("ha_connector.deployment.deploy_manager.ServiceInstaller"):
-        manager = DeploymentManager(mock_deployment_config)
+        manager = DeploymentManager(_mock_deployment_config)
         return manager
 
 
 # Pytest markers for test categorization
-pytest_plugins = []
+pytest_plugins: list[str] = []
 
 
 # Skip AWS tests if credentials not available
@@ -300,10 +342,17 @@ def pytest_configure(config: Config) -> None:
     config.addinivalue_line("markers", "slow: mark test as slow running")
 
 
-def pytest_collection_modifyitems(
-    config: Config, items: list[Item]  # pylint: disable=unused-argument
-) -> None:
-    """Modify test collection to add markers based on test names and conditions"""
+def pytest_collection_modifyitems(config: Config, items: list[Item]) -> None:
+    """
+    Modify test items to skip tests that require missing dependencies.
+
+    Args:
+        config: The pytest configuration object (required by pytest API)
+        items: List of collected test items to modify
+    """
+    # Suppress the unused argument warning for the required pytest hook parameter
+    _ = config
+    # Modify test collection to add markers based on test names and conditions
     for item in items:
         # Mark AWS tests
         if (
@@ -329,7 +378,7 @@ def pytest_collection_modifyitems(
 
 
 @pytest.fixture(autouse=True)
-def cleanup_environment():
+def cleanup_environment() -> Generator[None, None, None]:
     """Cleanup environment after each test"""
     yield
     # Any cleanup code would go here
@@ -337,12 +386,10 @@ def cleanup_environment():
 
 # Explicitly re-export fixtures for pytest auto-discovery
 __all__ = [
-    "aws_environment",
-    "aws_test_framework",
-    "boto3_session_fixture",
-    "mock_lambda_client_fixture",
-    "mock_iam_client_fixture",
-    "mock_ssm_client_fixture",
+    "aws_framework",
+    "aws_lambda_function",
+    "aws_iam_role",
+    "aws_ssm_parameter",
     "cloudflare_config",
     "cloudflare_environment",
     "cloudflare_test_framework",
