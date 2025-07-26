@@ -179,11 +179,10 @@ from typing import TYPE_CHECKING, Any
 
 import boto3
 import urllib3
-from mypy_boto3_ssm import SSMClient
 from urllib3.exceptions import HTTPError
 
 if TYPE_CHECKING:
-    pass  # Type checking imports can be added here if needed
+    from types_boto3_ssm.client import SSMClient  # vulture: ignore
 
 # === CONFIGURATION SECTION ===
 # These settings control how the OAuth gateway behaves
@@ -252,7 +251,7 @@ allowed_home_assistant_base_url = os.environ["ALLOWED_HA_BASE_URL"].strip().rstr
 # These provide secure access to AWS services
 
 # SSM (Systems Manager Parameter Store) client for secure configuration retrieval
-aws_parameter_store_client: SSMClient = boto3.client("ssm")  # pyright: ignore
+aws_parameter_store_client: "SSMClient" = boto3.client("ssm")  # pyright: ignore
 
 # === SECURITY HEADERS ===
 # These HTTP headers improve security by controlling browser behavior
@@ -681,22 +680,26 @@ class OAuthGatewayConfiguration:
     @property
     def home_assistant_base_url(self) -> str:
         """Get the Home Assistant base URL."""
-        return self._config_data["HA_BASE_URL"].strip().rstrip("/")
+        url: str = self._config_data["HA_BASE_URL"].strip().rstrip("/")
+        return url
 
     @property
     def alexa_shared_secret(self) -> str:
         """Get the shared secret for Alexa authentication."""
-        return self._config_data["ALEXA_SECRET"]
+        secret: str = self._config_data["ALEXA_SECRET"]
+        return secret
 
     @property
     def cloudflare_client_id(self) -> str:
         """Get the CloudFlare Access client ID."""
-        return self._config_data["CF_CLIENT_ID"]
+        client_id: str = self._config_data["CF_CLIENT_ID"]
+        return client_id
 
     @property
     def cloudflare_client_secret(self) -> str:
         """Get the CloudFlare Access client secret."""
-        return self._config_data["CF_CLIENT_SECRET"]
+        client_secret: str = self._config_data["CF_CLIENT_SECRET"]
+        return client_secret
 
     @property
     def home_assistant_token(self) -> str | None:
@@ -1303,7 +1306,7 @@ def mask_sensitive_data_in_body(request_body: str) -> str:
     for pattern in sensitive_patterns:
         masked_body = re.sub(
             pattern,
-            lambda m: m.group(0).split(":")[0] + ': "[🔒PROTECTED🔒]"',
+            lambda m: str(m.group(0)).split(":", maxsplit=1)[0] + ': "[🔒PROTECTED🔒]"',
             masked_body,
             flags=re.IGNORECASE,
         )

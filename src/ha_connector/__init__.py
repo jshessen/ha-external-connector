@@ -16,10 +16,7 @@ from .adapters import (
     CloudFlareManager,
     CloudFlareResourceType,
 )
-from .config import (
-    ConfigurationManager,
-    InstallationScenario,
-)
+from .config import ConfigurationManager, InstallationScenario
 from .deployment import (
     DeploymentConfig,
     DeploymentManager,

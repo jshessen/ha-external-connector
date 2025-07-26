@@ -17,6 +17,7 @@ from .commands import (
     install_command,
     remove_command,
     status_command,
+    wizard,
 )
 
 # Initialize console and logger
@@ -76,6 +77,7 @@ def version() -> None:
 
 # Register commands with the main app
 app.command(name="install")(install_command)
+app.command(name="wizard")(wizard)
 app.command(name="deploy")(deploy_command)
 app.command(name="configure")(configure_command)
 app.command(name="status")(status_command)

@@ -2,8 +2,11 @@
 CLI Commands Module
 
 This module provides all the CLI commands for the Home Assistant External Connector.
-Modern Python implementations for all command functionality.
+Enhanced with Phase 4.2 interactive installation wizard and progress tracking.
 """
+
+# pylint: disable=too-many-lines,too-many-locals
+# Note: Large module size is acceptable for comprehensive CLI interface
 
 import os
 import traceback
@@ -44,6 +47,377 @@ def validate_aws_access(region: str = "us-east-1") -> dict[str, Any]:
     manager = AWSResourceManager(region)
     resp = manager.validate_aws_access()
     return resp.model_dump() if hasattr(resp, "model_dump") else dict(resp)
+
+
+# Enhanced Interactive Installation Wizard
+
+
+def _interactive_scenario_selection() -> InstallationScenario:
+    """Interactive scenario selection with enhanced user experience"""
+    console.print(
+        Panel(
+            "[bold blue]Home Assistant External Connector - "
+            "Installation Wizard[/bold blue]",
+            title="🏠 Welcome",
+            border_style="blue",
+        )
+    )
+
+    console.print("\n[bold]Select your integration scenario:[/bold]\n")
+
+    # Display scenario options
+    console.print("🎯 [bold cyan]SCENARIO 1: Direct Alexa Integration[/bold cyan]")
+    console.print("   • Basic Alexa Smart Home skill → AWS Lambda → Home Assistant")
+    console.print("   • No CloudFlare proxy required")
+    console.print("   • Simplest setup for Alexa voice commands\n")
+
+    console.print(
+        "🔒 [bold green]SCENARIO 2: CloudFlare-Proxied "
+        "Alexa Integration[/bold green]"
+    )
+    console.print(
+        "   • Alexa Smart Home skill → AWS Lambda → "
+        "CloudFlare Access → Home Assistant"
+    )
+    console.print("   • Adds CloudFlare Access security layer")
+    console.print("   • Requires CloudFlare domain and Access setup\n")
+
+    console.print(
+        "📱 [bold magenta]SCENARIO 3: iOS Companion with CloudFlare[/bold magenta]"
+    )
+    console.print(
+        "   • iOS Home Assistant app → AWS Lambda → "
+        "CloudFlare Access → Home Assistant"
+    )
+    console.print("   • Enables secure external access for iOS app")
+    console.print("   • Requires existing CloudFlare Access setup\n")
+
+    # Scenario mapping
+    scenario_map = {
+        "1": InstallationScenario.DIRECT_ALEXA,
+        "2": InstallationScenario.CLOUDFLARE_ALEXA,
+        "3": InstallationScenario.CLOUDFLARE_IOS,
+    }
+
+    while True:
+        choice = Prompt.ask(
+            "[bold]Choose scenario[/bold]", choices=["1", "2", "3"], default="1"
+        )
+
+        if choice in scenario_map:
+            selected_scenario = scenario_map[choice]
+
+            # Display confirmation
+            scenario_names = {
+                InstallationScenario.DIRECT_ALEXA: "Direct Alexa Integration",
+                InstallationScenario.CLOUDFLARE_ALEXA: (
+                    "CloudFlare-Proxied Alexa Integration"
+                ),
+                InstallationScenario.CLOUDFLARE_IOS: ("iOS Companion with CloudFlare"),
+            }
+
+            console.print(
+                f"\n✅ [bold green]Selected:[/bold green] "
+                f"{scenario_names[selected_scenario]}"
+            )
+            return selected_scenario
+
+        console.print("[red]❌ Invalid choice. Please select 1, 2, or 3.[/red]")
+
+
+def _enhanced_installation_wizard(
+    scenario: InstallationScenario,
+    region: str,
+    dry_run: bool = False,
+    force: bool = False,
+) -> None:
+    """Enhanced installation wizard with progress tracking and user interaction"""
+
+    console.print(
+        Panel(
+            f"[bold]Installation Scenario:[/bold] {scenario.value}\n"
+            f"[bold]AWS Region:[/bold] {region}",
+            title="🚀 Installation Configuration",
+            border_style="green",
+        )
+    )
+
+    # Step 1: Pre-installation checks
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task("Running pre-installation checks...", total=None)
+
+        # Validate AWS access
+        aws_validation = validate_aws_access(region)
+        if not aws_validation.get("valid", False):
+            console.print("[red]❌ AWS access validation failed[/red]")
+            raise typer.Exit(1)
+
+        console.print(
+            f"[green]✅ AWS access validated[/green] "
+            f"(Account: {aws_validation.get('account_id', 'unknown')})"
+        )
+
+    # Step 2: Configuration setup
+    config_manager = ConfigurationManager()
+    config_manager.init_config(scenario)
+
+    # Check if configuration is valid
+    if not config_manager.validate_scenario_setup(scenario):
+        console.print(
+            "[yellow]⚠ Configuration incomplete or invalid. "
+            "Entering interactive setup...[/yellow]"
+        )
+        _enhanced_interactive_configuration_setup(config_manager)
+
+    # Step 3: Installation planning
+    console.print("\n[bold]🔍 Analyzing existing resources...[/bold]")
+
+    service_installer = ServiceInstaller(region=region, dry_run=dry_run, verbose=True)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Creating installation plan...", total=None)
+        installation_plan = service_installer.plan_enhanced_installation(scenario)
+        progress.update(task, completed=100)
+
+    # Display installation plan
+    _display_installation_plan(installation_plan)
+
+    # Step 4: Handle conflicts and user decisions
+    user_choices = {}
+    if installation_plan.get("user_decisions_needed"):
+        console.print("\n[bold yellow]⚠ User decisions required:[/bold yellow]")
+        user_choices = _handle_user_decisions(
+            installation_plan["user_decisions_needed"]
+        )
+
+    # Step 5: Final confirmation
+    if not force and not dry_run:
+        proceed = Confirm.ask("\n[bold]Proceed with installation?[/bold]", default=True)
+        if not proceed:
+            console.print("[yellow]Installation cancelled by user[/yellow]")
+            raise typer.Exit(0)
+
+    # Step 6: Execute installation
+    console.print("\n[bold]🚀 Executing installation...[/bold]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Installing services...", total=None)
+
+        try:
+            result = service_installer.execute_enhanced_installation(
+                installation_plan, user_choices
+            )
+            progress.update(task, completed=100)
+
+            if result.success:
+                _display_installation_success(result, scenario)
+            else:
+                _display_installation_errors(result)
+                raise typer.Exit(1)
+
+        except Exception as e:
+            progress.update(task, completed=100)
+            console.print(f"[red]❌ Installation failed: {str(e)}[/red]")
+            raise typer.Exit(1) from e
+
+
+def _enhanced_interactive_configuration_setup(
+    config_manager: ConfigurationManager,
+) -> None:
+    """Enhanced interactive configuration setup with validation"""
+    console.print(
+        Panel(
+            "[bold]Interactive Configuration Setup[/bold]",
+            title="🔧 Configuration",
+            border_style="yellow",
+        )
+    )
+
+    # HA Base URL
+    if not os.getenv("HA_BASE_URL"):
+        console.print("[bold]1. Home Assistant Configuration[/bold]")
+        ha_url = Prompt.ask(
+            "Enter your Home Assistant base URL", default="https://ha.example.com"
+        )
+
+        # Basic URL validation
+        if not ha_url.startswith(("http://", "https://")):
+            ha_url = f"https://{ha_url}"
+
+        os.environ["HA_BASE_URL"] = ha_url.rstrip("/")
+        console.print(f"✅ Home Assistant URL: {ha_url}")
+
+    # Alexa secret
+    if not os.getenv("ALEXA_SECRET"):
+        console.print("\n[bold]2. Alexa Configuration[/bold]")
+
+        use_generated = Confirm.ask(
+            "Generate secure Alexa secret automatically?", default=True
+        )
+
+        if use_generated:
+            alexa_secret = config_manager.generate_secure_secret()
+            console.print(f"✅ Generated Alexa secret: [bold]{alexa_secret}[/bold]")
+        else:
+            alexa_secret = Prompt.ask(
+                "Enter your Alexa secret (minimum 32 characters)", password=True
+            )
+
+        os.environ["ALEXA_SECRET"] = alexa_secret
+
+    # AWS region confirmation
+    if not os.getenv("AWS_REGION"):
+        console.print("\n[bold]3. AWS Configuration[/bold]")
+        aws_region = Prompt.ask("Enter AWS region", default="us-east-1")
+        os.environ["AWS_REGION"] = aws_region
+        console.print(f"✅ AWS Region: {aws_region}")
+
+    console.print("[green]✅ Interactive configuration completed[/green]")
+
+
+def _display_installation_plan(plan: dict[str, Any]) -> None:
+    """Display installation plan in a user-friendly format"""
+    console.print(
+        Panel(
+            f"[bold]Scenario:[/bold] {plan['scenario']}\n"
+            f"[bold]AWS Region:[/bold] {plan['region']}\n"
+            f"[bold]Requirements:[/bold] {plan['requirements']}\n"
+            f"[bold]Resources Found:[/bold] {plan['matched_resources']}\n"
+            f"[bold]Installation Steps:[/bold] {len(plan['installation_steps'])}",
+            title="📋 Installation Plan",
+            border_style="blue",
+        )
+    )
+
+    # Display conflicts if any
+    if plan.get("conflicts"):
+        console.print("\n[bold red]⚠ Resource Conflicts Detected:[/bold red]")
+        table = Table()
+        table.add_column("Resource", style="cyan")
+        table.add_column("Issue", style="red")
+        table.add_column("Type", style="yellow")
+
+        for conflict in plan["conflicts"]:
+            table.add_row(
+                conflict["resource"], conflict["issue"], conflict["resource_type"]
+            )
+        console.print(table)
+
+    # Display installation steps
+    if plan.get("installation_steps"):
+        console.print("\n[bold green]📝 Installation Steps:[/bold green]")
+        for i, step in enumerate(plan["installation_steps"], 1):
+            console.print(
+                f"{i}. [cyan]{step['action'].title()}[/cyan] "
+                f"{step['resource_type']} [bold]{step['resource_id']}[/bold]"
+            )
+
+
+def _handle_user_decisions(decisions: list[dict[str, Any]]) -> dict[str, str]:
+    """Handle user decisions for conflicts and choices"""
+    user_choices: dict[str, str] = {}
+
+    for decision in decisions:
+        console.print(f"\n[yellow]❓ {decision['message']}[/yellow]")
+
+        if "options" in decision:
+            choice = Prompt.ask(
+                "Choose option",
+                choices=decision["options"],
+                default=decision["options"][0],
+            )
+
+            # Generate key for the choice
+            resource_key = f"conflict_{decision.get('message', '').split()[1]}"
+            user_choices[resource_key] = choice
+
+            console.print(f"✅ Selected: [bold]{choice}[/bold]")
+
+    return user_choices
+
+
+def _display_installation_success(result: Any, scenario: InstallationScenario) -> None:
+    """Display installation success with next steps"""
+    console.print(
+        Panel(
+            "[bold green]🎉 Installation completed successfully![/bold green]",
+            title="✅ Success",
+            border_style="green",
+        )
+    )
+
+    # Display deployment summary
+    if hasattr(result, "metadata") and result.metadata:
+        summary = result.metadata.get("summary", "Installation completed")
+        console.print(f"\n[bold]Summary:[/bold] {summary}")
+
+    # Show next steps based on scenario
+    _display_next_steps(scenario)
+
+
+def _display_installation_errors(result: Any) -> None:
+    """Display installation errors"""
+    console.print(
+        Panel(
+            "[bold red]❌ Installation failed![/bold red]",
+            title="💥 Error",
+            border_style="red",
+        )
+    )
+
+    if hasattr(result, "errors") and result.errors:
+        console.print("\n[bold red]Errors encountered:[/bold red]")
+        for error in result.errors:
+            console.print(f"  • [red]{error}[/red]")
+
+    if hasattr(result, "warnings") and result.warnings:
+        console.print("\n[bold yellow]Warnings:[/bold yellow]")
+        for warning in result.warnings:
+            console.print(f"  • [yellow]{warning}[/yellow]")
+
+
+def _display_next_steps(scenario: InstallationScenario) -> None:
+    """Display scenario-specific next steps"""
+    console.print("\n[bold]📋 Next Steps:[/bold]")
+
+    if scenario == InstallationScenario.DIRECT_ALEXA:
+        console.print(
+            "1. Go to Amazon Developer Console (developer.amazon.com)\n"
+            "2. Create/edit your Alexa Smart Home skill\n"
+            "3. Set the endpoint URL to your Lambda function URL\n"
+            "4. Configure account linking (optional for basic setup)\n"
+            "5. Test with: 'Alexa, discover devices'"
+        )
+    elif scenario == InstallationScenario.CLOUDFLARE_ALEXA:
+        console.print(
+            "1. Configure CloudFlare Access application\n"
+            "2. Set up Alexa Smart Home skill with CloudFlare endpoint\n"
+            "3. Configure OAuth flow for account linking\n"
+            "4. Test device discovery and voice commands"
+        )
+    elif scenario == InstallationScenario.CLOUDFLARE_IOS:
+        console.print(
+            "1. Configure CloudFlare Access policies\n"
+            "2. Update iOS Home Assistant app with external URL\n"
+            "3. Test connectivity from iOS app\n"
+            "4. Verify secure authentication flow"
+        )
+
+    console.print(
+        "\n[dim]💡 For detailed guidance, run: [bold]ha-connector status[/bold][/dim]"
+    )
 
 
 # Helper functions for the install command
@@ -166,6 +540,47 @@ def _handle_deployment_result(deployment_result: dict[str, Any]) -> None:
         raise typer.Exit(1)
 
 
+def install_wizard() -> None:
+    """
+    Interactive installation wizard with enhanced user experience.
+
+    This function provides a guided installation process using the
+    interactive helper functions for scenario selection, configuration,
+    and installation with progress tracking.
+    """
+    try:
+        # Step 1: Interactive scenario selection
+        scenario = _interactive_scenario_selection()
+
+        # Step 2: Enhanced installation wizard (returns None but shows progress)
+        _enhanced_installation_wizard(scenario, region="us-east-1")
+
+        # Step 3: Display completion message and next steps
+        console.print(
+            "\n✅ [bold green]Installation completed successfully![/bold green]"
+        )
+
+        # Show next steps
+        console.print(
+            Panel(
+                "[bold]Next Steps:[/bold]\n\n"
+                "1. 🎯 Test your Alexa integration with voice commands\n"
+                "2. 📱 Configure iOS Home Assistant app if applicable\n"
+                "3. 🔧 Review AWS Lambda logs for troubleshooting\n"
+                "4. 📖 Check documentation for advanced configuration",
+                title="🎉 Installation Complete",
+                border_style="green",
+            )
+        )
+
+    except KeyboardInterrupt as e:
+        console.print("\n[yellow]⚠ Installation wizard interrupted by user[/yellow]")
+        raise typer.Exit(130) from e
+    except Exception as e:
+        console.print(f"\n[red]💥 Installation wizard failed: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+
+
 def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     scenario: str = typer.Argument(
         "direct_alexa",
@@ -193,6 +608,9 @@ def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     cloudflare_domain: Optional[str] = typer.Option(  # noqa: UP045
         None, "--cloudflare-domain", help="CloudFlare domain for configuration"
     ),
+    interactive: bool = typer.Option(
+        False, "--interactive", "-i", help="Launch interactive installation wizard"
+    ),
 ) -> None:
     """
     Install Home Assistant External Connector services.
@@ -205,7 +623,14 @@ def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     - cloudflare_alexa: Alexa integration via CloudFlare Access
     - cloudflare_ios: iOS Companion via CloudFlare Access
     - all: Install all supported integrations
+
+    Use --interactive for guided installation with enhanced user experience.
     """
+    # Launch interactive wizard if requested
+    if interactive:
+        install_wizard()
+        return
+
     _print_installation_header(scenario, region, environment, dry_run)
 
     try:
@@ -249,6 +674,21 @@ def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
 
 
 _DEFAULT_SERVICES = ["alexa", "ios_companion", "cloudflare_proxy"]
+
+
+def wizard() -> None:
+    """
+    Launch the interactive installation wizard.
+
+    This command provides a guided installation experience with:
+    - Interactive scenario selection
+    - Automated configuration setup
+    - Progress tracking with visual feedback
+    - Enhanced user experience with Rich UI components
+
+    Equivalent to: ha-connector install --interactive
+    """
+    install_wizard()
 
 
 def deploy(

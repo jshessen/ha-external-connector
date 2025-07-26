@@ -11,16 +11,17 @@ Modern Python implementation for AWS resource management.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
-from mypy_boto3_iam import IAMClient
-from mypy_boto3_sts import STSClient
 from pydantic import BaseModel, Field
 
-# Local imports
 from ..utils import HAConnectorLogger, ValidationError, assert_never
+
+if TYPE_CHECKING:
+    from types_boto3_iam.client import IAMClient
+    from types_boto3_sts.client import STSClient
 
 # Global instance storage for backwards compatibility
 _global_managers: dict[str, AWSResourceManager] = {}
@@ -163,7 +164,7 @@ class AWSIAMManager(AWSBaseManager):
 
     def __init__(self, region: str = "us-east-1") -> None:
         super().__init__(region)
-        self.client: IAMClient = boto3.client("iam", region_name=region)  # type: ignore[arg-type]
+        self.client: IAMClient = boto3.client("iam", region_name=region)
 
     def create_or_update(self, _spec: IAMResourceSpec) -> AWSResourceResponse:
         """Stub: Create or update IAM resource"""
@@ -265,7 +266,8 @@ class AWSResourceManager:
 
             handler = handlers.get(resource_type)
             if handler:
-                return handler()
+                result: AWSResourceResponse = handler()
+                return result
 
             # This should never happen with current enum
             assert_never(resource_type)
@@ -297,7 +299,8 @@ class AWSResourceManager:
 
             handler = handlers.get(resource_type)
             if handler:
-                return handler()
+                result: AWSResourceResponse = handler()
+                return result
 
             # This should never happen with current enum
             assert_never(resource_type)
@@ -337,7 +340,8 @@ class AWSResourceManager:
 
             handler = handlers.get(resource_type)
             if handler:
-                return handler()
+                result: AWSResourceResponse = handler()
+                return result
 
             # This should never happen with current enum
             assert_never(resource_type)
@@ -355,7 +359,7 @@ class AWSResourceManager:
         """Validate AWS access and permissions"""
         try:
             # Basic AWS access validation using STS
-            sts_client: STSClient = boto3.client("sts", region_name=self.region)  # type: ignore[arg-type]
+            sts_client: STSClient = boto3.client("sts", region_name=self.region)
             caller_identity = sts_client.get_caller_identity()
             self.logger.info(f"AWS access validated for: {caller_identity['Arn']}")
             return AWSResourceResponse(

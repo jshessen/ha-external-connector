@@ -8,13 +8,22 @@ from typing import Any
 from ..utils import logger
 
 # Import CloudFlare components at module level to avoid import-outside-toplevel warnings
+# Initialize as None, will be set if import succeeds
+CloudFlareManager: Any = None
+CloudFlareResourceType: Any = None
+
+# Check CloudFlare availability once at module load
 try:
     from ..adapters.cloudflare_manager import CloudFlareManager, CloudFlareResourceType
 except ImportError:
     # CloudFlare adapter not available - will be handled gracefully
-    CloudFlareManager = None
-    CloudFlareResourceType = None
-    CloudFlareResourceType = None
+    CloudFlareManager = None  # pyright: ignore
+    CloudFlareResourceType = None  # pyright: ignore
+
+
+def _is_cloudflare_available() -> bool:
+    """Check if CloudFlare manager is available."""
+    return CloudFlareManager is not None
 
 
 def validate_cloudflare_domain_setup(domain: str) -> None:
@@ -41,7 +50,7 @@ def validate_cloudflare_domain_setup(domain: str) -> None:
         return
 
     # Implement CloudFlare API validation using the adapter
-    if CloudFlareManager is None:
+    if not _is_cloudflare_available():
         logger.warning("CloudFlare adapter not available - skipping API validation")
         return
 
@@ -60,7 +69,7 @@ def _perform_cloudflare_api_validation(domain: str) -> None:
     try:
         logger.debug("Performing CloudFlare API validation...")
 
-        if CloudFlareManager is None:
+        if not _is_cloudflare_available():
             raise ImportError("CloudFlare adapter not available")
 
         with CloudFlareManager() as cf_manager:
@@ -93,7 +102,7 @@ def _validate_cloudflare_credentials(cf_manager: Any) -> str:
         ValueError: If credentials are invalid
     """
     try:
-        account_id = cf_manager.get_account_id()
+        account_id: str = cf_manager.get_account_id()
         logger.debug(
             f"✅ CloudFlare API credentials valid (Account: {account_id[:8]}...)"
         )
@@ -113,7 +122,7 @@ def _validate_cloudflare_domain_zone(cf_manager: Any, domain: str) -> None:
         ValueError: If domain zone not found
     """
     try:
-        zone_id = cf_manager.get_zone_id(domain)
+        zone_id: str = cf_manager.get_zone_id(domain)
         logger.debug(f"✅ Domain zone found (Zone: {zone_id[:8]}...)")
     except (ValueError, ConnectionError, OSError) as e:
         raise ValueError(f"Domain '{domain}' not found in CloudFlare zones: {e}") from e
@@ -129,7 +138,7 @@ def _check_cloudflare_access_applications(
         domain: Domain to check
         account_id: CloudFlare account ID
     """
-    if CloudFlareResourceType is None:
+    if not _is_cloudflare_available():
         return
 
     try:
