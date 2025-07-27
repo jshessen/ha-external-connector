@@ -11,7 +11,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from ha_connector.adapters.cloudflare_manager import CloudFlareConfig, CloudFlareManager
+from ha_connector.platforms.cloudflare.api_manager import (
+    CloudFlareConfig,
+    CloudFlareManager,
+)
 from ha_connector.utils import HAConnectorError
 from tests.fixtures.test_secrets import get_deterministic_secret
 

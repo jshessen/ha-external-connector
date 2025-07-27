@@ -4,6 +4,15 @@ This directory contains utility scripts for the Home Assistant External Connecto
 
 ## 📋 Available Scripts
 
+### Agent Automation
+
+- **`agent_helper.py`** - Agent Automation Helper ⭐ **NEW**
+  - **Purpose**: Replaces `python -c` commands for VS Code agent automation
+  - **Functionality**: Environment validation, import testing, tool checking
+  - **Actions**: `env`, `imports`, `tools`, `python`, `all`
+  - **Benefits**: Works with VS Code allowlist, comprehensive output, type-safe
+  - Usage: `python scripts/agent_helper.py [action]`
+
 ### Code Quality Analysis
 
 - **`code_quality.py`** - Comprehensive Code Quality Analysis Suite ⭐ **PRIMARY**

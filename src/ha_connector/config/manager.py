@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, NoReturn
 
-from ..adapters.aws_manager import AWSResourceType, get_aws_manager
 from ..constants import DEFAULT_AWS_REGION, LAMBDA_ASSUME_ROLE_POLICY
+from ..platforms.aws.resource_manager import AWSResourceType, get_aws_manager
 from ..utils import HAConnectorError, logger, safe_exec
 from .cloudflare_helpers import validate_cloudflare_domain_setup
 

@@ -178,7 +178,7 @@ class TestServiceInstaller:
         config = self.installer.get_default_config(ServiceType.ALEXA)
 
         assert config["function_name"] == "ha-alexa-proxy"
-        assert config["handler"] == "voice_command_bridge.lambda_handler"
+        assert config["handler"] == "smart_home_bridge.lambda_handler"
         assert config["runtime"] == "python3.11"
 
     def test_get_default_config_ios(self) -> None:

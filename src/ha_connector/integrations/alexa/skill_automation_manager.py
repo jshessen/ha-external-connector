@@ -57,12 +57,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class AlexaSkillManager:
+class SmartHomeSkillAutomator:
     """
-    Automates missing Alexa Smart Home Skill setup components.
+    Automates Alexa Smart Home Skill setup and integration with Home Assistant.
 
-    This manager handles the automation gaps between AWS Lambda deployment
-    and a fully functional Alexa Smart Home Skill integration.
+    This automator handles the complete automation workflow between AWS Lambda
+    deployment and a fully functional Alexa Smart Home Skill integration,
+    following official Amazon Alexa Smart Home API guidelines.
     """
 
     def __init__(
@@ -70,7 +71,7 @@ class AlexaSkillManager:
         region: str = "us-east-1",
         lambda_client: "LambdaClient | None" = None,
     ) -> None:
-        """Initialize Alexa Skill Manager with AWS clients."""
+        """Initialize Smart Home Skill Automator with AWS clients."""
         self.region = region
         self._lambda_client = lambda_client
 

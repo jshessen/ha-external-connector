@@ -17,7 +17,7 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 from pydantic import BaseModel, Field
 
-from ..utils import HAConnectorLogger, ValidationError, assert_never
+from ...utils import HAConnectorLogger, ValidationError, assert_never
 
 if TYPE_CHECKING:
     from types_boto3_iam.client import IAMClient

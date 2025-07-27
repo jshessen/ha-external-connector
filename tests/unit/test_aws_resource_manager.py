@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from ha_connector.adapters.aws_manager import (
+from ha_connector.platforms.aws.resource_manager import (
     AWSIAMManager,
     AWSLambdaManager,
     AWSLogsManager,

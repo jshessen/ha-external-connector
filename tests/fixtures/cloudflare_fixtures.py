@@ -7,7 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from ha_connector.adapters.cloudflare_manager import (
+from ha_connector.platforms.cloudflare.api_manager import (
     AccessApplicationSpec,
     CloudFlareAccessManager,
     CloudFlareConfig,

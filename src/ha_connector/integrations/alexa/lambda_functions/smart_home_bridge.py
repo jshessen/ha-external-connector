@@ -31,11 +31,11 @@ You have TWO key staff members working together to serve Alexa visitors:
   * Verify appointments and authority
   * Keep detailed security logs
 
-💼 **EXECUTIVE RECEPTIONIST (THIS FILE - voice_command_bridge.py)**
+💼 **EXECUTIVE RECEPTIONIST (THIS FILE - smart_home_bridge.py)**
 - 🏢 **Job**: Handles daily business operations and communications
 - 📞 **Location**: Executive floor (Smart home command processor)
 - 📋 **Responsibilities**:
-  * Process ongoing business requests (voice commands)
+  * Process ongoing business requests (smart home directives)
   * Translate between Alexa and Home Assistant "languages"
   * Handle routine operations efficiently
   * Maintain appointment schedules and logs
@@ -944,29 +944,29 @@ def _extract_request_context(
     }
 
 
-def handle_voice_command_request(
+def handle_smart_home_directive(
     alexa_request: dict[str, Any], lambda_context: Any
 ) -> dict[str, Any]:
     """
-    🎯 MAIN REQUEST HANDLER: Process Alexa Voice Commands
+    🎯 MAIN DIRECTIVE HANDLER: Process Alexa Smart Home Directives
 
     This is the main entry point that Amazon Web Services calls when
     Alexa needs to communicate with your Home Assistant. Think of this
-    as the receptionist who handles all incoming calls and routes them
-    to the right department.
+    as the smart home receptionist who handles all incoming directive
+    calls and routes them to the appropriate Home Assistant endpoints.
 
     PROCESS FLOW:
-    1. 🕐 Record when the request started (for performance tracking)
-    2. 🔍 Identify who sent the request (IP address for security)
+    1. 🕐 Record when the directive started (for performance tracking)
+    2. 🔍 Identify who sent the directive (IP address for security)
     3. 🛡️ Run security checks (rate limiting, size validation)
     4. 🔧 Load and validate configuration settings
     5. 🏠 Verify Home Assistant URL is authorized
     6. 🎫 Extract and validate authentication token from Alexa
-    7. 🌉 Forward the request to Home Assistant
+    7. 🌉 Forward the directive to Home Assistant
     8. 📤 Return the response back to Alexa
 
     Args:
-        alexa_request: The incoming request from Alexa (contains the voice command)
+        alexa_request: The incoming Smart Home directive from Alexa
         lambda_context: AWS Lambda runtime information
 
     Returns:
@@ -1052,7 +1052,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     try:
         # Process the voice command request through our secure pipeline
-        response = handle_voice_command_request(event, context)
+        response = handle_smart_home_directive(event, context)
 
         _activity_logger.info("✅ === REQUEST COMPLETED SUCCESSFULLY ===")
         return response

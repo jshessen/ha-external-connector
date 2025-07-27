@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ha_connector.adapters.aws_manager import AWSResourceResponse
+from ha_connector.platforms.aws.resource_manager import AWSResourceResponse
 from tests.fixtures.aws_fixtures import AWS_MANAGER_TEST_PARAMS
 
 # Fixtures are automatically discovered through conftest.py

@@ -14,7 +14,10 @@ CloudFlareResourceType: Any = None
 
 # Check CloudFlare availability once at module load
 try:
-    from ..adapters.cloudflare_manager import CloudFlareManager, CloudFlareResourceType
+    from ..platforms.cloudflare.api_manager import (
+        CloudFlareManager,
+        CloudFlareResourceType,
+    )
 except ImportError:
     # CloudFlare adapter not available - will be handled gracefully
     CloudFlareManager = None  # pyright: ignore

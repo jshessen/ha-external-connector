@@ -6,7 +6,7 @@ These tests focus on data structure validation and business logic, not service
 implementation.
 """
 
-from ha_connector.adapters.cloudflare_manager import (
+from ha_connector.platforms.cloudflare.api_manager import (
     AccessApplicationSpec,
     CloudFlareConfig,
     CloudFlareResourceResponse,

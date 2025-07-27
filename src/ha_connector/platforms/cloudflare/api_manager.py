@@ -17,7 +17,7 @@ from typing import Any, Self
 import httpx
 from pydantic import BaseModel, Field
 
-from ..utils import HAConnectorError, HAConnectorLogger, ValidationError
+from ...utils import HAConnectorError, HAConnectorLogger, ValidationError
 
 # Global instance storage for backwards compatibility
 _global_managers: dict[str, CloudFlareManager] = {}

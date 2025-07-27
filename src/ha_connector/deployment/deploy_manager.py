@@ -13,8 +13,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ..adapters import AWSResourceType
-from ..adapters.cloudflare_manager import AccessApplicationSpec, CloudFlareManager
+from ..platforms.aws.resource_manager import AWSResourceType
+from ..platforms.cloudflare.api_manager import AccessApplicationSpec, CloudFlareManager
 from ..utils import HAConnectorLogger, ValidationError
 from .service_installer import DeploymentResult, ServiceInstaller, ServiceType
 

@@ -5,17 +5,6 @@ A Python package for connecting self-hosted Home Assistant instances
 to external cloud services like AWS Lambda, Alexa, CloudFlare, and iOS.
 """
 
-from .adapters import (
-    AWSIAMManager,
-    AWSLambdaManager,
-    AWSLogsManager,
-    AWSResourceManager,
-    AWSResourceType,
-    AWSSSMManager,
-    AWSTriggerManager,
-    CloudFlareManager,
-    CloudFlareResourceType,
-)
 from .config import ConfigurationManager, InstallationScenario
 from .deployment import (
     DeploymentConfig,
@@ -27,6 +16,16 @@ from .deployment import (
     ServiceType,
     orchestrate_deployment,
 )
+from .platforms.aws.resource_manager import (
+    AWSIAMManager,
+    AWSLambdaManager,
+    AWSLogsManager,
+    AWSResourceManager,
+    AWSResourceType,
+    AWSSSMManager,
+    AWSTriggerManager,
+)
+from .platforms.cloudflare.api_manager import CloudFlareManager, CloudFlareResourceType
 from .utils import (
     AWSError,
     HAConnectorError,

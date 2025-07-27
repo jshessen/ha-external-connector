@@ -25,8 +25,6 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from ..adapters.aws_manager import AWSResourceManager
-from ..aws.alexa_skill_manager import AlexaSkillManager
 from ..config import ConfigurationManager, InstallationScenario
 from ..deployment import (
     DeploymentConfig,
@@ -35,6 +33,8 @@ from ..deployment import (
     ServiceInstaller,
     ServiceType,
 )
+from ..integrations.alexa.skill_automation_manager import SmartHomeSkillAutomator
+from ..platforms.aws.resource_manager import AWSResourceManager
 from ..utils import HAConnectorLogger, ValidationError
 
 console = Console()
@@ -1141,7 +1141,7 @@ class AlexaSetupConfig(BaseModel):
     verbose: bool
 
 
-def _validate_alexa_region(alexa_manager: AlexaSkillManager, region: str) -> None:
+def _validate_alexa_region(alexa_manager: SmartHomeSkillAutomator, region: str) -> None:
     """Validate AWS region compatibility for Alexa."""
     console.print("📍 [blue]Step 1: Validating AWS region compatibility[/blue]")
     is_valid, region_message = alexa_manager.validate_alexa_region_compatibility(region)
@@ -1154,7 +1154,7 @@ def _validate_alexa_region(alexa_manager: AlexaSkillManager, region: str) -> Non
 
 
 def _setup_alexa_trigger(
-    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+    alexa_manager: SmartHomeSkillAutomator, config: AlexaSetupConfig
 ) -> None:
     """Setup Alexa Smart Home trigger for Lambda function."""
     console.print(
@@ -1190,7 +1190,7 @@ def _setup_alexa_trigger(
 
 
 def _generate_test_data(
-    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+    alexa_manager: SmartHomeSkillAutomator, config: AlexaSetupConfig
 ) -> None:
     """Generate Alexa test data if requested."""
     if not config.generate_test_data:
@@ -1214,7 +1214,7 @@ def _generate_test_data(
 
 
 def _generate_configuration_guide(
-    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+    alexa_manager: SmartHomeSkillAutomator, config: AlexaSetupConfig
 ) -> None:
     """Generate configuration guide if requested."""
     if not config.generate_guide:
@@ -1254,7 +1254,7 @@ def _generate_configuration_guide(
 
 
 def _validate_home_assistant_config(
-    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+    alexa_manager: SmartHomeSkillAutomator, config: AlexaSetupConfig
 ) -> None:
     """Validate Home Assistant configuration if URL provided."""
     if not config.ha_base_url:
@@ -1359,7 +1359,7 @@ def alexa_setup(  # pylint: disable=too-many-positional-arguments,too-many-argum
         )
 
         # Initialize Alexa Skill Manager
-        alexa_manager = AlexaSkillManager(region=region)
+        alexa_manager = SmartHomeSkillAutomator(region=region)
 
         # Execute setup steps
         _validate_alexa_region(alexa_manager, region)

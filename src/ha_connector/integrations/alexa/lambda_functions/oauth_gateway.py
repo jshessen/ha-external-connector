@@ -32,11 +32,11 @@ You have TWO key staff members working together to serve Alexa visitors:
   * Verify appointments and authority
   * Keep detailed security logs
 
-💼 **EXECUTIVE RECEPTIONIST (voice_command_bridge.py)**
+💼 **EXECUTIVE RECEPTIONIST (smart_home_bridge.py)**
 - 🏢 **Job**: Handles daily business operations and communications
 - 📞 **Location**: Executive floor (Smart home command processor)
 - 📋 **Responsibilities**:
-  * Process ongoing business requests (voice commands)
+  * Process ongoing business requests (smart home directives)
   * Translate between Alexa and Home Assistant "languages"
   * Handle routine operations efficiently
   * Maintain appointment schedules and logs
