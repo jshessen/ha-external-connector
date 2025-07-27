@@ -208,11 +208,11 @@ def mock_service() -> ServiceClass:  # pylint: disable=redefined-outer-name
 
 ### AWS Client Testing Patterns
 
-**✅ MANDATORY: MOTO LIBRARY FOR ALL AWS MOCKING**
+### ✅ MANDATORY: MOTO LIBRARY FOR ALL AWS MOCKING
 
 All AWS service testing MUST use the `moto` library with `@mock_aws` decorator or `mock_aws()` context manager. This ensures consistent, realistic AWS service behavior across all tests.
 
-**🚨 CRITICAL RULE: NO UNITTEST.MOCK FOR AWS SERVICES**
+### 🚨 CRITICAL RULE: NO UNITTEST.MOCK FOR AWS SERVICES
 
 - **✅ REQUIRED**: Use `moto` library for all AWS client mocking
 - **❌ PROHIBITED**: Using `unittest.mock.patch` on `boto3.client` or AWS service methods

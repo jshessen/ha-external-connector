@@ -1,6 +1,6 @@
 {
     // Python interpreter and environment
-    "python.defaultInterpreterPath": "/home/jshessen/Development/GitHub/ha-external-connector/.venv/bin/python",
+    "python.defaultInterpreterPath": ".venv/bin/python",
     // Note: python.analysis.extraPaths is configured in pyproject.toml [tool.pyright] section
 
     // Type checking with Pylance (OPTIMIZED)
@@ -196,9 +196,27 @@
 
     // Terminal settings
     "terminal.integrated.env.linux": {
-        "PYTHONPATH": "${workspaceFolder}/src"
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "VIRTUAL_ENV": "${workspaceFolder}/.venv",
+        "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
     },
-    "terminal.integrated.shellIntegration.enabled": false,
+    "terminal.integrated.shellIntegration.enabled": true,
+    "terminal.integrated.profiles.linux": {
+        "bash (venv)": {
+            "path": "bash",
+            "args": ["-c", "source .venv/bin/activate && exec bash"],
+            "icon": "terminal-bash"
+        }
+    },
+    "terminal.integrated.defaultProfile.linux": "bash (venv)",
+    "terminal.integrated.automationProfile.linux": {
+        "path": "bash",
+        "args": ["-c", "source .venv/bin/activate && exec bash"]
+    },
+
+    // Python environment activation for terminals
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
 
     // GitHub Copilot configuration (OPTIMIZED)
     "github.copilot.enable": {
@@ -240,5 +258,11 @@
             "envManager": "ms-python.python:venv",
             "packageManager": "ms-python.python:pip"
         }
+    ],
+
+    // GitHub Copilot custom instructions configuration
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "chat.instructionsFilesLocations": [
+        ".github/instructions"
     ]
 }
