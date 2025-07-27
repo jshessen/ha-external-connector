@@ -17,6 +17,8 @@ import traceback
 from typing import Annotated, Any, Optional
 
 import typer
+from botocore.exceptions import ClientError
+from pydantic import BaseModel
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -24,6 +26,7 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 from ..adapters.aws_manager import AWSResourceManager
+from ..aws.alexa_skill_manager import AlexaSkillManager
 from ..config import ConfigurationManager, InstallationScenario
 from ..deployment import (
     DeploymentConfig,
@@ -72,12 +75,10 @@ def _interactive_scenario_selection() -> InstallationScenario:
     console.print("   • Simplest setup for Alexa voice commands\n")
 
     console.print(
-        "🔒 [bold green]SCENARIO 2: CloudFlare-Proxied "
-        "Alexa Integration[/bold green]"
+        "🔒 [bold green]SCENARIO 2: CloudFlare-Proxied Alexa Integration[/bold green]"
     )
     console.print(
-        "   • Alexa Smart Home skill → AWS Lambda → "
-        "CloudFlare Access → Home Assistant"
+        "   • Alexa Smart Home skill → AWS Lambda → CloudFlare Access → Home Assistant"
     )
     console.print("   • Adds CloudFlare Access security layer")
     console.print("   • Requires CloudFlare domain and Access setup\n")
@@ -86,8 +87,7 @@ def _interactive_scenario_selection() -> InstallationScenario:
         "📱 [bold magenta]SCENARIO 3: iOS Companion with CloudFlare[/bold magenta]"
     )
     console.print(
-        "   • iOS Home Assistant app → AWS Lambda → "
-        "CloudFlare Access → Home Assistant"
+        "   • iOS Home Assistant app → AWS Lambda → CloudFlare Access → Home Assistant"
     )
     console.print("   • Enables secure external access for iOS app")
     console.print("   • Requires existing CloudFlare Access setup\n")
@@ -1127,9 +1127,264 @@ def _display_service_status(services: list[dict[str, Any]], verbose: bool) -> No
     console.print(table)
 
 
+class AlexaSetupConfig(BaseModel):
+    """Configuration for Alexa setup command."""
+
+    function_name: str
+    skill_id: Optional[str] = None  # noqa: UP045
+    region: str
+    generate_test_data: bool
+    generate_guide: bool
+    lambda_function_url: Optional[str] = None  # noqa: UP045
+    oauth_gateway_url: Optional[str] = None  # noqa: UP045
+    ha_base_url: Optional[str] = None  # noqa: UP045
+    verbose: bool
+
+
+def _validate_alexa_region(alexa_manager: AlexaSkillManager, region: str) -> None:
+    """Validate AWS region compatibility for Alexa."""
+    console.print("📍 [blue]Step 1: Validating AWS region compatibility[/blue]")
+    is_valid, region_message = alexa_manager.validate_alexa_region_compatibility(region)
+
+    if not is_valid:
+        console.print(f"[red]❌ {region_message}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"[green]✅ {region_message}[/green]")
+
+
+def _setup_alexa_trigger(
+    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+) -> None:
+    """Setup Alexa Smart Home trigger for Lambda function."""
+    console.print(
+        f"\n🔗 [blue]Step 2: Setting up Alexa Smart Home trigger for "
+        f"{config.function_name}[/blue]"
+    )
+
+    try:
+        trigger_result = alexa_manager.setup_alexa_smart_home_trigger(
+            function_name=config.function_name, skill_id=config.skill_id
+        )
+
+        if trigger_result["status"] == "created":
+            console.print(
+                "[green]✅ Alexa Smart Home trigger successfully configured[/green]"
+            )
+            if config.verbose:
+                console.print(
+                    f"   Function ARN: {trigger_result.get('function_arn', 'N/A')}"
+                )
+                console.print(
+                    f"   Statement ID: {trigger_result.get('statement_id', 'N/A')}"
+                )
+        elif trigger_result["status"] == "exists":
+            console.print("[yellow]⚠️  Alexa Smart Home trigger already exists[/yellow]")
+
+    except (ValidationError, ClientError) as e:
+        console.print(f"[red]❌ Failed to setup Alexa trigger: {str(e)}[/red]")
+        if not config.verbose:
+            console.print("   Use --verbose for more details")
+        else:
+            console.print(f"   Error details: {traceback.format_exc()}")
+
+
+def _generate_test_data(
+    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+) -> None:
+    """Generate Alexa test data if requested."""
+    if not config.generate_test_data:
+        return
+
+    console.print("\n🧪 [blue]Step 3: Generating Alexa test data[/blue]")
+    test_file = "alexa-discovery-test.json"
+
+    try:
+        test_result = alexa_manager.generate_alexa_test_data(test_file)
+        console.print(
+            f"[green]✅ Test data generated: " f"{test_result['output_file']}[/green]"
+        )
+        if config.verbose:
+            console.print(
+                f"   Purpose: {test_result['test_data']['metadata']['purpose']}"
+            )
+            console.print(f"   Usage: {test_result['test_data']['metadata']['usage']}")
+    except (ValidationError, OSError, KeyError) as e:
+        console.print(f"[red]❌ Failed to generate test data: {str(e)}[/red]")
+
+
+def _generate_configuration_guide(
+    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+) -> None:
+    """Generate configuration guide if requested."""
+    if not config.generate_guide:
+        return
+
+    console.print("\n📋 [blue]Step 4: Generating configuration guide[/blue]")
+
+    # Use provided URLs or generate placeholder ones
+    guide_lambda_url = (
+        config.lambda_function_url
+        or f"https://example-{config.function_name}.lambda-url.{config.region}.on.aws/"
+    )
+
+    try:
+        guide_content = alexa_manager.generate_configuration_guide(
+            lambda_function_url=guide_lambda_url,
+            oauth_gateway_url=config.oauth_gateway_url,
+            ha_base_url=config.ha_base_url,
+            skill_id=config.skill_id,
+        )
+
+        guide_file = "alexa-skill-configuration-guide.md"
+        with open(guide_file, "w", encoding="utf-8") as f:
+            f.write(guide_content)
+
+        console.print(f"[green]✅ Configuration guide generated: {guide_file}[/green]")
+
+        # Display key next steps
+        console.print("\n📋 [bold]Key Next Steps:[/bold]")
+        console.print("   1. Go to Amazon Developer Console (developer.amazon.com)")
+        console.print(f"   2. Set Default Endpoint to: {guide_lambda_url}")
+        console.print("   3. Configure Account Linking with the provided OAuth URLs")
+        console.print("   4. Test device discovery with 'Alexa, discover devices'")
+
+    except (ValidationError, OSError) as e:
+        console.print(f"[red]❌ Failed to generate configuration guide: {str(e)}[/red]")
+
+
+def _validate_home_assistant_config(
+    alexa_manager: AlexaSkillManager, config: AlexaSetupConfig
+) -> None:
+    """Validate Home Assistant configuration if URL provided."""
+    if not config.ha_base_url:
+        return
+
+    console.print("\n🏠 [blue]Step 5: Validating Home Assistant configuration[/blue]")
+
+    try:
+        ha_validation = alexa_manager.validate_home_assistant_config(config.ha_base_url)
+
+        if ha_validation["status"] == "error":
+            console.print("[red]❌ Home Assistant validation failed[/red]")
+            for rec in ha_validation["recommendations"]:
+                console.print(f"   • {rec}")
+        else:
+            console.print("[green]✅ Home Assistant URL format valid[/green]")
+            console.print("[yellow]ℹ️  Additional recommendations:[/yellow]")
+            for rec in ha_validation["recommendations"]:
+                console.print(f"   • {rec}")
+
+    except (ValidationError, ValueError) as e:
+        console.print(
+            f"[red]❌ Failed to validate Home Assistant config: {str(e)}[/red]"
+        )
+
+
+def _display_alexa_setup_summary(config: AlexaSetupConfig) -> None:
+    """Display final summary of Alexa setup."""
+    console.print("\n🎉 [bold green]Alexa automation setup complete![/bold green]")
+    console.print("\n📚 [bold]Generated Files:[/bold]")
+    if config.generate_test_data:
+        console.print("   • alexa-discovery-test.json - Test data for Lambda function")
+    if config.generate_guide:
+        console.print("   • alexa-skill-configuration-guide.md - Complete setup guide")
+
+    console.print("\n🔗 [bold]Manual Steps Remaining:[/bold]")
+    console.print(
+        "   • Create/configure Alexa Smart Home Skill at developer.amazon.com"
+    )
+    console.print("   • Enable account linking with generated OAuth configuration")
+    console.print("   • Test integration with Alexa app and voice commands")
+
+
+def alexa_setup(  # pylint: disable=too-many-positional-arguments,too-many-arguments
+    function_name: str = typer.Argument(
+        "ha-alexa-proxy", help="Lambda function name for Alexa integration"
+    ),
+    skill_id: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--skill-id", help="Alexa Skill ID (if known)"
+    ),
+    region: str = typer.Option("us-east-1", "--region", "-r", help="AWS region"),
+    generate_test_data: bool = typer.Option(
+        True, "--generate-test-data/--no-test-data", help="Generate test JSON files"
+    ),
+    generate_guide: bool = typer.Option(
+        True, "--generate-guide/--no-guide", help="Generate configuration guide"
+    ),
+    lambda_function_url: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--lambda-url", help="Lambda function URL (if known)"
+    ),
+    oauth_gateway_url: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--oauth-url", help="OAuth Gateway Lambda URL (if using CloudFlare)"
+    ),
+    ha_base_url: Optional[str] = typer.Option(  # noqa: UP045
+        None, "--ha-url", help="Home Assistant base URL"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
+) -> None:
+    """
+    Setup missing Alexa Smart Home Skill automation components.
+
+    This command automates the missing pieces that prevent Alexa Smart Home Skills
+    from working after AWS Lambda deployment, including:
+
+    • Alexa Smart Home trigger setup for Lambda functions
+    • Configuration guide generation for Amazon Developer Console
+    • Test data generation for Alexa integration testing
+    • Region compatibility validation
+    • Home Assistant configuration validation
+
+    Examples:
+        ha-connector alexa-setup
+        ha-connector alexa-setup --skill-id amzn1.ask.skill.xxxxx
+        ha-connector alexa-setup my-lambda --region us-west-2
+        ha-connector alexa-setup --lambda-url https://xyz.lambda-url.us-east-1.on.aws/
+    """
+    console.print("🎯 [bold]Alexa Smart Home Skill Automation Setup[/bold]")
+    console.print("Setting up missing automation components for Alexa integration...\n")
+
+    try:
+        # Create configuration object
+        config = AlexaSetupConfig(
+            function_name=function_name,
+            skill_id=skill_id,
+            region=region,
+            generate_test_data=generate_test_data,
+            generate_guide=generate_guide,
+            lambda_function_url=lambda_function_url,
+            oauth_gateway_url=oauth_gateway_url,
+            ha_base_url=ha_base_url,
+            verbose=verbose,
+        )
+
+        # Initialize Alexa Skill Manager
+        alexa_manager = AlexaSkillManager(region=region)
+
+        # Execute setup steps
+        _validate_alexa_region(alexa_manager, region)
+        _setup_alexa_trigger(alexa_manager, config)
+        _generate_test_data(alexa_manager, config)
+        _generate_configuration_guide(alexa_manager, config)
+        _validate_home_assistant_config(alexa_manager, config)
+
+        # Display summary
+        _display_alexa_setup_summary(config)
+
+    except ValidationError as e:
+        console.print(f"\n[red]💥 Validation error: {str(e)}[/red]")
+        raise typer.Exit(1) from e
+    except Exception as e:
+        console.print(f"\n[red]💥 Alexa setup failed: {str(e)}[/red]")
+        if verbose:
+            console.print(f"Details: {traceback.format_exc()}")
+        raise typer.Exit(1) from e
+
+
 # Export commands for testing
 install_command = install
 deploy_command = deploy
 configure_command = configure
 status_command = status
 remove_command = remove
+alexa_setup_command = alexa_setup

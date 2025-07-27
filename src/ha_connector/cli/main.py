@@ -12,6 +12,7 @@ from rich.console import Console
 
 from ..utils import HAConnectorLogger
 from .commands import (
+    alexa_setup,
     configure_command,
     deploy_command,
     install_command,
@@ -82,6 +83,7 @@ app.command(name="deploy")(deploy_command)
 app.command(name="configure")(configure_command)
 app.command(name="status")(status_command)
 app.command(name="remove")(remove_command)
+app.command(name="alexa-setup")(alexa_setup)
 
 
 if __name__ == "__main__":
