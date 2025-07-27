@@ -179,6 +179,60 @@ ${workspaceFolder}/.venv/bin/python scripts/lint.py
 
 Only add trusted commands to the allowlist. Each command bypasses VS Code's approval prompts, so ensure you understand what each command does before adding it.
 
+## Agent Automation Solution: Python Script Alternative
+
+### Problem: `python -c` Commands Trigger Prompts
+
+VS Code's allowlist has limitations with complex `python -c` patterns, even with wildcards like `"python -c*": true`. Commands like `python -c 'import sys; print(sys.executable)'` consistently trigger approval prompts regardless of allowlist configuration.
+
+### Solution: Use `scripts/agent_helper.py`
+
+**Instead of `python -c` commands, use the dedicated agent helper script:**
+
+```bash
+# ❌ BLOCKED: python -c 'import sys; print(sys.executable)'
+# ✅ WORKS: python scripts/agent_helper.py python
+
+# ❌ BLOCKED: python -c 'import module; print("success")'
+# ✅ WORKS: python scripts/agent_helper.py imports
+
+# ❌ BLOCKED: python -c 'import os; print(os.getcwd())'
+# ✅ WORKS: python scripts/agent_helper.py env
+```
+
+### Available Agent Helper Actions
+
+- **`python scripts/agent_helper.py env`** - Environment validation (Python version, venv status, working directory, key files)
+- **`python scripts/agent_helper.py imports`** - Module import testing (validates core project imports)
+- **`python scripts/agent_helper.py tools`** - Development tools check (ruff, pytest, mypy, black versions)
+- **`python scripts/agent_helper.py python`** - Python environment info (executable path, version, platform)
+- **`python scripts/agent_helper.py all`** - Complete automation suite (all checks combined)
+
+### Benefits Over `python -c`
+
+- **✅ No VS Code prompts** - Works seamlessly with allowlist
+- **✅ Comprehensive output** - More detailed information than one-liners
+- **✅ Type-safe and maintainable** - Proper Python code with error handling
+- **✅ Extensible** - Easy to add new automation tasks
+- **✅ Debuggable** - Full stack traces and clear error messages
+
+### Usage Pattern for Agents
+
+When you need to validate environment or test imports in agent automation:
+
+```bash
+# Environment validation
+python scripts/agent_helper.py env
+
+# Import testing
+python scripts/agent_helper.py imports
+
+# Quick comprehensive check
+python scripts/agent_helper.py all
+```
+
+This approach eliminates the `python -c` allowlist limitations while providing superior functionality for agent automation tasks.
+
 ---
 
 ## Project Standards & Coding Guidelines
@@ -194,6 +248,7 @@ This project includes specialized instruction files in `.github/instructions/` t
 - **`testing-patterns.instructions.md`**: Mandatory moto library usage, fixture design, performance requirements
 - **`security-patterns.instructions.md`**: Secret management, input validation, secure error handling
 - **`markdown-formatting.instructions.md`**: Markdownlint compliance, heading structure, list formatting
+- **`documentation-patterns.instructions.md`**: Documentation organization, HACS readiness, audience-based structure
 
 **🤖 AI ASSISTANT USAGE:**
 
@@ -204,6 +259,7 @@ When working on files matching these patterns, reference the relevant instructio
 - Test files (`**/test_*.py`, `**/tests/**/*.py`): Follow testing patterns
 - Security files (`**/security/**/*.py`, `**/*security*.py`): Apply security patterns
 - Markdown files (`**/*.md`): Use markdown formatting standards
+- Documentation work (`**/docs/**/*`, documentation reorganization): Apply documentation patterns
 
 ### Code Quality Requirements
 
@@ -330,6 +386,73 @@ When working on files matching these patterns, reference the relevant instructio
 - Use consistent bullet or numbering style
 - Maintain proper indentation for nested items
 
+### Documentation Organization Standards
+
+**📁 AUDIENCE-BASED STRUCTURE:**
+
+Follow the established `docs/` directory structure for professional documentation organization:
+
+```text
+docs/
+├── README.md                      # Navigation hub with clear audience routing
+├── integrations/                  # User-focused guides (end-user perspective)
+│   ├── alexa/                    # Integration-specific user documentation
+│   └── ios_companion/            # Future integration guides
+├── development/                   # Developer-focused content (contributor perspective)
+│   ├── AUTOMATION_SETUP.md       # Development environment setup
+│   ├── CODE_QUALITY_SUITE.md     # Code standards and tooling
+│   └── ROADMAP.md                # Strategic planning and phases
+├── deployment/                    # Operations-focused guides (deployment perspective)
+│   ├── DEPLOYMENT_GUIDE.md       # Step-by-step deployment instructions
+│   └── TROUBLESHOOTING.md        # Operational issue resolution
+└── history/                      # Historical context (evolution perspective)
+    ├── AUTOMATION_GAPS_ANALYSIS.md  # Historical problem analysis
+    ├── ARCHITECTURE_EVOLUTION.md    # Design decision history
+    └── PHASE_6_COMPLETE.md          # Milestone completion records
+```
+
+**🎯 DOCUMENTATION PLACEMENT PRINCIPLES:**
+
+- **Root Directory**: Only essential project files (`README.md`, `CHANGELOG.md`, configuration)
+- **User Guides**: Place in `docs/integrations/{service}/` for service-specific user instructions
+- **Development Planning**: Place in `docs/development/` for roadmaps, architecture decisions, setup guides
+- **Operations**: Place in `docs/deployment/` for deployment, monitoring, troubleshooting content
+- **Historical Records**: Place in `docs/history/` for completed analyses, evolution records, legacy content
+
+**🔗 CROSS-REFERENCE STANDARDS:**
+
+- **Root README.md**: Should link to relevant `docs/` content with clear audience indicators
+- **docs/README.md**: Must provide comprehensive navigation with audience-based sections
+- **Relative Paths**: Use relative paths for internal documentation links for portability
+- **Clear Audience**: Each document should clearly indicate its target audience (users/developers/operators)
+
+**📋 DOCUMENTATION LIFECYCLE MANAGEMENT:**
+
+When reorganizing documentation:
+
+1. **Audit Phase**: Identify all documentation files and their current audiences
+2. **Categorize**: Assign each document to user/developer/operations/historical category
+3. **Move & Rename**: Use descriptive names that indicate purpose and audience
+4. **Update References**: Search and update all internal links using `grep_search` tool
+5. **Validate**: Ensure no broken links and proper navigation flow
+6. **HACS Preparation**: Organize with future HACS publication requirements in mind
+
+**🚀 HACS-READY DOCUMENTATION:**
+
+Maintain documentation structure that supports future HACS (Home Assistant Community Store) publication:
+
+- **Professional presentation**: Clear, consistent formatting and navigation
+- **User-focused organization**: Integration guides easily discoverable by end users
+- **Comprehensive coverage**: Setup, configuration, troubleshooting all documented
+- **Community-friendly**: Contributing guides and developer documentation separated from user guides
+
+**🔧 AUTOMATION-FRIENDLY PATTERNS:**
+
+- **Consistent naming**: Use `UPPERCASE_WITH_UNDERSCORES.md` for major documents
+- **Clear file purposes**: Filename should indicate content type (`GUIDE`, `SETUP`, `TROUBLESHOOTING`)
+- **Tool-friendly**: Structure documents for easy parsing by automation tools
+- **Version control**: Use meaningful commit messages when reorganizing documentation structure
+
 ### AI Assistant Guidelines
 
 **🔍 PROBLEM ANALYSIS:**
@@ -352,6 +475,25 @@ When working on files matching these patterns, reference the relevant instructio
 - Run Ruff after each change: `ruff check file.py`
 - Preserve exact functionality during decomposition
 - Document architectural constraints with targeted disables
+
+**📚 DOCUMENTATION WORKFLOW:**
+
+When working with documentation:
+
+1. **Assessment**: Use `list_dir` and `grep_search` to understand current documentation landscape
+2. **Organization**: Apply audience-based categorization (users/developers/operations/history)
+3. **Movement**: Use `run_in_terminal` with `mv` commands for file reorganization
+4. **Reference Updates**: Use `grep_search` to find and update internal links after moves
+5. **Validation**: Use `python scripts/agent_helper.py imports` to ensure no code breaks after documentation changes
+6. **Professional Standards**: Apply markdownlint compliance and HACS-ready formatting throughout
+
+**🎯 DOCUMENTATION BEST PRACTICES:**
+
+- **Root directory cleanup**: Keep only essential project files in root, move documentation to `docs/`
+- **Audience clarity**: Each document should clearly serve users, developers, operators, or historical context
+- **Link maintenance**: Always update internal references when moving documentation files
+- **HACS readiness**: Organize documentation to support future Home Assistant Community Store publication
+- **Consistency**: Use established naming conventions and directory structure patterns
 
 ---
 
