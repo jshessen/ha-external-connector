@@ -193,6 +193,10 @@ dist/
 *.egg-info/
 .eggs/
 
+# Node.js dependencies (for web interface)
+node_modules/
+package-lock.json.bak
+
 # Deployment artifacts
 terraform.tfstate*
 .terraform/
