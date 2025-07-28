@@ -1202,7 +1202,7 @@ def _generate_test_data(
     try:
         test_result = alexa_manager.generate_alexa_test_data(test_file)
         console.print(
-            f"[green]✅ Test data generated: " f"{test_result['output_file']}[/green]"
+            f"[green]✅ Test data generated: {test_result['output_file']}[/green]"
         )
         if config.verbose:
             console.print(
