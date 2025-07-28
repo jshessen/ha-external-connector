@@ -14,6 +14,7 @@ extend-ignore = [
     "E302",  # Expected 2 blank lines (Ruff E302 with auto-fix)
     "E303",  # Too many blank lines (Ruff E303 with auto-fix)
     "E305",  # Expected 2 blank lines after class/function (Ruff E305 with auto-fix)
+    "E203",  # Whitespace before ':' (conflicts with Black formatting)
 ]
 # Keep Flake8 active for:
 # - Plugin-specific rules (e.g., flake8-bugbear extensions not in Ruff)

@@ -414,9 +414,7 @@ class SmartHomeSkillAutomator:
         else:
             # Generic setup
             web_auth_uri = "https://your-homeassistant.domain.com/auth/authorize"
-            access_token_uri = (
-                "https://your-homeassistant.domain.com/auth/token"  # nosec B105
-            )
+            access_token_uri = "https://your-homeassistant.domain.com/auth/token"  # nosec B105
             setup_type = "Generic OAuth Setup"
 
         guide = f"""

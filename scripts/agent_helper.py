@@ -97,8 +97,7 @@ def check_environment() -> list[str]:
 
     # Python version
     python_version = (
-        f"{sys.version_info.major}.{sys.version_info.minor}."
-        f"{sys.version_info.micro}"
+        f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
     checks.append(f"🐍 Python version: {python_version}")
 

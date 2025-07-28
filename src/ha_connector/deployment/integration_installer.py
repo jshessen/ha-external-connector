@@ -324,7 +324,7 @@ class ServiceInstaller:
         default_config = self.get_default_config(service_type)
         if not default_config:
             raise ValidationError(
-                f"No default configuration for service type: " f"{service_type}"
+                f"No default configuration for service type: {service_type}"
             )
 
         # Apply overrides

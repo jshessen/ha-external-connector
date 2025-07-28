@@ -37,9 +37,9 @@ def demo_security_validation() -> None:
     _show_next_steps()
 
 
-def _initialize_and_show_validators() -> (
-    tuple[SecurityPolicyValidator, ComplianceChecker, SecurityReporter]
-):
+def _initialize_and_show_validators() -> tuple[
+    SecurityPolicyValidator, ComplianceChecker, SecurityReporter
+]:
     """Initialize validators and show enhanced Lambda capabilities"""
     # Initialize validators
     policy_validator = SecurityPolicyValidator()

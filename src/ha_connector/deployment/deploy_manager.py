@@ -405,7 +405,7 @@ class DeploymentManager:
                     lambda_urls[service_type] = result.function_url
             else:
                 error_msg = (
-                    f"Failed to deploy {service_type}: " f"{', '.join(result.errors)}"
+                    f"Failed to deploy {service_type}: {', '.join(result.errors)}"
                 )
                 self.logger.error(f"✗ {error_msg}")
                 deployment_errors.append(error_msg)

@@ -38,17 +38,11 @@ class LambdaSecurityValidator:
         """
         self.region = region
         # Support dependency injection for better testability
-        self._lambda_client: LambdaClient = (
-            lambda_client
-            or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-                "lambda"
-            )
+        self._lambda_client: LambdaClient = lambda_client or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+            "lambda"
         )
-        self._iam_client: IAMClient = (
-            iam_client
-            or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-                "iam"
-            )
+        self._iam_client: IAMClient = iam_client or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+            "iam"
         )
 
     @property
