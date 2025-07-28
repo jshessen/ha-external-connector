@@ -30,7 +30,7 @@ The `smart_home_bridge.py` uses a performance-optimized configuration loading st
 ```python
 # Priority order (fastest to slowest):
 1. Environment Variables    # ~50ms    - Instant access
-2. SSM Parameter Store     # ~500ms   - Secure fallback  
+2. SSM Parameter Store     # ~500ms   - Secure fallback
 3. Configuration Cache     # ~10ms    - Container reuse
 ```
 
@@ -113,7 +113,7 @@ def get_config_value(env_key: str, ssm_path: str) -> str:
     # Try environment first (fast)
     if value := os.environ.get(env_key):
         return value
-    
+
     # Fallback to SSM (secure)
     return get_ssm_parameter(ssm_path)
 ```
