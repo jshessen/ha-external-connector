@@ -97,6 +97,16 @@ alexa:
     client_secret: your_client_secret
 ```
 
+## ⚡ Performance Optimization
+
+For optimal voice command response times (target: <500ms):
+
+- **Environment Variables**: Use Lambda environment variables instead of SSM for 75-85% faster cold starts
+- **Container Caching**: Leverage AWS Lambda container warmness (15-45 minutes)
+- **Configuration Priority**: Environment variables > SSM Parameter Store > Configuration cache
+
+📘 **See [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md) for detailed configuration strategies and benchmarks.**
+
 ## 🔍 Troubleshooting
 
 ### Common Issues
@@ -178,6 +188,7 @@ The OAuth Gateway provides additional security:
 ## 📚 Related Documentation
 
 - [Team Setup Guide](integrations/alexa/TEAM_SETUP.md) - Complete Alexa skill configuration
+- [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md) - Sub-500ms voice response optimization
 - [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md) - AWS deployment instructions
 - [Troubleshooting Guide](deployment/TROUBLESHOOTING.md) - Detailed problem resolution
 
