@@ -1,0 +1,186 @@
+/* Main CSS for HA External Connector Web Interface */
+
+:root {
+    --ha-blue: #03a9f4;
+    --ha-dark-blue: #0288d1;
+    --success-green: #4caf50;
+    --warning-orange: #ff9800;
+    --error-red: #f44336;
+    --bg-light: #f8f9fa;
+}
+
+/* Custom styling */
+.navbar-brand {
+    font-weight: 600;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background-color: var(--bg-light);
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 500;
+}
+
+/* Status indicators */
+.status-healthy {
+    color: var(--success-green);
+}
+
+.status-warning {
+    color: var(--warning-orange);
+}
+
+.status-error {
+    color: var(--error-red);
+}
+
+/* Integration cards */
+.integration-card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.integration-card:hover {
+    transform: translateY(-2px);
+}
+
+.integration-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Setup wizard */
+.setup-step {
+    border-left: 4px solid #dee2e6;
+    padding-left: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.setup-step.active {
+    border-left-color: var(--ha-blue);
+}
+
+.setup-step.completed {
+    border-left-color: var(--success-green);
+}
+
+.step-number {
+    background-color: #dee2e6;
+    color: #6c757d;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+.step-number.active {
+    background-color: var(--ha-blue);
+    color: white;
+}
+
+.step-number.completed {
+    background-color: var(--success-green);
+    color: white;
+}
+
+/* Form styling */
+.form-label {
+    font-weight: 500;
+}
+
+.form-control:focus {
+    border-color: var(--ha-blue);
+    box-shadow: 0 0 0 0.2rem rgba(3, 169, 244, 0.25);
+}
+
+.btn-primary {
+    background-color: var(--ha-blue);
+    border-color: var(--ha-blue);
+}
+
+.btn-primary:hover {
+    background-color: var(--ha-dark-blue);
+    border-color: var(--ha-dark-blue);
+}
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Log entries */
+.log-entry {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: #f8f9fa;
+    border-left: 4px solid #dee2e6;
+    margin-bottom: 0.5rem;
+}
+
+.log-entry.info {
+    border-left-color: #17a2b8;
+}
+
+.log-entry.warning {
+    border-left-color: #ffc107;
+}
+
+.log-entry.error {
+    border-left-color: #dc3545;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .integration-icon {
+        font-size: 2rem;
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-light: #343a40;
+    }
+
+    .card {
+        background-color: #495057;
+        color: #f8f9fa;
+    }
+
+    .card-header {
+        background-color: var(--bg-light);
+        color: #f8f9fa;
+    }
+
+    .log-entry {
+        background-color: #495057;
+        color: #f8f9fa;
+    }
+}

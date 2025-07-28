@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}Integrations - HA External Connector{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-puzzle me-2"></i>Integrations
+            </h1>
+            <button class="btn btn-primary" onclick="refreshIntegrations()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Integration Cards -->
+<div class="row" id="integration-cards">
+    <!-- Dynamically populated -->
+</div>
+
+<!-- Integration Details Modal -->
+<div class="modal fade" id="integrationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="integrationModalTitle">Integration Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="integrationModalBody">
+                <!-- Dynamically populated -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveIntegrationConfig">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentIntegration = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadIntegrations();
+});
+
+async function loadIntegrations() {
+    try {
+        const integrations = await window.haApp.apiCall('/integrations/');
+        renderIntegrationCards(integrations);
+    } catch (error) {
+        console.error('Failed to load integrations:', error);
+        window.haApp.showNotification('Failed to load integrations', 'error');
+    }
+}
+
+function renderIntegrationCards(integrations) {
+    const container = document.getElementById('integration-cards');
+    container.innerHTML = '';
+
+    integrations.forEach(integration => {
+        const card = createIntegrationCard(integration);
+        container.appendChild(card);
+    });
+}
+
+function createIntegrationCard(integration) {
+    const col = document.createElement('div');
+    col.className = 'col-md-6 col-lg-4 mb-4';
+
+    const statusColor = getStatusColor(integration.status);
+    const icon = getIntegrationIcon(integration.name);
+
+    col.innerHTML = `
+        <div class="card integration-card h-100">
+            <div class="card-body text-center">
+                <div class="integration-icon ${statusColor}">
+                    <i class="bi bi-${icon}"></i>
+                </div>
+                <h5 class="card-title">${formatIntegrationName(integration.name)}</h5>
+                <p class="card-text text-muted">${getIntegrationDescription(integration.name)}</p>
+                <div class="mb-3">
+                    <span class="badge bg-${statusColor.replace('text-', '')}">${integration.status}</span>
+                    ${integration.version ? `<span class="badge bg-secondary ms-1">v${integration.version}</span>` : ''}
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm"
+                            onclick="showIntegrationDetails('${integration.name}')">
+                        <i class="bi bi-gear me-1"></i>Configure
+                    </button>
+                    <button class="btn btn-outline-${integration.status === 'enabled' ? 'danger' : 'success'} btn-sm"
+                            onclick="toggleIntegration('${integration.name}', ${integration.status !== 'enabled'})">
+                        <i class="bi bi-${integration.status === 'enabled' ? 'stop' : 'play'}-fill me-1"></i>
+                        ${integration.status === 'enabled' ? 'Disable' : 'Enable'}
+                    </button>
+                </div>
+            </div>
+            ${integration.last_updated ? `
+                <div class="card-footer text-muted text-center">
+                    <small>Last updated: ${window.haApp.formatTimestamp(integration.last_updated)}</small>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    return col;
+}
+
+async function showIntegrationDetails(integrationName) {
+    try {
+        const integration = await window.haApp.apiCall(`/integrations/${integrationName}`);
+        currentIntegration = integration;
+
+        document.getElementById('integrationModalTitle').textContent =
+            `${formatIntegrationName(integration.name)} Configuration`;
+
+        const modalBody = document.getElementById('integrationModalBody');
+        modalBody.innerHTML = renderIntegrationConfig(integration);
+
+        const modal = new bootstrap.Modal(document.getElementById('integrationModal'));
+        modal.show();
+    } catch (error) {
+        window.haApp.showNotification('Failed to load integration details', 'error');
+    }
+}
+
+function renderIntegrationConfig(integration) {
+    let configForm = `
+        <div class="mb-3">
+            <label class="form-label">Integration Name</label>
+            <input type="text" class="form-control" value="${integration.name}" readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="integrationStatus">
+                <option value="enabled" ${integration.status === 'enabled' ? 'selected' : ''}>Enabled</option>
+                <option value="disabled" ${integration.status === 'disabled' ? 'selected' : ''}>Disabled</option>
+            </select>
+        </div>
+    `;
+
+    // Add integration-specific configuration
+    if (integration.name === 'alexa') {
+        configForm += `
+            <div class="mb-3">
+                <label class="form-label">Skill ID</label>
+                <input type="text" class="form-control" id="alexaSkillId"
+                       placeholder="amzn1.ask.skill.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Lambda Function Name</label>
+                <input type="text" class="form-control" id="alexaFunctionName"
+                       value="alexa-smart-home-handler" readonly>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">AWS Region</label>
+                <select class="form-select" id="alexaRegion">
+                    <option value="us-east-1">US East (N. Virginia)</option>
+                    <option value="us-west-2">US West (Oregon)</option>
+                    <option value="eu-west-1">Europe (Ireland)</option>
+                    <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                </select>
+            </div>
+        `;
+    } else if (integration.name === 'ios_companion') {
+        configForm += `
+            <div class="mb-3">
+                <label class="form-label">Companion App URL</label>
+                <input type="url" class="form-control" id="iosCompanionUrl"
+                       placeholder="https://your-domain.com/ios-companion">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Push Notification Key</label>
+                <input type="text" class="form-control" id="iosPushKey"
+                       placeholder="Enter push notification key">
+            </div>
+        `;
+    }
+
+    return configForm;
+}
+
+async function toggleIntegration(integrationName, enable) {
+    const action = enable ? 'enable' : 'disable';
+    const actionText = enable ? 'enabling' : 'disabling';
+
+    try {
+        await window.haApp.toggleIntegration(integrationName, enable);
+        window.haApp.showNotification(
+            `Successfully ${enable ? 'enabled' : 'disabled'} ${formatIntegrationName(integrationName)}`,
+            'success'
+        );
+
+        // Refresh the cards
+        setTimeout(() => loadIntegrations(), 1000);
+    } catch (error) {
+        window.haApp.showNotification(`Failed ${actionText} integration`, 'error');
+    }
+}
+
+function refreshIntegrations() {
+    window.haApp.showNotification('Refreshing integrations...', 'info');
+    loadIntegrations();
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'enabled': 'text-success',
+        'disabled': 'text-secondary',
+        'warning': 'text-warning',
+        'error': 'text-danger'
+    };
+    return colors[status] || 'text-muted';
+}
+
+function getIntegrationIcon(name) {
+    const icons = {
+        'alexa': 'mic-fill',
+        'ios_companion': 'phone-fill',
+        'google_assistant': 'google',
+        'default': 'puzzle'
+    };
+    return icons[name] || icons['default'];
+}
+
+function formatIntegrationName(name) {
+    return name.replace(/_/g, ' ')
+               .replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function getIntegrationDescription(name) {
+    const descriptions = {
+        'alexa': 'Amazon Alexa Smart Home integration with voice control',
+        'ios_companion': 'iOS Companion App integration for mobile control',
+        'google_assistant': 'Google Assistant integration for voice commands'
+    };
+    return descriptions[name] || 'External service integration';
+}
+
+// Save integration configuration
+document.getElementById('saveIntegrationConfig').addEventListener('click', async function() {
+    if (!currentIntegration) return;
+
+    const config = {
+        name: currentIntegration.name,
+        enabled: document.getElementById('integrationStatus').value === 'enabled',
+        configuration: {}
+    };
+
+    // Collect integration-specific configuration
+    if (currentIntegration.name === 'alexa') {
+        config.configuration = {
+            skill_id: document.getElementById('alexaSkillId')?.value || '',
+            function_name: document.getElementById('alexaFunctionName')?.value || '',
+            region: document.getElementById('alexaRegion')?.value || 'us-east-1'
+        };
+    } else if (currentIntegration.name === 'ios_companion') {
+        config.configuration = {
+            companion_url: document.getElementById('iosCompanionUrl')?.value || '',
+            push_key: document.getElementById('iosPushKey')?.value || ''
+        };
+    }
+
+    try {
+        await window.haApp.apiCall(`/integrations/${currentIntegration.name}/configure`, {
+            method: 'POST',
+            body: JSON.stringify(config)
+        });
+
+        window.haApp.showNotification('Configuration saved successfully', 'success');
+
+        // Close modal and refresh
+        bootstrap.Modal.getInstance(document.getElementById('integrationModal')).hide();
+        setTimeout(() => loadIntegrations(), 1000);
+    } catch (error) {
+        window.haApp.showNotification('Failed to save configuration', 'error');
+    }
+});
+</script>
+{% endblock %}

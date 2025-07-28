@@ -1,0 +1,16 @@
+{
+  "extends": [],
+  "rules": {
+    "color-hex-length": "short",
+    "rule-empty-line-before": ["always", {
+      "except": ["first-nested"],
+      "ignore": ["after-comment"]
+    }]
+  },
+  "ignoreFiles": [
+    "node_modules/**/*",
+    "build/**/*",
+    "dist/**/*",
+    "*.min.css"
+  ]
+}

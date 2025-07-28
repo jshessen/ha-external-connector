@@ -1,0 +1,19 @@
+{
+  "name": "ha-external-connector-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Frontend assets for HA External Connector",
+  "private": true,
+  "scripts": {
+    "lint": "eslint src/ha_connector/web/static/js/",
+    "lint:fix": "eslint --fix src/ha_connector/web/static/js/",
+    "lint:css": "stylelint src/ha_connector/web/static/css/",
+    "lint:css:fix": "stylelint --fix src/ha_connector/web/static/css/"
+  },
+  "devDependencies": {
+    "eslint-formatter-compact": "^8.40.0"
+  },
+  "keywords": ["home-assistant", "integration", "web", "frontend"],
+  "author": "HA External Connector Team",
+  "license": "MIT"
+}

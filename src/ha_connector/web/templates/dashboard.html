@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - HA External Connector{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- System Status Overview -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle-fill text-success fs-1"></i>
+                <h5 class="card-title mt-2">System Status</h5>
+                <p class="card-text text-success">Healthy</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-puzzle-fill text-primary fs-1"></i>
+                <h5 class="card-title mt-2">Active Integrations</h5>
+                <p class="card-text">1 of 2</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-clock-fill text-info fs-1"></i>
+                <h5 class="card-title mt-2">Uptime</h5>
+                <p class="card-text">2d 4h</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-activity text-secondary fs-1"></i>
+                <h5 class="card-title mt-2">Version</h5>
+                <p class="card-text">3.0.0</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Integration Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-puzzle me-2"></i>Integration Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Integration</th>
+                                <th>Status</th>
+                                <th>Version</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="integrations-table">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Service Health -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-heart-pulse me-2"></i>Service Health
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Response Time</th>
+                                <th>Last Check</th>
+                            </tr>
+                        </thead>
+                        <tbody id="health-table">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="recent-logs">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load dashboard data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadIntegrations();
+    loadServiceHealth();
+    loadRecentLogs();
+
+    // Refresh data every 30 seconds
+    setInterval(function() {
+        loadServiceHealth();
+        loadRecentLogs();
+    }, 30000);
+});
+
+function loadIntegrations() {
+    fetch('/api/integrations/')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('integrations-table');
+            tbody.innerHTML = '';
+
+            data.forEach(integration => {
+                const row = document.createElement('tr');
+                const statusBadge = getStatusBadge(integration.status);
+                const lastUpdated = integration.last_updated ?
+                    new Date(integration.last_updated).toLocaleString() : 'Never';
+
+                row.innerHTML = `
+                    <td>
+                        <i class="bi bi-puzzle me-2"></i>
+                        ${integration.name}
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td>${integration.version || 'N/A'}</td>
+                    <td>${lastUpdated}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                onclick="configureIntegration('${integration.name}')">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error loading integrations:', error));
+}
+
+function loadServiceHealth() {
+    fetch('/api/status/health')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('health-table');
+            tbody.innerHTML = '';
+
+            data.forEach(service => {
+                const row = document.createElement('tr');
+                const statusBadge = getStatusBadge(service.status);
+                const responseTime = service.response_time_ms ?
+                    `${service.response_time_ms}ms` : 'N/A';
+                const lastCheck = new Date(service.last_check).toLocaleString();
+
+                row.innerHTML = `
+                    <td>${service.service}</td>
+                    <td>${statusBadge}</td>
+                    <td>${responseTime}</td>
+                    <td>${lastCheck}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error loading service health:', error));
+}
+
+function loadRecentLogs() {
+    fetch('/api/status/logs')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('recent-logs');
+            container.innerHTML = '';
+
+            data.logs.forEach(log => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'mb-2';
+
+                const levelBadge = getLevelBadge(log.level);
+                const timestamp = new Date(log.timestamp).toLocaleString();
+
+                logEntry.innerHTML = `
+                    <small class="text-muted">${timestamp}</small>
+                    ${levelBadge}
+                    <span class="ms-2">${log.message}</span>
+                `;
+                container.appendChild(logEntry);
+            });
+        })
+        .catch(error => console.error('Error loading logs:', error));
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'healthy': '<span class="badge bg-success">Healthy</span>',
+        'enabled': '<span class="badge bg-success">Enabled</span>',
+        'disabled': '<span class="badge bg-secondary">Disabled</span>',
+        'warning': '<span class="badge bg-warning">Warning</span>',
+        'error': '<span class="badge bg-danger">Error</span>'
+    };
+    return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+}
+
+function getLevelBadge(level) {
+    const badges = {
+        'INFO': '<span class="badge bg-info">INFO</span>',
+        'WARN': '<span class="badge bg-warning">WARN</span>',
+        'ERROR': '<span class="badge bg-danger">ERROR</span>',
+        'DEBUG': '<span class="badge bg-secondary">DEBUG</span>'
+    };
+    return badges[level] || `<span class="badge bg-secondary">${level}</span>`;
+}
+
+function configureIntegration(name) {
+    window.location.href = `/integrations/${name}`;
+}
+</script>
+{% endblock %}

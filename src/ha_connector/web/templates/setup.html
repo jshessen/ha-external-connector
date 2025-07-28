@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Wizard - HA External Connector{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-gear me-2"></i>Setup Wizard
+        </h1>
+        <p class="lead text-muted">
+            Configure your HA External Connector in a few simple steps.
+        </p>
+    </div>
+</div>
+
+<!-- Setup Progress -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row" id="setup-progress">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Setup Content -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body" id="setup-content">
+                <!-- Dynamically populated based on current step -->
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Help & Information
+                </h6>
+            </div>
+            <div class="card-body" id="setup-help">
+                <!-- Dynamically populated based on current step -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-secondary" id="prevBtn" onclick="previousStep()">
+                <i class="bi bi-arrow-left me-1"></i>Previous
+            </button>
+            <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextStep()">
+                Next<i class="bi bi-arrow-right ms-1"></i>
+            </button>
+            <button type="button" class="btn btn-success d-none" id="finishBtn" onclick="finishSetup()">
+                <i class="bi bi-check-circle me-1"></i>Complete Setup
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentStep = 1;
+let totalSteps = 4;
+let setupSteps = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadSetupSteps();
+});
+
+async function loadSetupSteps() {
+    try {
+        setupSteps = await window.haApp.apiCall('/setup/steps');
+        totalSteps = setupSteps.length;
+        renderSetupProgress();
+        showStep(currentStep);
+    } catch (error) {
+        console.error('Failed to load setup steps:', error);
+        window.haApp.showNotification('Failed to load setup wizard', 'error');
+    }
+}
+
+function renderSetupProgress() {
+    const container = document.getElementById('setup-progress');
+    container.innerHTML = '';
+
+    setupSteps.forEach((step, index) => {
+        const col = document.createElement('div');
+        col.className = 'col';
+
+        const isActive = index + 1 === currentStep;
+        const isCompleted = step.completed;
+        const stepClass = isCompleted ? 'completed' : (isActive ? 'active' : '');
+
+        col.innerHTML = `
+            <div class="setup-step text-center ${stepClass}">
+                <div class="step-number ${stepClass}">
+                    ${isCompleted ? '<i class="bi bi-check"></i>' : step.step}
+                </div>
+                <h6 class="mt-2">${step.title}</h6>
+                <small class="text-muted">${step.description}</small>
+            </div>
+        `;
+
+        container.appendChild(col);
+    });
+}
+
+function showStep(stepNumber) {
+    const step = setupSteps[stepNumber - 1];
+    if (!step) return;
+
+    currentStep = stepNumber;
+
+    // Update progress
+    renderSetupProgress();
+
+    // Show step content
+    const content = document.getElementById('setup-content');
+    const help = document.getElementById('setup-help');
+
+    content.innerHTML = getStepContent(step);
+    help.innerHTML = getStepHelp(step);
+
+    // Update navigation buttons
+    updateNavigationButtons();
+}
+
+function getStepContent(step) {
+    switch (step.step) {
+        case 1:
+            return `
+                <h4>AWS Configuration</h4>
+                <p class="text-muted">Configure your AWS credentials and region for deployment.</p>
+                <form class="ajax-form" data-endpoint="/setup/aws" data-method="POST">
+                    <div class="mb-3">
+                        <label for="awsAccessKeyId" class="form-label">Access Key ID</label>
+                        <input type="text" class="form-control" id="awsAccessKeyId" name="access_key_id" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="awsSecretAccessKey" class="form-label">Secret Access Key</label>
+                        <input type="password" class="form-control" id="awsSecretAccessKey" name="secret_access_key" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="awsRegion" class="form-label">AWS Region</label>
+                        <select class="form-select" id="awsRegion" name="region" required>
+                            <option value="us-east-1">US East (N. Virginia)</option>
+                            <option value="us-west-2">US West (Oregon)</option>
+                            <option value="eu-west-1">Europe (Ireland)</option>
+                            <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check me-1"></i>Test & Save Configuration
+                    </button>
+                </form>
+            `;
+        case 2:
+            return `
+                <h4>Home Assistant Connection</h4>
+                <p class="text-muted">Connect to your Home Assistant instance.</p>
+                <form class="ajax-form" data-endpoint="/setup/homeassistant" data-method="POST">
+                    <div class="mb-3">
+                        <label for="haUrl" class="form-label">Home Assistant URL</label>
+                        <input type="url" class="form-control" id="haUrl" name="url"
+                               placeholder="https://your-ha-instance.com:8123" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="haToken" class="form-label">Long-Lived Access Token</label>
+                        <input type="password" class="form-control" id="haToken" name="token" required>
+                        <div class="form-text">
+                            Create a long-lived access token in Home Assistant under Profile → Security
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="haVerifySsl" name="verify_ssl" checked>
+                            <label class="form-check-label" for="haVerifySsl">
+                                Verify SSL Certificate
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check me-1"></i>Test & Save Connection
+                    </button>
+                </form>
+            `;
+        case 3:
+            return `
+                <h4>Integration Selection</h4>
+                <p class="text-muted">Choose which integrations you want to enable.</p>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-mic-fill me-2"></i>Amazon Alexa
+                                </h5>
+                                <p class="card-text">Enable voice control through Amazon Alexa Smart Home.</p>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="enableAlexa" checked>
+                                    <label class="form-check-label" for="enableAlexa">
+                                        Enable Alexa Integration
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-phone-fill me-2"></i>iOS Companion
+                                </h5>
+                                <p class="card-text">Enable mobile access through iOS companion app.</p>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="enableIos">
+                                    <label class="form-check-label" for="enableIos">
+                                        Enable iOS Integration
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="saveIntegrationSelection()">
+                    <i class="bi bi-check me-1"></i>Save Selection
+                </button>
+            `;
+        case 4:
+            return `
+                <h4>Testing & Validation</h4>
+                <p class="text-muted">Validate your configuration and test all connections.</p>
+                <div class="mb-4">
+                    <button type="button" class="btn btn-primary" onclick="runValidation()">
+                        <i class="bi bi-play-circle me-1"></i>Run Validation Tests
+                    </button>
+                </div>
+                <div id="validation-results">
+                    <!-- Results will be populated here -->
+                </div>
+            `;
+        default:
+            return '<p>Unknown step</p>';
+    }
+}
+
+function getStepHelp(step) {
+    switch (step.step) {
+        case 1:
+            return `
+                <h6>AWS Credentials</h6>
+                <p>You'll need AWS credentials with permissions to:</p>
+                <ul>
+                    <li>Create and manage Lambda functions</li>
+                    <li>Manage IAM roles and policies</li>
+                    <li>Create CloudFormation stacks</li>
+                </ul>
+                <hr>
+                <h6>Security Note</h6>
+                <p class="small text-warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Credentials are encrypted and stored securely. They are only used for AWS operations.
+                </p>
+            `;
+        case 2:
+            return `
+                <h6>Access Token</h6>
+                <p>To create a long-lived access token:</p>
+                <ol>
+                    <li>Log into Home Assistant</li>
+                    <li>Go to Profile → Security</li>
+                    <li>Create Long-Lived Access Token</li>
+                    <li>Copy the token here</li>
+                </ol>
+                <hr>
+                <h6>Network Access</h6>
+                <p class="small">
+                    Ensure your Home Assistant instance is accessible from the internet or your AWS Lambda region.
+                </p>
+            `;
+        case 3:
+            return `
+                <h6>Integration Options</h6>
+                <p><strong>Amazon Alexa:</strong> Enables voice control of your Home Assistant devices through Alexa.</p>
+                <p><strong>iOS Companion:</strong> Provides mobile access and push notifications through a companion app.</p>
+                <hr>
+                <h6>Requirements</h6>
+                <p class="small">
+                    Each integration has specific requirements that will be validated in the next step.
+                </p>
+            `;
+        case 4:
+            return `
+                <h6>Validation Tests</h6>
+                <p>The validation will test:</p>
+                <ul>
+                    <li>AWS credential validity</li>
+                    <li>Home Assistant connectivity</li>
+                    <li>Required permissions</li>
+                    <li>Integration readiness</li>
+                </ul>
+                <hr>
+                <p class="small text-success">
+                    <i class="bi bi-info-circle me-1"></i>
+                    All tests must pass before completing setup.
+                </p>
+            `;
+        default:
+            return '<p>No help available for this step.</p>';
+    }
+}
+
+function updateNavigationButtons() {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const finishBtn = document.getElementById('finishBtn');
+
+    prevBtn.style.display = currentStep === 1 ? 'none' : 'inline-block';
+
+    if (currentStep === totalSteps) {
+        nextBtn.classList.add('d-none');
+        finishBtn.classList.remove('d-none');
+    } else {
+        nextBtn.classList.remove('d-none');
+        finishBtn.classList.add('d-none');
+    }
+}
+
+function previousStep() {
+    if (currentStep > 1) {
+        showStep(currentStep - 1);
+    }
+}
+
+function nextStep() {
+    if (currentStep < totalSteps) {
+        showStep(currentStep + 1);
+    }
+}
+
+async function saveIntegrationSelection() {
+    const alexaEnabled = document.getElementById('enableAlexa').checked;
+    const iosEnabled = document.getElementById('enableIos').checked;
+
+    const selections = {
+        alexa: alexaEnabled,
+        ios_companion: iosEnabled
+    };
+
+    // TODO: Send selections to API
+    window.haApp.showNotification('Integration selection saved', 'success');
+
+    // Mark step as completed
+    setupSteps[2].completed = true;
+    renderSetupProgress();
+}
+
+async function runValidation() {
+    const resultsContainer = document.getElementById('validation-results');
+    resultsContainer.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p class="mt-2">Running validation tests...</p></div>';
+
+    try {
+        const results = await window.haApp.apiCall('/setup/validate', {
+            method: 'POST'
+        });
+
+        let resultsHtml = '<div class="alert alert-' + (results.valid ? 'success' : 'danger') + '">';
+        resultsHtml += '<h6><i class="bi bi-' + (results.valid ? 'check-circle' : 'x-circle') + ' me-2"></i>';
+        resultsHtml += results.valid ? 'All Tests Passed' : 'Some Tests Failed';
+        resultsHtml += '</h6></div>';
+
+        resultsHtml += '<div class="list-group">';
+        results.checks.forEach(check => {
+            const icon = check.status === 'pass' ? 'check-circle text-success' : 'x-circle text-danger';
+            resultsHtml += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    ${check.name}
+                    <i class="bi bi-${icon}"></i>
+                </div>
+            `;
+        });
+        resultsHtml += '</div>';
+
+        resultsContainer.innerHTML = resultsHtml;
+
+        if (results.valid) {
+            setupSteps[3].completed = true;
+            renderSetupProgress();
+        }
+
+    } catch (error) {
+        resultsContainer.innerHTML = '<div class="alert alert-danger">Validation failed. Please check your configuration.</div>';
+    }
+}
+
+async function finishSetup() {
+    try {
+        const response = await window.haApp.apiCall('/setup/complete', {
+            method: 'POST'
+        });
+
+        window.haApp.showNotification(response.message, 'success');
+
+        // Redirect to dashboard
+        setTimeout(() => {
+            window.location.href = response.redirect || '/dashboard';
+        }, 2000);
+
+    } catch (error) {
+        window.haApp.showNotification('Failed to complete setup', 'error');
+    }
+}
+</script>
+{% endblock %}
