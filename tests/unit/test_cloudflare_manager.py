@@ -44,8 +44,7 @@ class TestCloudFlareManager:
         "_validate_credentials"
     )
     @patch(
-        "ha_connector.adapters.cloudflare_manager.CloudFlareManager."
-        "_create_http_client"
+        "ha_connector.adapters.cloudflare_manager.CloudFlareManager._create_http_client"
     )
     def test_init_with_valid_credentials(
         self, mock_create_client: Mock, mock_validate: Mock
@@ -76,8 +75,7 @@ class TestCloudFlareManager:
         "_validate_credentials"
     )
     @patch(
-        "ha_connector.adapters.cloudflare_manager.CloudFlareManager."
-        "_create_http_client"
+        "ha_connector.adapters.cloudflare_manager.CloudFlareManager._create_http_client"
     )
     def test_load_config_from_env(
         self, mock_create_client: Mock, mock_validate: Mock
@@ -105,8 +103,7 @@ class TestCloudFlareManager:
         "_validate_credentials"
     )
     @patch(
-        "ha_connector.adapters.cloudflare_manager.CloudFlareManager."
-        "_create_http_client"
+        "ha_connector.adapters.cloudflare_manager.CloudFlareManager._create_http_client"
     )
     def test_managers_initialized(
         self, mock_create_client: Mock, mock_validate: Mock

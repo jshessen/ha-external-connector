@@ -109,7 +109,8 @@ class TestAWSTestFramework:
     """Test the AWS test framework itself."""
 
     def test_framework_initialization(
-        self, aws_test_framework: Any  # AWSTestFramework type
+        self,
+        aws_test_framework: Any,  # AWSTestFramework type
     ) -> None:
         """Test AWS test framework initialization."""
         assert aws_test_framework.region == "us-east-1"
