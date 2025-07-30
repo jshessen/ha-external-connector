@@ -77,6 +77,28 @@ python --version                   # ✅ Works automatically (in VS Code termina
 ruff check src/                    # ✅ Works automatically (in VS Code terminal)
 ```
 
+### 4. AWS CLI Pager Configuration
+
+**🚨 MANDATORY: Always use `--no-cli-pager` with AWS commands**
+
+```bash
+# ✅ CORRECT: Disable pager for automation compatibility
+aws lambda list-functions --no-cli-pager
+aws logs describe-log-streams --log-group-name /aws/lambda/HomeAssistant --no-cli-pager
+aws s3 ls --no-cli-pager
+
+# ❌ WRONG: Default pager will block terminal automation
+aws lambda list-functions         # Will hang waiting for user input
+aws logs describe-log-streams      # Pager blocks automation
+```
+
+**Why this is critical:**
+
+- AWS CLI pager blocks terminal automation tools
+- Pager requires user interaction to navigate/exit
+- `--no-cli-pager` ensures clean, automatable output
+- Required for all AWS CLI commands in automation context
+
 ## Development Workflow Best Practices
 
 ### Virtual Environment Usage
@@ -475,6 +497,85 @@ Maintain documentation structure that supports future HACS (Home Assistant Commu
 - Run Ruff after each change: `ruff check file.py`
 - Preserve exact functionality during decomposition
 - Document architectural constraints with targeted disables
+
+### Transfer Block System for Duplicate Code Management
+
+**🔄 STRATEGIC DUPLICATE CODE SYNCHRONIZATION:**
+
+This project intentionally maintains synchronized duplicate code between Lambda functions using a **Transfer Block System** for optimal performance and deployment independence.
+
+**📋 TRANSFER BLOCK LOCATIONS:**
+
+- **Primary Source**: `src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py` (line ~3149)
+- **Synchronized Target**: `src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py` (line ~255)
+- **Infrastructure**: `infrastructure/deployment/smart_home_bridge.py` (separate deployment script)
+
+**🎯 TRANSFER BLOCK MARKERS:**
+
+```python
+# ╭─────────────────── TRANSFER BLOCK START ───────────────────╮
+# ║                           🚀 TRANSFER-READY CODE 🚀                       ║
+# ║ 📋 BLOCK PURPOSE: Strategic 3-tier caching for <500ms voice commands     ║
+# ║ 🔄 TRANSFER STATUS: Ready for duplication across Lambda functions        ║
+# ║ ⚡ PERFORMANCE: Container 0-1ms | Shared 20-50ms | SSM 100-200ms         ║
+# ║                                                                           ║
+# ║ 🎯 USAGE PATTERN:                                                         ║
+# ║   1. Copy entire block between "BLOCK_START" and "BLOCK_END" markers     ║
+# ║   2. Update function prefixes as needed (e.g., _oauth_ → _bridge_)        ║
+# ║   3. Adjust cache keys and table names for target service                ║
+# ║   4. Maintain identical core functionality across Lambda functions       ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+def load_standardized_configuration(...):
+    # Core speed-optimized configuration loading
+    # ... transfer block content ...
+
+# ╭─────────────────── TRANSFER BLOCK END ───────────────────╮
+```
+
+**⚠️ CRITICAL AI ASSISTANT GUIDELINES:**
+
+1. **NEVER "Clean Up" Duplicate Code**: The duplicate code between OAuth Gateway and Smart Home Bridge is INTENTIONAL
+2. **Preserve Transfer Blocks**: When editing one transfer block, copy changes to the synchronized location
+3. **Maintain Service-Specific Customizations**: Each Lambda function has its own cache prefixes and service identifiers
+4. **Infrastructure Files Are Separate**: Don't confuse `infrastructure/deployment/` files with main Lambda functions
+
+**🔧 TRANSFER WORKFLOW:**
+
+When updating shared functionality:
+
+1. **Edit Primary Source** (oauth_gateway.py transfer block)
+2. **Copy Transfer Block Content** (between START/END markers)
+3. **Update Target Location** (smart_home_bridge.py transfer block)
+4. **Apply Service Customizations**:
+   - Cache prefixes: `oauth_config_` → `bridge_config_`
+   - Lambda function names: `"oauth_gateway"` → `"smart_home_bridge"`
+   - Service-specific constants and identifiers
+5. **Test Both Functions** independently after synchronization
+
+**🎯 ARCHITECTURAL RATIONALE:**
+
+- **Lambda Independence**: Each function can be deployed separately without shared dependencies
+- **Performance Optimization**: Eliminates import overhead and cold start penalties
+- **Service Specialization**: OAuth Gateway handles authentication, Smart Home Bridge handles voice commands
+- **Maintenance Efficiency**: Transfer blocks enable quick synchronization of shared optimizations
+
+**📊 PERFORMANCE BENEFITS:**
+
+- **Container Cache**: 0-1ms access for warm Lambda containers
+- **Shared Cache**: 20-50ms cross-Lambda function sharing via DynamoDB
+- **SSM Fallback**: 100-200ms authoritative configuration source
+- **Voice Command Target**: Sub-500ms total response time
+
+**🚨 VALIDATION CHECKLIST:**
+
+After transfer block updates:
+
+- [ ] Both Lambda functions import successfully
+- [ ] Ruff/Pylint checks pass for both files
+- [ ] Service-specific prefixes updated correctly
+- [ ] Transfer block markers remain intact
+- [ ] Core functionality preserved across both functions
 
 **📚 DOCUMENTATION WORKFLOW:**
 

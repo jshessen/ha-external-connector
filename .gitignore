@@ -201,4 +201,8 @@ package-lock.json.bak
 terraform.tfstate*
 .terraform/
 infrastructure/deployed/
+# infrastructure/deployment/  # ← TEMPORARILY DISABLED for packaging
 deployment_logs/
+
+# Infrastructure deployment files (handled in secure temp directory in production)
+# infrastructure/deployment/*.py  # ← TEMPORARILY DISABLED for packaging

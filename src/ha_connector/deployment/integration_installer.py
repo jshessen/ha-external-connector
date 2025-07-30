@@ -29,6 +29,8 @@ class ServiceType(str, Enum):
     """Supported service types"""
 
     ALEXA = "alexa"
+    ALEXA_OAUTH = "alexa_oauth"
+    ALEXA_CONFIG = "alexa_config"
     IOS_COMPANION = "ios_companion"
     CLOUDFLARE_PROXY = "cloudflare_proxy"
     GENERIC = "generic"
@@ -88,39 +90,114 @@ class ServiceInstaller:
         # Initialize Configuration Manager for enhanced resource discovery
         self.config_manager = ConfigurationManager()
 
-        # Default service configurations
+        # Enhanced service configurations with dual naming system
+        # Maps ServiceType to both human-friendly names and technical IDs
         self._default_configs: dict[ServiceType, dict[str, Any]] = {
             ServiceType.ALEXA: {
-                "function_name": "ha-alexa-proxy",
+                # Clean naming convention
+                "function_name": "Alexa_Smart-Home-Bridge",  # Consistent naming
+                "resource_id": "ha-alexa-bridge",  # Technical ID for resource matching
+                "display_name": "Alexa Home Assistant Bridge",
+                # Function configuration
                 "handler": "smart_home_bridge.lambda_handler",
                 "source_path": (
                     "src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py"
                 ),
-                "runtime": "python3.11",
-                "description": "Home Assistant Alexa Smart Home Bridge",
-                "timeout": 30,
-                "memory_size": 512,
+                "runtime": "python3.13",
+                "description": "Alexa/Home Assistant Integration",
+                "timeout": 3,
+                "memory_size": 128,
                 "create_url": True,
+                # Environment variables
+                "environment_variables": {
+                    "APP_CONFIG_PATH": "/ha-alexa/",
+                    "DEBUG": "True",
+                },
             },
             ServiceType.IOS_COMPANION: {
-                "function_name": "ha-ios-proxy",
-                "handler": "ios_wrapper.lambda_handler",
+                # Dual naming system
+                "function_name": "iOS-Companion-Wrapper",  # Existing AWS name
+                "resource_id": "ha-ios-proxy",  # Technical ID for resource matching
+                "display_name": "iOS Companion Integration",
+                # Function configuration (matches existing AWS deployment)
+                "handler": "ios_companion_wrapper.lambda_handler",  # Matches existing
                 "source_path": "src/ios/ios_companion.py",
-                "runtime": "python3.11",
+                "runtime": "python3.13",  # Updated to match AWS
                 "description": "Home Assistant iOS Companion Proxy",
-                "timeout": 30,
-                "memory_size": 256,
+                "timeout": 30,  # Matches existing AWS
+                "memory_size": 256,  # Matches existing AWS
                 "create_url": True,
+                # Environment variables from existing deployment
+                "environment_variables": {
+                    "APP_CONFIG_PATH": "/ha-alexa/",
+                    "DEBUG": "TRUE",
+                    "ALLOWED_HA_BASE_URL": "https://jarvis.hessenflow.net",
+                },
+            },
+            ServiceType.ALEXA_OAUTH: {
+                # Clean naming convention
+                "function_name": "Alexa_OAuth-Gateway",  # Consistent naming
+                "resource_id": "ha-alexa-oauth-gateway",  # Technical ID
+                "display_name": "Alexa OAuth Gateway",
+                # Function configuration
+                "handler": "oauth_gateway.lambda_handler",
+                "source_path": (
+                    "src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py"
+                ),
+                "runtime": "python3.13",
+                "description": "Alexa OAuth Handler with Cloudflare proxy support",
+                "timeout": 30,
+                "memory_size": 128,
+                "create_url": True,
+                # Environment variables
+                "environment_variables": {
+                    "APP_CONFIG_PATH": "/ha-alexa/",
+                    "ALLOWED_HA_BASE_URL": "https://jarvis.hessenflow.net",
+                },
             },
             ServiceType.CLOUDFLARE_PROXY: {
-                "function_name": "ha-cloudflare-oauth-gateway",
-                "handler": "cloudflare_oauth_gateway.lambda_handler",
-                "source_path": "src/aws/cloudflare_oauth_gateway.py",
-                "runtime": "python3.11",
-                "description": "Home Assistant CloudFlare OAuth Gateway",
+                # New service type for dedicated CloudFlare proxy (if needed)
+                "function_name": "HA-CloudFlare-Proxy",  # Human-friendly name
+                "resource_id": "ha-cloudflare-proxy",  # Technical ID
+                "display_name": "CloudFlare Proxy Gateway",
+                # Function configuration
+                "handler": "oauth_gateway.lambda_handler",
+                "source_path": (
+                    "src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py"
+                ),
+                "runtime": "python3.13",
+                "description": "Dedicated CloudFlare Proxy Gateway",
                 "timeout": 30,
                 "memory_size": 256,
                 "create_url": True,
+                # Environment variables for CloudFlare Proxy
+                "environment_variables": {
+                    "APP_CONFIG_PATH": "/cloudflare/proxy",
+                    "DEBUG": "True",
+                    "ALLOWED_HA_BASE_URL": "https://jarvis.hessenflow.net",
+                },
+            },
+            ServiceType.ALEXA_CONFIG: {
+                # Clean naming convention
+                "function_name": "Alexa_Config-Manager",  # Consistent naming
+                "resource_id": "ha-alexa-config-manager",  # Technical ID
+                "display_name": "Alexa Configuration Manager",
+                # Function configuration
+                "handler": "configuration_manager.lambda_handler",
+                "source_path": (
+                    "src/ha_connector/integrations/alexa/lambda_functions/configuration_manager.py"
+                ),
+                "runtime": "python3.13",
+                "description": "Alexa AWS Configuration Manager",
+                "timeout": 60,  # Longer timeout for configuration operations
+                "memory_size": 512,  # More memory for configuration processing
+                "create_url": True,
+                # Environment variables
+                "environment_variables": {
+                    "APP_CONFIG_PATH": "/homeassistant/config/alexa",
+                    "DEBUG": "True",
+                    "ALLOWED_HA_BASE_URL": "https://jarvis.hessenflow.net",
+                },
             },
         }
 
@@ -130,6 +207,42 @@ class ServiceInstaller:
         if config is None:
             return {}
         return config.copy()  # Return a copy to prevent mutations
+
+    def get_function_name(self, service_type: ServiceType) -> str:
+        """Get human-friendly function name for a service type"""
+        config = self.get_default_config(service_type)
+        function_name = config.get("function_name")
+        return str(function_name) if function_name else f"ha-{service_type.value}"
+
+    def get_resource_id(self, service_type: ServiceType) -> str:
+        """Get technical resource ID for a service type"""
+        config = self.get_default_config(service_type)
+        resource_id = config.get("resource_id")
+        return str(resource_id) if resource_id else f"ha-{service_type.value}-proxy"
+
+    def get_display_name(self, service_type: ServiceType) -> str:
+        """Get display name for a service type"""
+        config = self.get_default_config(service_type)
+        display_name = config.get("display_name")
+        return (
+            str(display_name)
+            if display_name
+            else f"HA {service_type.value.replace('_', ' ').title()}"
+        )
+
+    def find_service_by_function_name(self, function_name: str) -> ServiceType | None:
+        """Find service type by AWS function name (human-friendly)"""
+        for service_type, config in self._default_configs.items():
+            if config.get("function_name") == function_name:
+                return service_type
+        return None
+
+    def find_service_by_resource_id(self, resource_id: str) -> ServiceType | None:
+        """Find service type by technical resource ID"""
+        for service_type, config in self._default_configs.items():
+            if config.get("resource_id") == resource_id:
+                return service_type
+        return None
 
     def create_deployment_package(
         self,
@@ -340,15 +453,59 @@ class ServiceInstaller:
         return self.deploy_service(config)
 
     def list_deployed_services(self) -> list[dict[str, Any]]:
-        """List all deployed Lambda functions"""
+        """List all deployed Lambda functions with enhanced service mapping"""
         if self.dry_run:
             self.logger.info("[DRY RUN] Would list deployed services")
             return []
 
-        # This would use AWS Lambda list-functions API
-        # For now, return empty list as placeholder
         self.logger.info("Listing deployed services...")
-        return []
+
+        try:
+            # Get Lambda functions from AWS
+            result = self.aws_manager.read_resource(AWSResourceType.LAMBDA, "*")
+
+            if not result.resource or "Functions" not in result.resource:
+                self.logger.warning("No Lambda functions found or empty response")
+                return []
+
+            deployed_services: list[dict[str, Any]] = []
+            for func in result.resource["Functions"]:
+                function_name = func.get("FunctionName", "Unknown")
+                service_type = self._get_service_type_for_lambda(function_name)
+
+                # Get enhanced service information
+                config = self.get_default_config(service_type)
+
+                service_info: dict[str, Any] = {
+                    "aws_function_name": function_name,
+                    "service_type": service_type.value,
+                    "display_name": self.get_display_name(service_type),
+                    "resource_id": self.get_resource_id(service_type),
+                    "function_arn": func.get("FunctionArn"),
+                    "runtime": func.get("Runtime"),
+                    "handler": func.get("Handler"),
+                    "memory_size": func.get("MemorySize"),
+                    "timeout": func.get("Timeout"),
+                    "last_modified": func.get("LastModified"),
+                    "description": func.get("Description", ""),
+                    "code_size": func.get("CodeSize"),
+                    "matches_config": {
+                        "function_name": function_name == config.get("function_name"),
+                        "handler": func.get("Handler") == config.get("handler"),
+                        "runtime": func.get("Runtime") == config.get("runtime"),
+                        "memory_size": func.get("MemorySize")
+                        == config.get("memory_size"),
+                        "timeout": func.get("Timeout") == config.get("timeout"),
+                    },
+                }
+
+                deployed_services.append(service_info)
+
+            return deployed_services
+
+        except (KeyError, AttributeError, RuntimeError) as e:
+            self.logger.error(f"Failed to list deployed services: {str(e)}")
+            return []
 
     def plan_enhanced_installation(
         self, scenario: InstallationScenario
@@ -523,14 +680,60 @@ class ServiceInstaller:
         return results
 
     def _get_service_type_for_lambda(self, lambda_name: str) -> ServiceType:
-        """Map Lambda function name to ServiceType"""
-        if "alexa" in lambda_name.lower():
-            return ServiceType.ALEXA
-        if "ios" in lambda_name.lower():
+        """Map Lambda function name to ServiceType (supports both naming systems)"""
+        # First try to find by exact function name match (new clean naming)
+        service_type = self.find_service_by_function_name(lambda_name)
+        if service_type:
+            return service_type
+
+        # Then try to find by resource ID match (technical)
+        service_type = self.find_service_by_resource_id(lambda_name)
+        if service_type:
+            return service_type
+
+        # Use pattern matching for fallback detection
+        return self._pattern_match_service_type(lambda_name)
+
+    def _pattern_match_service_type(self, lambda_name: str) -> ServiceType:
+        """Pattern match lambda name to service type for fallback detection"""
+        lambda_lower = lambda_name.lower()
+
+        # Legacy AWS function name mappings (exact matches)
+        legacy_mappings = {
+            "cloudflare-wrapper": ServiceType.ALEXA_OAUTH,
+            "homeassistant": ServiceType.ALEXA,
+        }
+        if lambda_lower in legacy_mappings:
+            return legacy_mappings[lambda_lower]
+
+        # New clean naming pattern mappings (exact matches)
+        clean_name_mappings = {
+            "alexa_smart-home-bridge": ServiceType.ALEXA,
+            "alexa_oauth-gateway": ServiceType.ALEXA_OAUTH,
+            "alexa_config-manager": ServiceType.ALEXA_CONFIG,
+        }
+        if lambda_lower in clean_name_mappings:
+            return clean_name_mappings[lambda_lower]
+
+        # Generic pattern matching - return first match
+        return self._match_by_keywords(lambda_lower)
+
+    def _match_by_keywords(self, lambda_lower: str) -> ServiceType:
+        """Match service type by keywords in lambda name"""
+        # Check patterns in order of specificity
+        if "oauth" in lambda_lower and "alexa" in lambda_lower:
+            return ServiceType.ALEXA_OAUTH
+        if "config" in lambda_lower and "alexa" in lambda_lower:
+            return ServiceType.ALEXA_CONFIG
+        if "ios" in lambda_lower or "companion" in lambda_lower:
             return ServiceType.IOS_COMPANION
-        if "cloudflare" in lambda_name.lower():
+        if "cloudflare" in lambda_lower:
             return ServiceType.CLOUDFLARE_PROXY
-        return ServiceType.ALEXA  # Default fallback
+        if "alexa" in lambda_lower or "homeassistant" in lambda_lower:
+            return ServiceType.ALEXA
+
+        # Default fallback
+        return ServiceType.ALEXA
 
     def remove_service(self, function_name: str) -> bool:
         """Remove a deployed service"""

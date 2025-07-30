@@ -38,11 +38,17 @@ class LambdaSecurityValidator:
         """
         self.region = region
         # Support dependency injection for better testability
-        self._lambda_client: LambdaClient = lambda_client or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-            "lambda"
+        self._lambda_client: LambdaClient = (
+            lambda_client
+            or boto3.client(  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+                "lambda"
+            )
         )
-        self._iam_client: IAMClient = iam_client or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-            "iam"
+        self._iam_client: IAMClient = (
+            iam_client
+            or boto3.client(  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType]
+                "iam"
+            )
         )
 
     @property
@@ -86,6 +92,11 @@ class LambdaSecurityValidator:
             results.extend(self._check_memory_allocation(function_config))
             results.extend(self._check_code_signing(function_config))
             results.extend(self._check_layer_security(function_config))
+            results.extend(
+                self._check_configuration_management_security(function_config)
+            )
+            results.extend(self._check_cloudflare_integration_security(function_config))
+            results.extend(self._check_rate_limiting_configuration(function_config))
 
         except ClientError as e:
             logger.error("Error validating function %s: %s", function_name, e)
@@ -189,6 +200,11 @@ class LambdaSecurityValidator:
             "auth",
             "api_key",
             "access_key",
+            "client_secret",
+            "oauth_secret",
+            "cloudflare_token",
+            "cf_token",
+            "bearer_token",
         ]
 
         issues: list[str] = []
@@ -216,6 +232,9 @@ class LambdaSecurityValidator:
                         "Use AWS Secrets Manager for database credentials",
                         "Encrypt sensitive environment variables",
                         "Remove hardcoded secrets from environment variables",
+                        "Consider using CloudFlare Access for additional security",
+                        "Implement proper secret rotation mechanisms",
+                        "Use IAM roles instead of hardcoded credentials",
                     ],
                     execution_time=time.time() - start_time,
                 )
@@ -822,6 +841,300 @@ class LambdaSecurityValidator:
                 check=check,
                 status=SecurityStatus.PASSED,
                 message=f"All {layer_count} layers appear secure",
+                execution_time=time.time() - start_time,
+            )
+        ]
+
+    def _check_configuration_management_security(
+        self, config: dict[str, Any]
+    ) -> list[SecurityCheckResult]:
+        """Check configuration management and environment variable security patterns"""
+        start_time = time.time()
+        env_vars = config.get("Environment", {}).get("Variables", {})
+
+        check = SecurityCheck(
+            check_id="lambda_config_management_security",
+            name="Configuration Management Security",
+            description=(
+                "Validate secure configuration management patterns "
+                "and environment variable usage"
+            ),
+            category="Configuration Security",
+            level=SecurityLevel.HIGH,
+            enabled=True,
+        )
+
+        issues: list[str] = []
+        recommendations: list[str] = []
+
+        # Check for proper configuration hierarchies (env vars + SSM)
+        config_vars = [
+            var
+            for var in env_vars
+            if any(
+                pattern in var.upper()
+                for pattern in ["CONFIG", "CACHE", "TTL", "TIMEOUT", "REGION", "TABLE"]
+            )
+        ]
+
+        if not config_vars:
+            issues.append("No configuration management environment variables detected")
+            recommendations.extend(
+                [
+                    "Implement configuration hierarchy (env vars + SSM)",
+                    "Use environment variables for non-sensitive configuration",
+                    "Consider using configuration management service pattern",
+                ]
+            )
+
+        # Check for CloudFlare integration patterns
+        cf_vars = [
+            var
+            for var in env_vars
+            if any(
+                pattern in var.upper()
+                for pattern in ["CLOUDFLARE", "CF_", "CDN", "PROXY"]
+            )
+        ]
+
+        if cf_vars:
+            recommendations.append(
+                "Ensure CloudFlare credentials use secure storage (SSM/Secrets Manager)"
+            )
+
+        # Check for rate limiting configurations
+        rate_limit_vars = [
+            var
+            for var in env_vars
+            if any(
+                pattern in var.upper()
+                for pattern in ["RATE_LIMIT", "MAX_REQUESTS", "REQUEST_SIZE", "TIMEOUT"]
+            )
+        ]
+
+        if rate_limit_vars:
+            # This is good - rate limiting is configured
+            pass
+        else:
+            issues.append("No rate limiting configuration detected")
+            recommendations.extend(
+                [
+                    "Implement request rate limiting for security",
+                    "Configure maximum request size limits",
+                    "Set appropriate timeout values",
+                ]
+            )
+
+        if issues:
+            return [
+                SecurityCheckResult(
+                    check=check,
+                    status=SecurityStatus.WARNING,
+                    message=(
+                        f"Configuration management security issues detected: "
+                        f"{len(issues)} issues"
+                    ),
+                    details={"issues": issues},
+                    recommendations=recommendations,
+                    execution_time=time.time() - start_time,
+                )
+            ]
+
+        return [
+            SecurityCheckResult(
+                check=check,
+                status=SecurityStatus.PASSED,
+                message="Configuration management security patterns appear appropriate",
+                execution_time=time.time() - start_time,
+            )
+        ]
+
+    def _check_cloudflare_integration_security(
+        self, config: dict[str, Any]
+    ) -> list[SecurityCheckResult]:
+        """Check CloudFlare integration security patterns"""
+        start_time = time.time()
+        env_vars = config.get("Environment", {}).get("Variables", {})
+
+        check = SecurityCheck(
+            check_id="lambda_cloudflare_security",
+            name="CloudFlare Integration Security",
+            description="Validate CloudFlare integration security and header handling",
+            category="Network Security",
+            level=SecurityLevel.MEDIUM,
+            enabled=True,
+        )
+
+        # Check for CloudFlare-related environment variables
+        cf_vars = [
+            var
+            for var in env_vars
+            if any(
+                pattern in var.upper()
+                for pattern in ["CLOUDFLARE", "CF_", "CDN", "PROXY", "BYPASS"]
+            )
+        ]
+
+        if not cf_vars:
+            return [
+                SecurityCheckResult(
+                    check=check,
+                    status=SecurityStatus.WARNING,
+                    message="No CloudFlare integration detected",
+                    recommendations=[
+                        "Consider CloudFlare Access for additional security layer",
+                        "Use CloudFlare for DDoS protection and rate limiting",
+                    ],
+                    execution_time=time.time() - start_time,
+                )
+            ]
+
+        issues: list[str] = []
+        recommendations: list[str] = []
+
+        # Check for potential security issues with CloudFlare integration
+        for var_name, var_value in env_vars.items():
+            if (
+                any(pattern in var_name.upper() for pattern in ["CLOUDFLARE", "CF_"])
+                and var_value
+                and len(var_value) > 10  # Likely contains sensitive data
+            ):
+                issues.append(
+                    f"CloudFlare credential '{var_name}' may contain sensitive data"
+                )
+
+        if issues:
+            recommendations.extend(
+                [
+                    "Move CloudFlare credentials to AWS Secrets Manager",
+                    "Use IAM roles for CloudFlare API access when possible",
+                    "Implement proper secret rotation for CloudFlare tokens",
+                    "Validate CloudFlare Access headers for bypass protection",
+                ]
+            )
+
+            return [
+                SecurityCheckResult(
+                    check=check,
+                    status=SecurityStatus.WARNING,
+                    message=(
+                        f"CloudFlare integration security issues: "
+                        f"{len(issues)} issues"
+                    ),
+                    details={"issues": issues},
+                    recommendations=recommendations,
+                    execution_time=time.time() - start_time,
+                )
+            ]
+
+        return [
+            SecurityCheckResult(
+                check=check,
+                status=SecurityStatus.PASSED,
+                message="CloudFlare integration security appears appropriate",
+                recommendations=[
+                    "Ensure CloudFlare Access headers are properly validated",
+                    "Monitor CloudFlare bypass attempts in logs",
+                ],
+                execution_time=time.time() - start_time,
+            )
+        ]
+
+    def _check_rate_limiting_configuration(
+        self, config: dict[str, Any]
+    ) -> list[SecurityCheckResult]:
+        """Check rate limiting and request validation configuration"""
+        start_time = time.time()
+        env_vars = config.get("Environment", {}).get("Variables", {})
+
+        check = SecurityCheck(
+            check_id="lambda_rate_limiting_security",
+            name="Rate Limiting Security Configuration",
+            description="Validate rate limiting and request size controls for security",
+            category="Request Security",
+            level=SecurityLevel.HIGH,
+            enabled=True,
+        )
+
+        issues: list[str] = []
+        recommendations: list[str] = []
+
+        # Check for rate limiting environment variables
+        rate_limit_vars = {
+            "MAX_REQUEST_SIZE": env_vars.get(
+                "MAX_REQUEST_SIZE_BYTES", env_vars.get("MAX_REQUEST_SIZE")
+            ),
+            "RATE_LIMIT_WINDOW": env_vars.get("RATE_LIMIT_WINDOW_SECONDS"),
+            "MAX_REQUESTS_PER_MINUTE": env_vars.get("MAX_REQUESTS_PER_MINUTE"),
+            "REQUEST_TIMEOUT": env_vars.get("REQUEST_TIMEOUT_SECONDS"),
+            "MAX_RETRIES": env_vars.get("MAX_RETRIES"),
+        }
+
+        configured_limits = {k: v for k, v in rate_limit_vars.items() if v is not None}
+
+        if not configured_limits:
+            issues.append("No rate limiting configuration detected")
+            recommendations.extend(
+                [
+                    "Implement request rate limiting to prevent abuse",
+                    "Configure maximum request size limits (e.g., 8KB-64KB)",
+                    "Set request timeout values (e.g., 30 seconds)",
+                    "Implement retry limits for resilience",
+                ]
+            )
+        else:
+            # Validate configured values for security best practices
+            max_request_size = configured_limits.get("MAX_REQUEST_SIZE")
+            if max_request_size:
+                try:
+                    size_bytes = int(max_request_size)
+                    if size_bytes > 1024 * 1024:  # 1MB
+                        issues.append(
+                            f"Maximum request size is very large: {size_bytes} bytes"
+                        )
+                        recommendations.append(
+                            "Consider reducing maximum request size for security"
+                        )
+                except ValueError:
+                    issues.append("Invalid MAX_REQUEST_SIZE value")
+
+            max_requests = configured_limits.get("MAX_REQUESTS_PER_MINUTE")
+            if max_requests:
+                try:
+                    requests_per_min = int(max_requests)
+                    if requests_per_min > 1000:
+                        issues.append(
+                            f"Rate limit is very high: {requests_per_min} req/min"
+                        )
+                        recommendations.append(
+                            "Consider tightening rate limits for security"
+                        )
+                except ValueError:
+                    issues.append("Invalid MAX_REQUESTS_PER_MINUTE value")
+
+        if issues:
+            return [
+                SecurityCheckResult(
+                    check=check,
+                    status=SecurityStatus.WARNING,
+                    message=f"Rate limiting security issues: {len(issues)} issues",
+                    details={
+                        "issues": issues,
+                        "configured_limits": list(configured_limits.keys()),
+                    },
+                    recommendations=recommendations,
+                    execution_time=time.time() - start_time,
+                )
+            ]
+
+        return [
+            SecurityCheckResult(
+                check=check,
+                status=SecurityStatus.PASSED,
+                message=(
+                    f"Rate limiting security properly configured with "
+                    f"{len(configured_limits)} controls"
+                ),
                 execution_time=time.time() - start_time,
             )
         ]

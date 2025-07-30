@@ -1,5 +1,14 @@
 [tool.flake8]
 max-line-length = 88
+extend-exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    "infrastructure/deployment",
+]
 # Focus on rules that Ruff doesn't handle as well or plugin-specific rules
 # Disable overlapping rules that Ruff handles better with auto-fix
 extend-ignore = [
@@ -89,6 +98,7 @@ exclude = [
     ".venv/",
     "build/",
     "dist/",
+    "infrastructure/deployment/",
 ]
 
 [tool.pyright]
@@ -103,6 +113,7 @@ exclude = [
     "**/__pycache__",
     "**/.mypy_cache",
     "**/.pytest_cache",
+    "infrastructure/deployment",
 ]
 reportMissingImports = "none"  # Align with mypy's ignore-missing-imports behavior
 reportMissingTypeStubs = "none"
@@ -141,6 +152,7 @@ extend-exclude = '''
   | \.venv
   | build
   | dist
+  | infrastructure/deployment
 )/
 # files
 | \.coveragerc
@@ -207,7 +219,7 @@ skip_covered = false
 precision = 2
 
 [tool.bandit]
-exclude_dirs = [".venv", ".backup", "build", "dist", "__pycache__"]
+exclude_dirs = [".venv", ".backup", "build", "dist", "__pycache__", "infrastructure/deployment"]
 # No global skips - detect all real security issues
 
 [tool.bandit.assert_used]
@@ -239,6 +251,7 @@ exclude = [
     "node_modules",
     "venv",
     ".coveragerc",
+    "infrastructure/deployment",
 ]
 line-length = 88
 target-version = "py311"
@@ -277,6 +290,13 @@ unfixable = []
 [tool.pylint.main]
 load-plugins = ["pylint_pydantic"]
 init-hook = "import sys; sys.path.append('.')"
+ignore-paths = [
+    "infrastructure/deployment/.*",
+    ".venv/.*",
+    "build/.*",
+    "dist/.*",
+    "__pycache__/.*",
+]
 
 [tool.pylint.messages_control]
 # PHILOSOPHY: Enable all checks by default, disable only with specific justification
@@ -311,7 +331,7 @@ max-line-length = 88
 [tool.vulture]
 min_confidence = 80
 paths = ["src/"]
-exclude = ["*test*", "*__pycache__*"]
+exclude = ["*test*", "*__pycache__*", "infrastructure/deployment/*"]
 ignore_decorators = ["@pytest.fixture", "@click.command", "@typer.command", "@classmethod", "@staticmethod"]
 ignore_names = [
     "_*",
