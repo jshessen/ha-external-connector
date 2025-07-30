@@ -271,6 +271,7 @@ This project includes specialized instruction files in `.github/instructions/` t
 - **`security-patterns.instructions.md`**: Secret management, input validation, secure error handling
 - **`markdown-formatting.instructions.md`**: Markdownlint compliance, heading structure, list formatting
 - **`documentation-patterns.instructions.md`**: Documentation organization, HACS readiness, audience-based structure
+- **`lambda-functions-patterns.instructions.md`**: Lambda deployment markers, transfer blocks, service specialization
 
 **🤖 AI ASSISTANT USAGE:**
 
@@ -282,6 +283,7 @@ When working on files matching these patterns, reference the relevant instructio
 - Security files (`**/security/**/*.py`, `**/*security*.py`): Apply security patterns
 - Markdown files (`**/*.md`): Use markdown formatting standards
 - Documentation work (`**/docs/**/*`, documentation reorganization): Apply documentation patterns
+- Lambda functions (`**/lambda_functions/**/*.py`): Follow Lambda functions patterns
 
 ### Code Quality Requirements
 
