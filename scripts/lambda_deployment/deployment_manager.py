@@ -1,28 +1,44 @@
 """
-Refactored Lambda Deployment Manager
+Enhanced Lambda Deployment Manager
 
-This module provides the refactored version of the deployment manager,
-addressing all code quality issues identified in the original implementation.
+This module provides the comprehensive deployment manager for Lambda function automation,
+integrating marker processing, validation, and deployment generation with enhanced
+performance and modular architecture.
 
-Improvements:
-- Decomposed complex functions into single-responsibility helpers
-- Created Pydantic configuration objects for parameter management
-- Implemented secure error handling and input validation
-- Optimized import parsing efficiency with set-based lookups
-- Reduced nested blocks through better control flow
-- Enhanced performance with efficient data structures
+Features:
+- Modular architecture with integrated marker and validation systems
+- Advanced import processing with PEP 8 compliance
+- Performance-optimized classification with O(1) lookups
+- Comprehensive error handling and recovery mechanisms
+- Real-time progress feedback and logging
+- Deployment file generation with standardized structure
+- Integration with validation and marker systems
 """
 
 import ast
 import logging
 import shutil
+import time
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
+
+try:
+    from .marker_system import DeploymentMarkerSystem
+    from .validation_system import DeploymentValidationSystem, ValidationType
+except ImportError:
+    # Handle case where modules are run standalone
+    DeploymentMarkerSystem = None
+    DeploymentValidationSystem = None
+    ValidationType = None
 
 # Configure logging with lazy formatting
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -43,8 +59,9 @@ class ImportGroup(BaseModel):
     original_line: str
     line_number: int
 
-    @validator('module_name')
-    def validate_module_name(cls, v):
+    @field_validator('module_name')
+    @classmethod
+    def validate_module_name(cls, v: str) -> str:
         """Validate module name is not empty"""
         if not v or not v.strip():
             raise ValueError("Module name cannot be empty")
@@ -76,19 +93,58 @@ class DeploymentConfig(BaseModel):
     validate_syntax: bool = True
     backup_existing: bool = True
 
-    @validator('source_dir', 'deployment_dir')
-    def validate_paths(cls, v):
-        """Validate paths exist or can be created"""
-        path = Path(v)
-        if not path.exists():
-            try:
-                path.mkdir(parents=True, exist_ok=True)
-            except OSError as e:
-                raise ValueError(f"Cannot create directory {path}: {e}") from e
-        return path
+    @field_validator('source_dir', 'deployment_dir')
+    @classmethod
+    def validate_paths(cls, v: Any) -> Path:
+        """Validate paths exist and are directories"""
+        if not isinstance(v, Path):
+            v = Path(v)
+        if not v.exists():
+            raise ValueError(f"Path does not exist: {v}")
+        if not v.is_dir():
+            raise ValueError(f"Path is not a directory: {v}")
+        return v
 
 
 class ImportClassifier:
+    """Efficient import classification using set-based lookups (performance fix)"""
+
+    def __init__(self):
+        # Use sets for O(1) lookup instead of linear search
+        self.standard_library_modules = {
+            'os', 'sys', 'json', 'time', 'datetime', 'logging', 'typing',
+            'pathlib', 'ast', 'shutil', 'configparser', 'enum', 'collections',
+            'functools', 'itertools', 'operator', 're', 'string', 'textwrap',
+            'unicodedata', 'io', 'tempfile', 'glob', 'pickle', 'shelve',
+            'dbm', 'sqlite3', 'gzip', 'bz2', 'lzma', 'zipfile', 'tarfile',
+            'csv', 'html', 'xml', 'urllib', 'http', 'email', 'hashlib',
+            'hmac', 'secrets', 'ssl', 'socket', 'threading', 'multiprocessing',
+            'subprocess', 'signal', 'sched', 'queue', 'contextlib', 'warnings',
+            'unittest', 'doctest', 'pdb', 'profile', 'timeit', 'traceback'
+        }
+
+        self.third_party_modules = {
+            'boto3', 'botocore', 'pydantic', 'typer', 'click', 'rich',
+            'structlog', 'httpx', 'requests', 'asyncio_throttle', 'pytest',
+            'mypy', 'ruff', 'pylint', 'black', 'isort', 'moto', 'fastapi'
+        }
+
+    def classify_module(self, module_name: str) -> ImportType:
+        """Classify module type efficiently using set lookups"""
+        # Extract base module name for classification
+        base_module = module_name.split('.')[0]
+
+        if base_module in self.standard_library_modules:
+            return ImportType.STANDARD_LIBRARY
+        elif base_module in self.third_party_modules:
+            return ImportType.THIRD_PARTY
+        elif module_name.startswith('.'):
+            return ImportType.RELATIVE_IMPORT
+        else:
+            return ImportType.LOCAL_IMPORT
+
+
+class EnhancedDeploymentManager:
     """Efficient import classification using set-based lookups (performance fix)"""
 
     def __init__(self):
@@ -508,114 +564,481 @@ class DeploymentFileProcessor:
 
 class DeploymentManager:
     """
-    Refactored deployment manager with improved code quality
-
-    Improvements:
-    - Reduced function complexity through decomposition
-    - Better error handling with exception chaining
-    - Performance optimizations with efficient data structures
-    - Security improvements with input validation
-    - Comprehensive logging with lazy formatting
+    Enhanced deployment manager with comprehensive modular architecture
+    
+    Integrates marker processing, validation, and deployment generation with
+    performance optimization and detailed error reporting. Provides complete
+    Lambda deployment automation with real-time progress feedback.
+    
+    Features:
+    - Modular architecture with integrated systems
+    - Advanced import processing with PEP 8 compliance
+    - Performance-optimized O(1) classification
+    - Comprehensive error handling and recovery
+    - Real-time progress feedback and logging
+    - Deployment file generation with standardized structure
+    - Infrastructure organization support
     """
 
     def __init__(self, source_dir: str, deployment_dir: str, verbose: bool = False):
+        """Initialize enhanced deployment manager"""
         self.config = DeploymentConfig(
             source_dir=Path(source_dir),
             deployment_dir=Path(deployment_dir),
             verbose=verbose
         )
+
+        # Initialize integrated systems
         self.import_parser = ImportParser(self.config.shared_module)
         self.file_processor = DeploymentFileProcessor(self.config)
+        self.marker_system = DeploymentMarkerSystem()
+        self.validation_system = DeploymentValidationSystem()
 
-        # Configure logging
-        if verbose:
-            logging.basicConfig(level=logging.INFO)
-
-    def process_deployment(self, force_rebuild: bool = False) -> dict[str, Any]:
-        """Main deployment processing with comprehensive error handling"""
-        self.config.force_rebuild = force_rebuild
-
-        results = {
-            "success": False,
-            "processed_files": [],
-            "errors": [],
-            "import_analysis": {},
-            "performance_metrics": {}
+        # Performance tracking
+        self.performance_metrics = {
+            'total_files_processed': 0,
+            'total_processing_time': 0.0,
+            'validation_time': 0.0,
+            'import_processing_time': 0.0,
+            'file_generation_time': 0.0
         }
 
-        import time
+        # Configure enhanced logging
+        self._configure_logging(verbose)
+
+    def _configure_logging(self, verbose: bool) -> None:
+        """Configure comprehensive logging with performance tracking"""
+        if verbose:
+            logging.basicConfig(
+                level=logging.INFO,
+                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            logger.info("Enhanced deployment manager initialized")
+            logger.info("Source directory: %s", self.config.source_dir)
+            logger.info("Deployment directory: %s", self.config.deployment_dir)
+
+    def build_deployment(self, force_rebuild: bool = False) -> dict[str, Any]:
+        """
+        Build complete deployment with comprehensive validation and processing
+        
+        This is the main entry point for the enhanced deployment system,
+        providing complete automation with integrated marker processing,
+        validation, and deployment file generation.
+        
+        Args:
+            force_rebuild: Force rebuild of all deployment files
+            
+        Returns:
+            Comprehensive deployment results with detailed metrics
+        """
         start_time = time.time()
+        self.config.force_rebuild = force_rebuild
+
+        logger.info("Starting enhanced deployment build process")
+
+        # Initialize results tracking
+        results = {
+            'success': False,
+            'processed_files': [],
+            'errors': [],
+            'warnings': [],
+            'performance_metrics': {},
+            'validation_results': {},
+            'marker_validation': {},
+            'infrastructure_status': {}
+        }
 
         try:
-            self._prepare_deployment_directory()
+            # Phase 1: Discovery and validation
+            discovery_results = self._discover_and_validate_files()
+            results['validation_results'] = discovery_results
 
-            for lambda_file in self.config.lambda_functions:
-                success = self._process_single_lambda_file(lambda_file, results)
-                if not success:
-                    logger.warning("Failed to process %s, continuing with others", lambda_file)
+            if discovery_results['critical_errors'] > 0:
+                logger.error("Critical validation errors found, aborting deployment")
+                results['errors'].extend(discovery_results['error_messages'])
+                return results
 
-            elapsed_time = time.time() - start_time
-            results["performance_metrics"]["total_time"] = elapsed_time
-            results["success"] = len(results["errors"]) == 0
+            # Phase 2: Infrastructure preparation
+            infra_results = self._prepare_infrastructure()
+            results['infrastructure_status'] = infra_results
 
-            logger.info(
-                "Deployment completed in %.2f seconds. Success: %s",
-                elapsed_time, results["success"]
+            # Phase 3: Process Lambda functions
+            processing_results = self._process_lambda_functions()
+            results.update(processing_results)
+
+            # Phase 4: Validate deployment integrity
+            integrity_results = self._validate_deployment_integrity()
+            results['deployment_integrity'] = integrity_results
+
+            # Calculate final metrics
+            total_time = time.time() - start_time
+            self.performance_metrics['total_processing_time'] = total_time
+            results['performance_metrics'] = self.performance_metrics
+
+            # Determine overall success
+            results['success'] = (
+                len(results['errors']) == 0 and
+                processing_results.get('processed_count', 0) > 0 and
+                integrity_results.get('is_valid', False)
             )
+
+            # Log completion status
+            if results['success']:
+                logger.info(
+                    "Deployment build completed successfully in %.3fs: %d files processed",
+                    total_time,
+                    processing_results.get('processed_count', 0)
+                )
+            else:
+                logger.error(
+                    "Deployment build failed after %.3fs: %d errors",
+                    total_time,
+                    len(results['errors'])
+                )
 
             return results
 
         except Exception as e:
-            logger.error("Deployment process failed: %s", str(e))
-            results["errors"].append(f"Deployment failed: {str(e)}")
+            error_msg = f"Deployment build failed: {str(e)}"
+            results['errors'].append(error_msg)
+            logger.error(error_msg, exc_info=True)
             return results
 
-    def _prepare_deployment_directory(self) -> None:
-        """Prepare deployment directory"""
-        if self.config.force_rebuild and self.config.deployment_dir.exists():
-            shutil.rmtree(self.config.deployment_dir)
+    def _discover_and_validate_files(self) -> dict[str, Any]:
+        """Discover and validate Lambda function files"""
+        validation_start = time.time()
 
-        self.config.deployment_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Discovering and validating Lambda function files")
 
-    def _process_single_lambda_file(
-        self, lambda_file: str, results: dict[str, Any]
-    ) -> bool:
-        """Process a single Lambda function file"""
-        source_path = self.config.source_dir / lambda_file
-        deployment_path = self.config.deployment_dir / lambda_file
+        # Find Python files in source directory
+        python_files = list(self.config.source_dir.rglob("*.py"))
+        lambda_files = [f for f in python_files if self._is_lambda_function_file(f)]
 
-        if not source_path.exists():
-            error_msg = f"Source file not found: {lambda_file}"
-            results["errors"].append(error_msg)
-            logger.error(error_msg)
-            return False
+        logger.info("Found %d Python files, %d appear to be Lambda functions",
+                   len(python_files), len(lambda_files))
+
+        # Validate each Lambda function file
+        validation_results = {
+            'total_files': len(lambda_files),
+            'valid_files': 0,
+            'files_with_warnings': 0,
+            'files_with_errors': 0,
+            'critical_errors': 0,
+            'error_messages': [],
+            'warning_messages': [],
+            'file_details': {}
+        }
+
+        for lambda_file in lambda_files:
+            file_result = self._validate_single_file(lambda_file)
+            validation_results['file_details'][str(lambda_file)] = file_result
+
+            if file_result['critical_count'] > 0:
+                validation_results['critical_errors'] += 1
+                validation_results['error_messages'].extend(file_result['error_messages'])
+            elif file_result['error_count'] > 0:
+                validation_results['files_with_errors'] += 1
+                validation_results['error_messages'].extend(file_result['error_messages'])
+            elif file_result['warning_count'] > 0:
+                validation_results['files_with_warnings'] += 1
+                validation_results['warning_messages'].extend(file_result['warning_messages'])
+            else:
+                validation_results['valid_files'] += 1
+
+        validation_time = time.time() - validation_start
+        self.performance_metrics['validation_time'] = validation_time
+
+        logger.info(
+            "Validation completed in %.3fs: %d valid, %d with warnings, %d with errors",
+            validation_time,
+            validation_results['valid_files'],
+            validation_results['files_with_warnings'],
+            validation_results['files_with_errors']
+        )
+
+        return validation_results
+
+    def _validate_single_file(self, file_path: Path) -> dict[str, Any]:
+        """Validate a single Lambda function file comprehensively"""
+        try:
+            # Run comprehensive validation
+            validation_result = self.validation_system.validate_file(
+                file_path,
+                [ValidationType.SYNTAX, ValidationType.IMPORTS,
+                 ValidationType.MARKERS, ValidationType.DEPLOYMENT]
+            )
+
+            # Run marker validation
+            marker_result = self.marker_system.validate_all_markers(file_path)
+
+            return {
+                'is_valid': validation_result.is_valid and marker_result['is_valid'],
+                'critical_count': validation_result.critical_count,
+                'error_count': validation_result.error_count,
+                'warning_count': validation_result.warning_count,
+                'validation_time': validation_result.validation_time,
+                'marker_blocks': marker_result.get('total_blocks', 0),
+                'orphaned_lines': len(marker_result.get('orphaned_lines', [])),
+                'error_messages': [issue.message for issue in validation_result.issues
+                                 if issue.level.value in ['critical', 'error']],
+                'warning_messages': [issue.message for issue in validation_result.issues
+                                   if issue.level.value == 'warning']
+            }
+
+        except Exception as e:
+            logger.error("Failed to validate %s: %s", file_path, str(e))
+            return {
+                'is_valid': False,
+                'critical_count': 1,
+                'error_count': 0,
+                'warning_count': 0,
+                'validation_time': 0.0,
+                'error_messages': [f"Validation failed: {str(e)}"]
+            }
+
+    def _prepare_infrastructure(self) -> dict[str, Any]:
+        """Prepare deployment infrastructure directories"""
+        logger.info("Preparing deployment infrastructure")
 
         try:
-            # Parse imports
-            import_analysis = self.import_parser.parse_file_imports(source_path)
-            results["import_analysis"][lambda_file] = import_analysis
+            # Create deployment structure based on configuration
+            if self.config.deployment_structure == "nested":
+                return self._create_nested_structure()
+            else:
+                return self._create_flat_structure()
 
-            # Create deployment file
+        except Exception as e:
+            logger.error("Failed to prepare infrastructure: %s", str(e))
+            return {'success': False, 'error': str(e)}
+
+    def _create_nested_structure(self) -> dict[str, Any]:
+        """Create nested deployment structure (function/lambda_function.py)"""
+        created_dirs = []
+
+        for lambda_file in self.config.lambda_functions:
+            function_name = Path(lambda_file).stem
+            function_dir = self.config.deployment_dir / function_name
+
+            try:
+                function_dir.mkdir(parents=True, exist_ok=True)
+                created_dirs.append(str(function_dir))
+                logger.info("Created function directory: %s", function_dir)
+
+            except OSError as e:
+                logger.error("Failed to create directory %s: %s", function_dir, str(e))
+                return {'success': False, 'error': f"Directory creation failed: {str(e)}"}
+
+        return {
+            'success': True,
+            'structure': 'nested',
+            'created_directories': created_dirs
+        }
+
+    def _create_flat_structure(self) -> dict[str, Any]:
+        """Create flat deployment structure (function.py)"""
+        try:
+            self.config.deployment_dir.mkdir(parents=True, exist_ok=True)
+            logger.info("Prepared flat deployment directory: %s", self.config.deployment_dir)
+
+            return {
+                'success': True,
+                'structure': 'flat',
+                'deployment_directory': str(self.config.deployment_dir)
+            }
+
+        except OSError as e:
+            logger.error("Failed to prepare deployment directory: %s", str(e))
+            return {'success': False, 'error': str(e)}
+
+    def _process_lambda_functions(self) -> dict[str, Any]:
+        """Process all Lambda functions with enhanced error handling"""
+        process_start = time.time()
+
+        logger.info("Processing Lambda functions for deployment")
+
+        results = {
+            'processed_count': 0,
+            'failed_count': 0,
+            'processed_files': [],
+            'failed_files': [],
+            'errors': []
+        }
+
+        lambda_files = [
+            f for f in self.config.source_dir.rglob("*.py")
+            if self._is_lambda_function_file(f)
+        ]
+
+        for lambda_file in lambda_files:
+            try:
+                success = self._process_single_lambda_file(lambda_file)
+
+                if success:
+                    results['processed_count'] += 1
+                    results['processed_files'].append(str(lambda_file))
+                    logger.info("Successfully processed: %s", lambda_file.name)
+                else:
+                    results['failed_count'] += 1
+                    results['failed_files'].append(str(lambda_file))
+                    logger.warning("Failed to process: %s", lambda_file.name)
+
+            except Exception as e:
+                error_msg = f"Error processing {lambda_file}: {str(e)}"
+                results['errors'].append(error_msg)
+                results['failed_count'] += 1
+                results['failed_files'].append(str(lambda_file))
+                logger.error(error_msg, exc_info=True)
+
+        process_time = time.time() - process_start
+        self.performance_metrics['file_generation_time'] = process_time
+        self.performance_metrics['total_files_processed'] = results['processed_count']
+
+        logger.info(
+            "Lambda function processing completed in %.3fs: %d processed, %d failed",
+            process_time,
+            results['processed_count'],
+            results['failed_count']
+        )
+
+        return results
+
+    def _process_single_lambda_file(self, lambda_file: Path) -> bool:
+        """Process a single Lambda function file with comprehensive handling"""
+        try:
+            # Parse imports
+            import_start = time.time()
+            import_analysis = self.import_parser.parse_file_imports(lambda_file)
+            import_time = time.time() - import_start
+            self.performance_metrics['import_processing_time'] += import_time
+
+            # Generate deployment file
+            deployment_path = self._get_deployment_path(lambda_file)
+
             success = self.file_processor.create_deployment_file(
-                source_path, deployment_path, import_analysis
+                lambda_file, deployment_path, import_analysis
             )
 
             if success:
-                results["processed_files"].append(lambda_file)
-                logger.info("Successfully processed: %s", lambda_file)
+                logger.info("Generated deployment file: %s", deployment_path)
                 return True
             else:
-                error_msg = f"Failed to create deployment file: {lambda_file}"
-                results["errors"].append(error_msg)
+                logger.error("Failed to generate deployment file for: %s", lambda_file)
                 return False
 
         except Exception as e:
-            error_msg = f"Error processing {lambda_file}: {str(e)}"
-            results["errors"].append(error_msg)
-            logger.error(error_msg, exc_info=True)
+            logger.error("Error processing %s: %s", lambda_file, str(e))
+            return False
+
+    def _get_deployment_path(self, source_file: Path) -> Path:
+        """Get deployment path based on configuration structure"""
+        function_name = source_file.stem
+
+        if self.config.deployment_structure == "nested":
+            return self.config.deployment_dir / function_name / "lambda_function.py"
+        else:
+            return self.config.deployment_dir / f"{function_name}.py"
+
+    def _validate_deployment_integrity(self) -> dict[str, Any]:
+        """Validate deployment integrity and completeness"""
+        logger.info("Validating deployment integrity")
+
+        try:
+            deployment_files = list(self.config.deployment_dir.rglob("*.py"))
+
+            integrity_results = {
+                'is_valid': True,
+                'deployment_files_count': len(deployment_files),
+                'validation_issues': [],
+                'syntax_valid': True,
+                'all_markers_valid': True
+            }
+
+            # Validate each deployment file
+            for deployment_file in deployment_files:
+                try:
+                    # Check syntax
+                    content = deployment_file.read_text(encoding='utf-8')
+                    ast.parse(content, filename=str(deployment_file))
+
+                    # Validate markers if enabled
+                    if self.config.enable_marker_validation:
+                        marker_result = self.marker_system.validate_all_markers(deployment_file)
+                        if not marker_result['is_valid']:
+                            integrity_results['all_markers_valid'] = False
+                            integrity_results['validation_issues'].append(
+                                f"Marker validation failed for {deployment_file.name}"
+                            )
+
+                except SyntaxError as e:
+                    integrity_results['syntax_valid'] = False
+                    integrity_results['validation_issues'].append(
+                        f"Syntax error in {deployment_file.name}: {e.msg}"
+                    )
+                except Exception as e:
+                    integrity_results['validation_issues'].append(
+                        f"Validation error in {deployment_file.name}: {str(e)}"
+                    )
+
+            # Overall validity
+            integrity_results['is_valid'] = (
+                integrity_results['syntax_valid'] and
+                integrity_results['all_markers_valid'] and
+                len(integrity_results['validation_issues']) == 0
+            )
+
+            logger.info(
+                "Deployment integrity validation: %s (%d files, %d issues)",
+                "PASSED" if integrity_results['is_valid'] else "FAILED",
+                integrity_results['deployment_files_count'],
+                len(integrity_results['validation_issues'])
+            )
+
+            return integrity_results
+
+        except Exception as e:
+            logger.error("Deployment integrity validation failed: %s", str(e))
+            return {
+                'is_valid': False,
+                'error': str(e)
+            }
+
+    def _is_lambda_function_file(self, file_path: Path) -> bool:
+        """Check if file is a Lambda function with enhanced detection"""
+        # Skip test files and __init__.py files
+        if (file_path.name.startswith('test_') or
+            file_path.name == '__init__.py' or
+            'test' in str(file_path).lower()):
+            return False
+
+        try:
+            content = file_path.read_text(encoding='utf-8')
+
+            # Enhanced Lambda function detection
+            lambda_indicators = [
+                'lambda_handler',
+                'def handler(',
+                'aws_lambda',
+                'boto3',
+                'IMPORT_BLOCK_START',
+                'FUNCTION_BLOCK_START',
+                'event',
+                'context'
+            ]
+
+            content_lower = content.lower()
+            indicators_found = sum(1 for indicator in lambda_indicators
+                                 if indicator.lower() in content_lower)
+
+            return indicators_found >= 2
+
+        except Exception:
             return False
 
     # Maintain compatibility with original API
+    def process_deployment(self, force_rebuild: bool = False) -> dict[str, Any]:
+        """Compatibility method that delegates to enhanced build_deployment"""
+        return self.build_deployment(force_rebuild)
+    # Maintain compatibility with original API methods
     def _parse_imports_into_groups(
         self, file_path: Path
     ) -> dict[str, list[ImportGroup]]:
@@ -636,7 +1059,6 @@ class DeploymentManager:
             == ImportType.THIRD_PARTY
         )
 
-    def validate_lambda_markers(self, file_path: Path) -> MarkerValidationResult:
-        """Validate Lambda markers using enhanced validator"""
-        validator = LambdaMarkerValidator(str(self.config.source_dir))
-        return validator.validate_lambda_markers(file_path)
+    def validate_lambda_markers(self, file_path: Path) -> dict[str, Any]:
+        """Validate Lambda markers using enhanced marker system"""
+        return self.marker_system.validate_all_markers(file_path)
