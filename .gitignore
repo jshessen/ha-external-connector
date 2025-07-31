@@ -111,6 +111,11 @@ secrets.json
 app_config.json
 appConfig.json
 
+# Code quality reports
+quality_report*.txt
+*_quality_report.txt
+bandit_check.txt
+
 # Credentials and sensitive data
 .env.local
 .env.*.local
