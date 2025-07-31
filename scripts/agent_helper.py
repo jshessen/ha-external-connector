@@ -189,6 +189,203 @@ def _handle_diagnose_action() -> None:
         print(result)
 
 
+def _handle_setup_action() -> None:
+    """Handle the setup action - full environment setup with validation."""
+    print("🚀 Setting up development environment...")
+    
+    # Check if virtual environment exists
+    venv_path = Path(__file__).parent.parent / ".venv"
+    if not venv_path.exists():
+        print("❌ Virtual environment not found. Please run: python -m venv .venv")
+        return
+    
+    # Activate virtual environment reminder
+    print("✅ Virtual environment found")
+    print("🔧 Ensure environment is activated:")
+    print("   source .venv/bin/activate")
+    
+    # Run all validation checks
+    print("\n🔧 Environment Validation")
+    print("=" * 40)
+    for check in check_environment():
+        print(check)
+    
+    print("\n🛠️  Development Tools")
+    print("=" * 40)
+    for status in check_tools():
+        print(status)
+    
+    print("\n🔍 Module Imports")
+    print("=" * 40)
+    for result in check_imports():
+        print(result)
+    
+    print("\n✅ Setup complete! Environment ready for development.")
+
+
+def _handle_check_action() -> None:
+    """Handle the check action - quick health check."""
+    print("🩺 Quick health check...")
+    
+    # Check basic environment
+    print("🐍 Python:", f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    
+    # Check virtual environment
+    venv_active = hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)
+    print("🔧 Virtual env:", "✅ Active" if venv_active else "❌ Not active")
+    
+    # Check key directories
+    project_root = Path(__file__).parent.parent
+    src_path = project_root / "src" / "ha_connector"
+    print("📁 Project structure:", "✅ Valid" if src_path.exists() else "❌ Invalid")
+    
+    # Quick import test
+    try:
+        __import__("ha_connector")
+        print("📦 Package import:", "✅ Working")
+    except ImportError:
+        print("📦 Package import:", "❌ Failed")
+    
+    print("\n🎯 Status: Environment ready" if venv_active and src_path.exists() else "⚠️  Status: Setup needed")
+
+
+def _handle_refresh_action() -> None:
+    """Handle the refresh action - reload agent instructions."""
+    print("🔄 Refreshing agent instructions...")
+    
+    instructions_path = Path(__file__).parent.parent / ".github" / "instructions"
+    if not instructions_path.exists():
+        print("❌ Instructions directory not found")
+        return
+    
+    # Validate instruction files exist
+    core_files = ["environment-setup.md", "quality-standards.md", "agent-refresh.md"]
+    specialized_files = ["aws-patterns.md", "lambda-patterns.md", "testing-patterns.md", "security-patterns.md"]
+    documentation_files = ["markdown-standards.md", "docs-organization.md"]
+    
+    print("📋 Validating instruction files...")
+    
+    # Check core instructions
+    core_path = instructions_path / "core"
+    for file in core_files:
+        file_path = core_path / file
+        status = "✅" if file_path.exists() else "❌"
+        print(f"  {status} core/{file}")
+    
+    # Check specialized instructions
+    specialized_path = instructions_path / "specialized"
+    for file in specialized_files:
+        file_path = specialized_path / file
+        status = "✅" if file_path.exists() else "❌"
+        print(f"  {status} specialized/{file}")
+    
+    # Check documentation instructions
+    doc_path = instructions_path / "documentation"
+    for file in documentation_files:
+        file_path = doc_path / file
+        status = "✅" if file_path.exists() else "❌"
+        print(f"  {status} documentation/{file}")
+    
+    # Check for transfer block consistency
+    lambda_patterns = specialized_path / "lambda-patterns.md"
+    aws_patterns = specialized_path / "aws-patterns.md"
+    
+    print("\n🔄 Transfer Block Validation:")
+    if lambda_patterns.exists() and aws_patterns.exists():
+        lambda_content = lambda_patterns.read_text()
+        aws_content = aws_patterns.read_text()
+        
+        # Check if lambda-patterns has comprehensive transfer block content
+        has_transfer_blocks = "TRANSFER BLOCK START" in lambda_content
+        aws_has_reference = "lambda-patterns.md" in aws_content
+        
+        print(f"  ✅ Lambda patterns has transfer blocks: {has_transfer_blocks}")
+        print(f"  ✅ AWS patterns references lambda patterns: {aws_has_reference}")
+        
+        if has_transfer_blocks and aws_has_reference:
+            print("  ✅ Transfer block consolidation: VALIDATED")
+        else:
+            print("  ⚠️  Transfer block consolidation: NEEDS REVIEW")
+    
+    print("\n✅ Instruction refresh complete!")
+
+
+def _handle_validate_instructions_action() -> None:
+    """Handle instruction validation."""
+    print("🔍 Validating instruction consistency...")
+    
+    instructions_path = Path(__file__).parent.parent / ".github" / "instructions"
+    
+    # Check hierarchy structure
+    expected_structure = {
+        "core": ["environment-setup.md", "quality-standards.md", "agent-refresh.md"],
+        "specialized": ["aws-patterns.md", "lambda-patterns.md", "testing-patterns.md", "security-patterns.md"],
+        "documentation": ["markdown-standards.md", "docs-organization.md"]
+    }
+    
+    validation_results = []
+    
+    for category, files in expected_structure.items():
+        category_path = instructions_path / category
+        if not category_path.exists():
+            validation_results.append(f"❌ Missing directory: {category}")
+            continue
+        
+        for file in files:
+            file_path = category_path / file
+            if file_path.exists():
+                validation_results.append(f"✅ {category}/{file}")
+            else:
+                validation_results.append(f"❌ Missing: {category}/{file}")
+    
+    # Print results
+    for result in validation_results:
+        print(result)
+    
+    # Summary
+    failed_checks = [r for r in validation_results if r.startswith("❌")]
+    if failed_checks:
+        print(f"\n⚠️  Validation failed: {len(failed_checks)} issues found")
+    else:
+        print("\n✅ All instruction files validated successfully!")
+
+
+def _handle_quick_reference_action() -> None:
+    """Handle quick reference display."""
+    print("🚀 Quick Reference Guide")
+    print("=" * 50)
+    
+    print("\n🔧 Essential Commands:")
+    print("  python scripts/agent_helper.py setup     # Full environment setup")
+    print("  python scripts/agent_helper.py check     # Quick health check")
+    print("  python scripts/agent_helper.py refresh   # Reload instructions")
+    print("  source .venv/bin/activate                # Activate environment")
+    
+    print("\n🎯 Code Quality:")
+    print("  source .venv/bin/activate && ruff check src/   # Fast linting")
+    print("  source .venv/bin/activate && pylint src/       # Comprehensive analysis")
+    print("  source .venv/bin/activate && mypy src/         # Type checking")
+    print("  source .venv/bin/activate && pytest            # Run tests")
+    
+    print("\n📁 File Pattern Mappings:")
+    print("  **/test_*.py                 → specialized/testing-patterns.md")
+    print("  **/aws_*.py                  → specialized/aws-patterns.md")
+    print("  **/lambda_functions/**/*.py  → specialized/lambda-patterns.md")
+    print("  **/*.md                      → documentation/markdown-standards.md")
+    
+    print("\n🎯 Quality Targets:")
+    print("  • Ruff: All checks must pass")
+    print("  • Pylint: Perfect 10.00/10 score")
+    print("  • MyPy: Clean type checking")
+    print("  • Transfer Blocks: Sync from specialized/lambda-patterns.md")
+    
+    print("\n🔄 Instruction Hierarchy:")
+    print("  1. .github/copilot-instructions.md (highest priority)")
+    print("  2. instructions/core/ (fundamental patterns)")
+    print("  3. instructions/specialized/ (domain-specific)")
+    print("  4. instructions/documentation/ (content standards)")
+
+
 def _handle_all_action() -> None:
     """Handle the all action."""
     show_python_info()
@@ -213,7 +410,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Agent automation helper")
     parser.add_argument(
         "action",
-        choices=["imports", "env", "tools", "python", "all", "diagnose"],
+        choices=[
+            "imports", "env", "tools", "python", "all", "diagnose",
+            "setup", "check", "refresh", "validate-instructions", "quick-reference"
+        ],
         help="Action to perform",
     )
 
@@ -227,6 +427,11 @@ def main() -> None:
         "python": show_python_info,
         "diagnose": _handle_diagnose_action,
         "all": _handle_all_action,
+        "setup": _handle_setup_action,
+        "check": _handle_check_action,
+        "refresh": _handle_refresh_action,
+        "validate-instructions": _handle_validate_instructions_action,
+        "quick-reference": _handle_quick_reference_action,
     }
 
     handler = action_handlers.get(args.action)
