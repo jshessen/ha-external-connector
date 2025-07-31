@@ -134,6 +134,7 @@ from .shared_configuration import (  # Security infrastructure (Phase 2c)
 
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
 
+# ╭─────────────────── FUNCTION_BLOCK_START ───────────────────╮
 # === PERFORMANCE-OPTIMIZED CONFIGURATION ===
 # Using shared configuration system for optimal performance
 
@@ -143,11 +144,6 @@ _debug = bool(os.environ.get("DEBUG"))
 # Logger setup
 _logger = logging.getLogger("HomeAssistant-SmartHome")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
-
-# ╭─────────────────── FUNCTION_BLOCK_START ───────────────────╮
-# │ LAMBDA FUNCTION IMPLEMENTATIONS - Core voice command logic  │
-# │ These functions handle the complete Alexa → HA workflow     │
-# ╰─────────────────────────────────────────────────────────────╯
 
 # === LAMBDA HANDLER HELPER FUNCTIONS ===
 
