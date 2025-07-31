@@ -1,53 +1,93 @@
-# GitHub Copilot Instructions
+# GitHub Copilot Instructions Index
 
-This directory contains specialized instruction files for GitHub Copilot to provide context-specific guidance.
+## 📋 Navigation & Hierarchy
 
-## Instruction Files
+This directory contains specialized instruction files for GitHub Copilot to ensure consistent, high-quality code development across the HA External Connector project.
 
-### Core Instructions
+### 🎯 Conflict Resolution Hierarchy
 
-- **`../.github/copilot-instructions.md`** - Main project instructions including terminal automation, code quality standards, and development workflows
+When instructions conflict between files, follow this precedence order:
 
-### Specialized Pattern Files
+1. **`.github/copilot-instructions.md`** - Master guidelines (highest priority)
+2. **`instructions/core/`** - Fundamental patterns (medium priority)
+3. **`instructions/specialized/`** - Domain-specific guidance (contextual priority)
+4. **`instructions/documentation/`** - Content standards (lowest priority)
 
-- **`aws-patterns.instructions.md`** - AWS-specific coding patterns, client creation, resource management, and security best practices
-- **`code-quality-refactoring.instructions.md`** - Code quality and refactoring patterns including function complexity management, logging standards, and exception handling
-- **`testing-patterns.instructions.md`** - Testing standards with mandatory moto library usage, fixture design, and performance requirements
-- **`security-patterns.instructions.md`** - Security patterns including secret management, input validation, and secure error handling
-- **`markdown-formatting.instructions.md`** - Markdown formatting standards and markdownlint compliance guidelines
+## 📁 Directory Structure
 
-## File Application Scope
+### Core Instructions (Fundamental Patterns)
 
-Each instruction file uses `applyTo` frontmatter to specify when it should be automatically applied:
+**Purpose**: Essential patterns that apply across all development work.
 
-- **AWS patterns**: Applied to `**/aws_*.py`, `**/adapters/**/*.py`, `**/infrastructure/**/*.py`
-- **Code quality & refactoring**: Applied to `**/*.py` (all Python files)
-- **Testing patterns**: Applied to `**/test_*.py`, `**/tests/**/*.py`, `**/*_test.py`
-- **Security patterns**: Applied to `**/security/**/*.py`, `**/secrets/**/*.py`, `**/*security*.py`
-- **Markdown formatting**: Applied to `**/*.md`
+- **`core/environment-setup.md`** - Environment activation, terminal automation, dependency management
+- **`core/quality-standards.md`** - Code quality requirements, linting standards, testing protocols
+- **`core/agent-refresh.md`** - Agent guidance refresh system and instruction validation
 
-## VS Code Configuration
+### Specialized Instructions (Domain-Specific Patterns)
 
-The instruction files are automatically loaded when the following settings are configured in `.vscode/settings.json`:
+**Purpose**: Detailed patterns for specific technology domains and architectural components.
 
-```json
-{
-  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-  "chat.instructionsFilesLocations": [
-    ".github/instructions"
-  ]
-}
+- **`specialized/aws-patterns.md`** - AWS client creation, resource management, security patterns
+- **`specialized/lambda-patterns.md`** - Lambda deployment markers, transfer blocks, service specialization
+- **`specialized/testing-patterns.md`** - Testing standards, moto library usage, fixture design
+- **`specialized/security-patterns.md`** - Security best practices, secret management, input validation
+
+### Documentation Instructions (Content Standards)
+
+**Purpose**: Standards for documentation creation, organization, and maintenance.
+
+- **`documentation/markdown-standards.md`** - Markdown formatting compliance, heading structure
+- **`documentation/docs-organization.md`** - Documentation structure patterns, audience-based organization
+
+## 🔄 Transfer Block System
+
+**Primary Source**: `specialized/lambda-patterns.md` contains the authoritative Transfer Block documentation for Lambda functions.
+
+**Cross-References**: Other files may reference transfer blocks but should defer to the primary source for implementation details.
+
+## 🚀 Quick Reference
+
+### Essential Commands
+
+```bash
+# Environment setup and validation
+python scripts/agent_helper.py setup          # Full environment setup
+python scripts/agent_helper.py check          # Quick health check
+python scripts/agent_helper.py refresh        # Reload instructions
+
+# Code quality
+source .venv/bin/activate && ruff check src/  # Fast linting
+source .venv/bin/activate && pylint src/      # Comprehensive analysis
 ```
 
-## Usage
+### File Pattern Matching
 
-These instruction files provide specialized guidance for:
+| Pattern | Instruction File | Description |
+|---------|-----------------|-------------|
+| `**/test_*.py`, `**/tests/**/*.py` | `specialized/testing-patterns.md` | Testing standards & moto usage |
+| `**/aws_*.py`, `**/adapters/**/*.py` | `specialized/aws-patterns.md` | AWS client creation & patterns |
+| `**/lambda_functions/**/*.py` | `specialized/lambda-patterns.md` | Lambda deployment & transfer blocks |
+| `**/security/**/*.py`, `**/*security*.py` | `specialized/security-patterns.md` | Security best practices |
+| `**/*.md` | `documentation/markdown-standards.md` | Markdown formatting compliance |
+| `**/docs/**/*` | `documentation/docs-organization.md` | Documentation structure patterns |
 
-1. **Code Generation** - Automatic application of project-specific patterns
-2. **Code Quality** - Function complexity refactoring, logging standards, and exception handling patterns
-3. **Code Review** - Context-aware suggestions based on file type
-4. **Documentation** - Consistent markdown formatting and compliance
-5. **Security** - Enforcement of security best practices
-6. **Testing** - Standardized testing patterns and AWS mocking
+## 🔧 Agent Usage Guidelines
 
-The instructions are automatically included in relevant chat requests based on the file patterns specified in each instruction file's frontmatter.
+1. **Start with Master Instructions**: Always review `.github/copilot-instructions.md` first
+2. **Apply Core Patterns**: Use `core/` instructions for fundamental development patterns
+3. **Reference Specialized Guidance**: Use `specialized/` files for domain-specific requirements
+4. **Follow Documentation Standards**: Apply `documentation/` patterns for content creation
+5. **Resolve Conflicts**: Use hierarchy precedence when instructions conflict
+6. **Refresh When Needed**: Use `python scripts/agent_helper.py refresh` to reload guidance
+
+## 🎯 Quality Targets
+
+- **Ruff**: All checks must pass (no warnings/errors allowed)
+- **Pylint**: Perfect 10.00/10 score required
+- **MyPy**: Clean type checking with appropriate flags
+- **Bandit**: Zero security vulnerabilities permitted
+
+---
+
+**Maintained By**: HA External Connector Development Team  
+**Last Updated**: Automated via instruction validation system

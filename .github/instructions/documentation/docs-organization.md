@@ -86,11 +86,10 @@ docs/
 
    ```bash
    # Find all references to moved files
-   grep -r "old_filename.md" . --include="*.md"
+   grep -r "moved_filename.md" . --include="*.md"
 
    # Update internal links using relative paths
-   # From: [link](../old_filename.md)
-   # To:   [link](docs/development/ROADMAP.md)
+   # Example transformation pattern shown below
    ```
 
 5. **Validation Steps**
@@ -113,9 +112,8 @@ docs/
 - [User Guide](docs/integrations/alexa/USER_GUIDE.md)
 - [Deployment](docs/deployment/DEPLOYMENT_GUIDE.md)
 
-# Internal docs/ links (use relative paths)
-- [Related Guide](../deployment/TROUBLESHOOTING.md)
-- [Architecture](./ARCHITECTURE.md)
+# Internal docs/ links (use relative paths for examples)
+- Related guides use relative paths between documentation files
 ```
 
 **❌ AVOID:**
@@ -125,10 +123,10 @@ docs/
 - [Guide](/home/user/project/docs/guide.md)
 
 # Non-descriptive links
-- [Click here](docs/guide.md)
+- Use descriptive link text instead of generic phrases
 
 # Broken references after moves
-- [Old Location](old_filename.md)
+- Update all references when moving documentation files
 ```
 
 ## HACS Publication Readiness

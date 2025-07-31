@@ -303,6 +303,24 @@ When working on files matching these patterns, reference the relevant instructio
 - **Function complexity refactoring**: Decompose large functions into single-responsibility helpers
 - **Configuration objects**: Use Pydantic models to group related parameters and reduce argument count
 
+## Quality Standards
+
+**✅ MANDATORY QUALITY TARGETS:**
+
+- **Ruff**: All checks must pass (no warnings/errors allowed)
+- **Pylint**: Perfect 10.00/10 score required
+- **Bandit**: Zero security vulnerabilities permitted
+- **MyPy**: Clean type checking with appropriate flags
+
+**🎯 QUALITY PRINCIPLES:**
+
+- Fix root causes, not symptoms - address underlying issues, not warnings
+- Use modern Python patterns over legacy approaches
+- Security first - always prioritize security over convenience
+- No suppression without justification - avoid `# pylint: disable` except for architectural constraints
+- **Function complexity refactoring**: Decompose large functions into single-responsibility helpers
+- **Configuration objects**: Use Pydantic models to group related parameters and reduce argument count
+
 ### Type Safety Standards
 
 **✅ TYPE ANNOTATION REQUIREMENTS:**

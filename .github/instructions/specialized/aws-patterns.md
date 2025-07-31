@@ -7,39 +7,13 @@ applyTo: "**/aws_*.py,**/adapters/**/*.py,**/infrastructure/**/*.py"
 
 ## Lambda Function Architecture Patterns
 
-### Transfer Block System for Shared Lambda Code
+### Transfer Block System Reference
 
-**INTENTIONAL DUPLICATE CODE MANAGEMENT:**
+**NOTE**: For complete Transfer Block documentation, see [`specialized/lambda-patterns.md`](./lambda-patterns.md).
 
-Lambda functions in this project use strategic code duplication with transfer blocks for optimal performance and deployment independence.
+**Key Principle**: Lambda functions use strategic code duplication with transfer blocks for optimal performance and deployment independence.
 
-**Key Files:**
-
-- `src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py` (authentication)
-- `src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py` (voice commands)
-
-**Transfer Block Pattern:**
-
-```python
-# ╭─────────────────── TRANSFER BLOCK START ───────────────────╮
-# ║                    🚀 TRANSFER-READY CODE 🚀                ║
-# ║ 📋 PURPOSE: Speed-optimized configuration for <500ms response ║
-# ║ 🔄 STATUS: Ready for duplication across Lambda functions     ║
-# ╚═══════════════════════════════════════════════════════════╝
-
-def load_standardized_configuration(...):
-    # Shared performance-critical code
-    pass
-
-# ╭─────────────────── TRANSFER BLOCK END ───────────────────╮
-```
-
-**Synchronization Rules:**
-
-1. **DO NOT** eliminate duplicate code between these Lambda functions
-2. **DO** copy transfer blocks when updating shared functionality
-3. **DO** customize service-specific prefixes (`oauth_` → `bridge_`)
-4. **DO** test both functions after synchronization
+**Quick Reference**: Transfer blocks enable shared performance-critical code between Lambda functions while maintaining deployment independence.
 
 ## Client Creation Patterns
 
