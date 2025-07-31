@@ -171,7 +171,6 @@ line_length = 88
 minversion = "7.0"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
-asyncio_mode = "auto"
 filterwarnings = [
     "ignore:datetime.datetime.utcnow\\(\\) is deprecated.*:DeprecationWarning:botocore.auth",
     "ignore:The '__version__' attribute is deprecated.*:DeprecationWarning",
