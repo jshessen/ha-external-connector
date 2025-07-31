@@ -52,6 +52,22 @@ class InstallCommandConfig(BaseModel):
     cloudflare_domain: Optional[str] = None
     interactive: bool = False
 
+
+class AlexaSetupConfig(BaseModel):
+    """Configuration object for alexa_setup command to reduce parameter count."""
+    
+    function_name: str
+    skill_id: Optional[str] = None
+    region: str = "us-east-1"
+    generate_test_data: bool = True
+    generate_guide: bool = True
+    lambda_function_url: Optional[str] = None
+    oauth_gateway_url: Optional[str] = None
+    ha_base_url: Optional[str] = None
+    alexa_secret: Optional[str] = None
+    validate_config: bool = True
+    verbose: bool = False
+
 console = Console()
 logger = HAConnectorLogger("ha-connector-cli")
 
@@ -1331,7 +1347,7 @@ def _display_alexa_setup_summary(config: AlexaSetupConfig) -> None:
     console.print("   • Test integration with Alexa app and voice commands")
 
 
-def alexa_setup(  # pylint: disable=too-many-positional-arguments,too-many-arguments
+def alexa_setup(  # pylint: disable=too-many-positional-arguments
     function_name: str = typer.Argument(
         "ha-alexa-proxy", help="Lambda function name for Alexa integration"
     ),
@@ -1374,28 +1390,32 @@ def alexa_setup(  # pylint: disable=too-many-positional-arguments,too-many-argum
         ha-connector alexa-setup my-lambda --region us-west-2
         ha-connector alexa-setup --lambda-url https://xyz.lambda-url.us-east-1.on.aws/
     """
+    config = AlexaSetupConfig(
+        function_name=function_name,
+        skill_id=skill_id,
+        region=region,
+        generate_test_data=generate_test_data,
+        generate_guide=generate_guide,
+        lambda_function_url=lambda_function_url,
+        oauth_gateway_url=oauth_gateway_url,
+        ha_base_url=ha_base_url,
+        verbose=verbose,
+    )
+    
+    _execute_alexa_setup_workflow(config)
+
+
+def _execute_alexa_setup_workflow(config: AlexaSetupConfig) -> None:
+    """Execute the Alexa setup workflow with configuration object."""
     console.print("🎯 [bold]Alexa Smart Home Skill Automation Setup[/bold]")
     console.print("Setting up missing automation components for Alexa integration...\n")
 
     try:
-        # Create configuration object
-        config = AlexaSetupConfig(
-            function_name=function_name,
-            skill_id=skill_id,
-            region=region,
-            generate_test_data=generate_test_data,
-            generate_guide=generate_guide,
-            lambda_function_url=lambda_function_url,
-            oauth_gateway_url=oauth_gateway_url,
-            ha_base_url=ha_base_url,
-            verbose=verbose,
-        )
-
         # Initialize Alexa Skill Manager
-        alexa_manager = SmartHomeSkillAutomator(region=region)
+        alexa_manager = SmartHomeSkillAutomator(region=config.region)
 
         # Execute setup steps
-        _validate_alexa_region(alexa_manager, region)
+        _validate_alexa_region(alexa_manager, config.region)
         _setup_alexa_trigger(alexa_manager, config)
         _generate_test_data(alexa_manager, config)
         _generate_configuration_guide(alexa_manager, config)
@@ -1409,7 +1429,7 @@ def alexa_setup(  # pylint: disable=too-many-positional-arguments,too-many-argum
         raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"\n[red]💥 Alexa setup failed: {str(e)}[/red]")
-        if verbose:
+        if config.verbose:
             console.print(f"Details: {traceback.format_exc()}")
         raise typer.Exit(1) from e
 
