@@ -1154,7 +1154,7 @@ def _try_original_ssm_format(
     try:
         response = ssm_client.get_parameter(Name=ssm_param_name, WithDecryption=True)
         param_value = response["Parameter"]["Value"]
-        original_config = json.loads(param_value)
+        original_config: dict[str, Any] = json.loads(param_value)
 
         _logger.info("Loaded flat configuration from SSM: %s", ssm_param_name)
         _logger.debug("Configuration keys: %s", list(original_config.keys()))

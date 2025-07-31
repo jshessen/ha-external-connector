@@ -42,7 +42,7 @@ class StateMatching:
     comparison of what exists vs what is desired.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize state matching engine."""
         self.match_cache: dict[str, StateMatchResult] = {}
 

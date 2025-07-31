@@ -11,7 +11,7 @@ Modern Python implementation for AWS resource management.
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
@@ -164,7 +164,9 @@ class AWSIAMManager(AWSBaseManager):
 
     def __init__(self, region: str = "us-east-1") -> None:
         super().__init__(region)
-        self.client: IAMClient = boto3.client("iam", region_name=region)
+        self.client: IAMClient = cast(
+            IAMClient, boto3.client("iam", region_name=region)
+        )
 
     def create_or_update(self, _spec: IAMResourceSpec) -> AWSResourceResponse:
         """Stub: Create or update IAM resource"""
@@ -359,9 +361,12 @@ class AWSResourceManager:
         """Validate AWS access and permissions"""
         try:
             # Basic AWS access validation using STS
-            sts_client: STSClient = boto3.client("sts", region_name=self.region)
+            sts_client: STSClient = cast(
+                STSClient, boto3.client("sts", region_name=self.region)
+            )
             caller_identity = sts_client.get_caller_identity()
-            self.logger.info(f"AWS access validated for: {caller_identity['Arn']}")
+            arn = caller_identity.get("Arn", "unknown")
+            self.logger.info(f"AWS access validated for: {arn}")
             return AWSResourceResponse(
                 status="success", resource=dict(caller_identity), errors=[]
             )

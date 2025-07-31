@@ -40,7 +40,7 @@ class CompatibilityAnalysis:
     analysis when exact matches are not available.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize compatibility analysis engine."""
 
     def analyze_compatibility(self) -> list[CompatibilityResult]:

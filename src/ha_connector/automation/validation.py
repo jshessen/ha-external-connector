@@ -40,7 +40,7 @@ class EndStateValidation:
     validation of the final system state.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize validation engine."""
 
     def validate_system(self) -> list[ValidationResult]:
