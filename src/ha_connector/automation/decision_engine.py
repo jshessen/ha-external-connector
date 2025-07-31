@@ -44,8 +44,10 @@ class AutomationDecisionEngine:
 
     def __init__(self) -> None:
         """Initialize decision engine."""
+        # Initialize any internal state here
 
     def make_decisions(self) -> list[AutomationDecision]:
         """Make automation decisions."""
         logger.info("🤖 Decision engine not yet implemented")
+        return []  # Return empty list for now
         return []

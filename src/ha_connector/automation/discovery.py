@@ -77,10 +77,10 @@ class EnvironmentDiscovery:
             DiscoveryResult with found resources and metadata
         """
         if not force_refresh and scope in self._discovered_cache:
-            logger.info(f"🔍 Using cached discovery results for {scope.value}")
+            logger.info("🔍 Using cached discovery results for %s", scope.value)
             return self._discovered_cache[scope]
 
-        logger.info(f"🔍 Starting environment discovery for scope: {scope.value}")
+        logger.info("🔍 Starting environment discovery for scope: %s", scope.value)
 
         if scope == DiscoveryScope.ALL:
             return self._discover_all_scopes()
@@ -170,4 +170,4 @@ class EnvironmentDiscovery:
             logger.info("🗑️ Cleared all discovery cache")
         else:
             self._discovered_cache.pop(scope, None)
-            logger.info(f"🗑️ Cleared discovery cache for {scope.value}")
+            logger.info("🗑️ Cleared discovery cache for %s", scope.value)

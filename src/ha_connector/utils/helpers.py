@@ -32,6 +32,7 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format log record with color support."""
         # Add color to levelname
         if hasattr(record, "levelname"):
             color = self.COLORS.get(record.levelname, self.COLORS["RESET"])
@@ -50,6 +51,7 @@ class HAConnectorLogger:
         verbose: bool = False,
         max_log_size: int = 10 * 1024 * 1024,
     ):  # 10MB
+        """Initialize logger with configuration options."""
         self.logger = logging.getLogger(name)
         self.verbose = verbose
         # Ensure log_file is never None - explicit type annotation
@@ -131,6 +133,7 @@ class HAConnectorError(Exception):
     """Base exception for HA Connector errors."""
 
     def __init__(self, message: str, context: str | None = None, exit_code: int = 1):
+        """Initialize HAConnectorError with message, context, and exit code."""
         super().__init__(message)
         self.message = message
         self.context = context
@@ -320,7 +323,7 @@ def extract_json_value(
 ) -> Any:
     """Extract value from JSON using dot notation key path."""
     try:
-        data: Any = json.loads(json_string)
+        data: dict[str, Any] = json.loads(json_string)
 
         # Navigate through key path
         keys = key_path.split(".")
