@@ -320,7 +320,7 @@ def extract_json_value(
 ) -> Any:
     """Extract value from JSON using dot notation key path."""
     try:
-        data: Any = json.loads(json_string)
+        data: dict[str, Any] = json.loads(json_string)
 
         # Navigate through key path
         keys = key_path.split(".")

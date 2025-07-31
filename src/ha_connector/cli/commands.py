@@ -37,6 +37,21 @@ from ..integrations.alexa.skill_automation_manager import SmartHomeSkillAutomato
 from ..platforms.aws.resource_manager import AWSResourceManager
 from ..utils import HAConnectorLogger, ValidationError
 
+
+class InstallCommandConfig(BaseModel):
+    """Configuration object for install command to reduce parameter count."""
+    
+    scenario: str
+    region: str = "us-east-1"
+    environment: str = "prod"
+    version: str = "1.0.0"
+    force: bool = False
+    verbose: bool = False
+    dry_run: bool = False
+    auto_setup_cloudflare: bool = False
+    cloudflare_domain: Optional[str] = None
+    interactive: bool = False
+
 console = Console()
 logger = HAConnectorLogger("ha-connector-cli")
 
@@ -581,7 +596,7 @@ def install_wizard() -> None:
         raise typer.Exit(1) from e
 
 
-def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def install(  # pylint: disable=too-many-positional-arguments
     scenario: str = typer.Argument(
         "direct_alexa",
         help="Installation scenario: direct_alexa|cloudflare_alexa|cloudflare_ios|all",
@@ -626,15 +641,33 @@ def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
 
     Use --interactive for guided installation with enhanced user experience.
     """
+    config = InstallCommandConfig(
+        scenario=scenario,
+        region=region,
+        environment=environment,
+        version=version,
+        force=force,
+        verbose=verbose,
+        dry_run=dry_run,
+        auto_setup_cloudflare=auto_setup_cloudflare,
+        cloudflare_domain=cloudflare_domain,
+        interactive=interactive,
+    )
+    
+    _execute_install_workflow(config)
+
+
+def _execute_install_workflow(config: InstallCommandConfig) -> None:
+    """Execute the install workflow with configuration object."""
     # Launch interactive wizard if requested
-    if interactive:
+    if config.interactive:
         install_wizard()
         return
 
-    _print_installation_header(scenario, region, environment, dry_run)
+    _print_installation_header(config.scenario, config.region, config.environment, config.dry_run)
 
     try:
-        installation_scenario = _validate_and_get_scenario(scenario)
+        installation_scenario = _validate_and_get_scenario(config.scenario)
         _setup_configuration(installation_scenario)
         services_to_install = _get_services_for_scenario(installation_scenario)
 
@@ -643,14 +676,14 @@ def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         deployment_config = _create_deployment_config(
             services_to_install,
             {
-                "environment": environment,
-                "version": version,
-                "region": region,
-                "dry_run": dry_run,
-                "verbose": verbose,
-                "force": force,
-                "auto_setup_cloudflare": auto_setup_cloudflare,
-                "cloudflare_domain": cloudflare_domain,
+                "environment": config.environment,
+                "version": config.version,
+                "region": config.region,
+                "dry_run": config.dry_run,
+                "verbose": config.verbose,
+                "force": config.force,
+                "auto_setup_cloudflare": config.auto_setup_cloudflare,
+                "cloudflare_domain": config.cloudflare_domain,
             },
         )
 
@@ -668,7 +701,7 @@ def install(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"\n[red]💥 Installation failed: {str(e)}[/red]")
-        if verbose:
+        if config.verbose:
             console.print(traceback.format_exc())
         raise typer.Exit(1) from e
 
@@ -1388,3 +1421,4 @@ configure_command = configure
 status_command = status
 remove_command = remove
 alexa_setup_command = alexa_setup
+wizard = wizard
