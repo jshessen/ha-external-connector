@@ -44,7 +44,7 @@ import json
 import logging
 import secrets
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import boto3
 from botocore.exceptions import ClientError
@@ -79,8 +79,9 @@ class SmartHomeSkillAutomator:
     def lambda_client(self) -> "LambdaClient":
         """Get Lambda client with lazy initialization."""
         if self._lambda_client is None:
-            self._lambda_client = boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-                "lambda", region_name=self.region
+            self._lambda_client = cast(
+                "LambdaClient",
+                boto3.client("lambda", region_name=self.region)  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
             )
         return self._lambda_client
 
@@ -414,7 +415,9 @@ class SmartHomeSkillAutomator:
         else:
             # Generic setup
             web_auth_uri = "https://your-homeassistant.domain.com/auth/authorize"
-            access_token_uri = "https://your-homeassistant.domain.com/auth/token"  # nosec B105
+            access_token_uri = (
+                "https://your-homeassistant.domain.com/auth/token"  # nosec B105
+            )
             setup_type = "Generic OAuth Setup"
 
         guide = f"""

@@ -42,7 +42,7 @@ class AutomationDecisionEngine:
     decision-making for deployment actions.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize decision engine."""
 
     def make_decisions(self) -> list[AutomationDecision]:

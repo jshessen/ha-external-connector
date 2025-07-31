@@ -1,0 +1,993 @@
+
+📊 Code Quality Analysis Summary
+==================================================
+✅ Passed: 6
+⚠️ Issues found: 4 (Total: 659)
+❌ Errors: 0
+
+📋 Detailed Results:
+  ⚠️ Black: Files need formatting
+  ✅ Isort: No issues found
+  ✅ Ruff: No issues found
+  ✅ Flake8: No issues found
+  ⚠️ Pylint: 598 issues
+  ⚠️ Mypy: 25 issues
+  ⚠️ Pyright: 35 issues
+  ✅ Bandit: No issues found
+  ✅ Safety: No issues found
+  ✅ Pip-Audit: No issues found
+
+💡 Suggestions:
+  • Run with --fix to apply automatic fixes
+  • Use --tools to focus on specific tools
+  • Use --categories to run tool groups
+
+🔧 Manual tool execution examples:
+    .venv/bin/python -m mypy src/
+    .venv/bin/python -m ruff check src/ tests/
+    .venv/bin/python -m pylint src/
+    .venv/bin/python -m bandit -r src/
+
+================================================================================
+VERBOSE OUTPUT - DETAILED TOOL RESULTS
+================================================================================
+This section contains the complete output from tools with issues.
+Use this information for detailed remediation and analysis.
+================================================================================
+
+============================================================
+TOOL: Black
+RETURN CODE: 1
+============================================================
+
+STDOUT:
+----------------------------------------
+--- /mnt/development/GitHub/ha-external-connector/scripts/demo_security.py	2025-07-30 22:07:57.773173+00:00
++++ /mnt/development/GitHub/ha-external-connector/scripts/demo_security.py	2025-07-31 03:52:42.703901+00:00
+@@ -35,13 +35,13 @@
+     _demo_reporting()
+     _show_framework_capabilities()
+     _show_next_steps()
+ 
+ 
+-def _initialize_and_show_validators() -> tuple[
+-    SecurityPolicyValidator, ComplianceChecker, SecurityReporter
+-]:
++def _initialize_and_show_validators() -> (
++    tuple[SecurityPolicyValidator, ComplianceChecker, SecurityReporter]
++):
+     """Initialize validators and show enhanced Lambda capabilities"""
+     # Initialize validators
+     policy_validator = SecurityPolicyValidator()
+     compliance_checker = ComplianceChecker()
+     reporter = SecurityReporter()
+--- /mnt/development/GitHub/ha-external-connector/src/ha_connector/integrations/alexa/skill_automation_manager.py	2025-07-30 22:07:57.794174+00:00
++++ /mnt/development/GitHub/ha-external-connector/src/ha_connector/integrations/alexa/skill_automation_manager.py	2025-07-31 03:52:43.441983+00:00
+@@ -412,11 +412,13 @@
+             access_token_uri = f"{ha_base_url}/auth/token"
+             setup_type = "Direct Home Assistant OAuth"
+         else:
+             # Generic setup
+             web_auth_uri = "https://your-homeassistant.domain.com/auth/authorize"
+-            access_token_uri = "https://your-homeassistant.domain.com/auth/token"  # nosec B105
++            access_token_uri = (
++                "https://your-homeassistant.domain.com/auth/token"  # nosec B105
++            )
+             setup_type = "Generic OAuth Setup"
+ 
+         guide = f"""
+ # 🏢 ALEXA SMART HOME SKILL CONFIGURATION GUIDE
+ 
+--- /mnt/development/GitHub/ha-external-connector/tests/test_secrets.py	2025-07-30 22:07:57.861175+00:00
++++ /mnt/development/GitHub/ha-external-connector/tests/test_secrets.py	2025-07-31 03:52:43.868490+00:00
+@@ -16,11 +16,13 @@
+     prefix: str
+     min_len: int
+ 
+ 
+ def generate_test_secret(
+-    secret_type: Literal["alexa", "client", "token", "generic"] = "generic",  # nosec B107
++    secret_type: Literal[
++        "alexa", "client", "token", "generic"
++    ] = "generic",  # nosec B107
+     min_length: int = 8,
+     custom_length: int | None = None,
+ ) -> str:
+     """
+     Generate a test secret dynamically to avoid hardcoded values.
+
+
+STDERR:
+----------------------------------------
+would reformat /mnt/development/GitHub/ha-external-connector/scripts/demo_security.py
+would reformat /mnt/development/GitHub/ha-external-connector/src/ha_connector/integrations/alexa/skill_automation_manager.py
+would reformat /mnt/development/GitHub/ha-external-connector/tests/test_secrets.py
+
+Oh no! 💥 💔 💥
+3 files would be reformatted, 74 files would be left unchanged.
+
+
+============================================================
+
+
+============================================================
+TOOL: Isort
+RETURN CODE: 0
+============================================================
+
+STDOUT:
+----------------------------------------
+Skipped 11 files
+
+
+============================================================
+
+
+============================================================
+TOOL: Ruff
+RETURN CODE: 0
+============================================================
+
+STDOUT:
+----------------------------------------
+All checks passed!
+
+
+============================================================
+
+
+============================================================
+TOOL: Flake8
+RETURN CODE: 0
+============================================================
+
+============================================================
+
+
+============================================================
+TOOL: Pylint
+RETURN CODE: 30
+============================================================
+
+STDOUT:
+----------------------------------------
+************* Module ha_connector.config.manager
+src/ha_connector/config/manager.py:8:0: C0302: Too many lines in module (1075/1000) (too-many-lines)
+************* Module ha_connector.security.lambda_validator
+src/ha_connector/security/lambda_validator.py:8:0: C0302: Too many lines in module (1158/1000) (too-many-lines)
+************* Module ha_connector.web
+src/ha_connector/web/__init__.py:31:4: W0621: Redefining name 'app' from outer scope (line 56) (redefined-outer-name)
+************* Module ha_connector.web.api.integrations
+src/ha_connector/web/api/integrations.py:65:5: W0511: TODO: Implement actual configuration logic (fixme)
+src/ha_connector/web/api/integrations.py:72:5: W0511: TODO: Implement actual enable logic (fixme)
+src/ha_connector/web/api/integrations.py:79:5: W0511: TODO: Implement actual disable logic (fixme)
+************* Module ha_connector.web.api.setup
+src/ha_connector/web/api/setup.py:73:5: W0511: TODO: Implement AWS credential validation and storage (fixme)
+src/ha_connector/web/api/setup.py:82:5: W0511: TODO: Implement Home Assistant connection validation (fixme)
+src/ha_connector/web/api/setup.py:89:5: W0511: TODO: Implement comprehensive validation (fixme)
+src/ha_connector/web/api/setup.py:103:5: W0511: TODO: Implement setup completion logic (fixme)
+************* Module scripts.run_web_dev
+scripts/run_web_dev.py:9:0: C0103: Constant name "src_path" doesn't conform to UPPER_CASE naming style (invalid-name)
+************* Module scripts.lambda_deployment.deployment_manager
+scripts/lambda_deployment/deployment_manager.py:28:0: E0401: Unable to import 'marker_system' (import-error)
+scripts/lambda_deployment/deployment_manager.py:29:0: E0401: Unable to import 'validation_system' (import-error)
+scripts/lambda_deployment/deployment_manager.py:272:4: R0912: Too many branches (15/12) (too-many-branches)
+scripts/lambda_deployment/deployment_manager.py:414:8: R1702: Too many nested blocks (6/5) (too-many-nested-blocks)
+************* Module scripts.lambda_deployment.validation_system
+scripts/lambda_deployment/validation_system.py:28:0: E0401: Unable to import 'marker_system' (import-error)
+************* Module scripts.lambda_deployment.marker_validator
+scripts/lambda_deployment/marker_validator.py:25:0: E0401: Unable to import 'marker_system' (import-error)
+************* Module scripts.lambda_deployment.test_new_system
+scripts/lambda_deployment/test_new_system.py:224:12: E0401: Unable to import 'deployment_manager' (import-error)
+scripts/lambda_deployment/test_new_system.py:234:12: E0401: Unable to import 'marker_validator' (import-error)
+scripts/lambda_deployment/test_new_system.py:245:12: E0401: Unable to import 'deployment_manager' (import-error)
+scripts/lambda_deployment/test_new_system.py:257:12: E0401: Unable to import 'marker_validator' (import-error)
+scripts/lambda_deployment/test_new_system.py:269:12: E0401: Unable to import 'deployment_manager' (import-error)
+scripts/lambda_deployment/test_new_system.py:270:12: E0401: Unable to import 'marker_validator' (import-error)
+scripts/lambda_deployment/test_new_system.py:287:12: E0401: Unable to import 'deployment_manager' (import-error)
+scripts/lambda_deployment/test_new_system.py:288:12: E0401: Unable to import 'marker_system' (import-error)
+scripts/lambda_deployment/test_new_system.py:289:12: E0401: Unable to import 'marker_validator' (import-error)
+scripts/lambda_deployment/test_new_system.py:290:12: E0401: Unable to import 'validation_system' (import-error)
+scripts/lambda_deployment/test_new_system.py:300:12: E0401: Unable to import 'marker_system' (import-error)
+scripts/lambda_deployment/test_new_system.py:335:12: E0401: Unable to import 'deployment_manager' (import-error)
+scripts/lambda_deployment/test_new_system.py:351:12: E0401: Unable to import 'marker_validator' (import-error)
+scripts/lambda_deployment/test_new_system.py:365:12: E0401: Unable to import 'deployment_manager' (import-error)
+scripts/lambda_deployment/test_new_system.py:375:12: E0401: Unable to import 'marker_system' (import-error)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==ha_connector.deployment.integration_installer:[253:462]
+==ha_connector.deployment.service_installer:[140:350]
+        src_path = Path(source_path)
+        if not src_path.exists():
+            raise ValidationError(f"Source path does not exist: {src_path}")
+
+        # Determine output path
+        if output_path is None:
+            output_path = f"/tmp/{src_path.stem}-deployment.zip"  # nosec B108
+        out_path = Path(output_path)
+
+        if self.dry_run:
+            self.logger.info(f"[DRY RUN] Would create deployment package: {out_path}")
+            return str(out_path)
+
+        self.logger.info(f"Creating deployment package: {out_path}")
+
+        with zipfile.ZipFile(str(out_path), "w", zipfile.ZIP_DEFLATED) as zip_file:
+            if src_path.is_file():
+                # Single file
+                zip_file.write(str(src_path), src_path.name)
+            elif src_path.is_dir():
+                # Directory - add all Python files
+                for py_file in src_path.rglob("*.py"):
+                    arc_name = py_file.relative_to(src_path)
+                    zip_file.write(str(py_file), str(arc_name))
+
+                # Add requirements if they exist
+                if include_dependencies:
+                    requirements_file = src_path / "requirements.txt"
+                    if requirements_file.exists():
+                        # This is a simplified approach - in practice you'd want to
+                        # install dependencies into the package
+                        self.logger.warning(
+                            "Requirements.txt found but dependency "
+                            "installation not implemented"
+                        )
+
+            # Add common utilities if they exist
+            utils_path = Path(__file__).parent.parent / "utils.py"
+            if utils_path.exists():
+                zip_file.write(str(utils_path), "ha_connector_utils.py")
+
+        self.logger.info(f"Created deployment package: {out_path}")
+        return str(out_path)
+
+    def create_iam_role(
+        self,
+        role_name: str,
+        service_type: ServiceType,
+    ) -> str:
+        """Create IAM role for Lambda function"""
+        if self.dry_run:
+            self.logger.info(f"[DRY RUN] Would create IAM role: {role_name}")
+            return f"arn:aws:iam::123456789012:role/{role_name}"
+
+        # Basic Lambda execution role policy
+        assume_role_policy: dict[str, Any] = LAMBDA_ASSUME_ROLE_POLICY
+
+        # Service-specific policies would go here
+        role_spec: dict[str, Any] = {
+            "resource_type": "role",
+            "name": role_name,
+            "assume_role_policy": assume_role_policy,
+            "description": f"Lambda execution role for {service_type} service",
+        }
+
+        self.logger.info(f"Creating IAM role: {role_name}")
+        result = self.aws_manager.create_resource(AWSResourceType.IAM, role_spec)
+
+        if result.status == "error":
+            raise AWSError(f"Failed to create IAM role: {', '.join(result.errors)}")
+
+        # Extract ARN from result
+        if result.resource and "Role" in result.resource:
+            role_arn = str(result.resource["Role"]["Arn"])
+            self.logger.info(f"Created IAM role: {role_arn}")
+            return role_arn
+
+        raise AWSError("Failed to get IAM role ARN from AWS response")
+
+    def deploy_service(self, config: ServiceConfig) -> DeploymentResult:
+        """Deploy a service to AWS Lambda"""
+        self.logger.info(
+            f"Starting deployment of {config.service_type} service: "
+            f"{config.function_name}"
+        )
+
+        result = DeploymentResult(
+            success=False,
+            function_name=config.function_name,
+            function_arn=None,
+            function_url=None,
+            role_arn=None,
+        )
+
+        try:
+            # Create IAM role if not provided
+            role_arn = config.role_arn
+            if not role_arn:
+                role_name = f"{config.function_name}-execution-role"
+                role_arn = self.create_iam_role(role_name, config.service_type)
+                result.role_arn = role_arn
+
+            # Create deployment package
+            package_path = self.create_deployment_package(config.source_path)
+
+            # Create Lambda function specification
+            lambda_spec = LambdaResourceSpec(
+                function_name=config.function_name,
+                handler=config.handler,
+                role_arn=role_arn,
+                package_path=package_path,
+                runtime=config.runtime,
+                timeout=config.timeout,
+                memory_size=config.memory_size,
+                description=config.description,
+                environment_variables=config.environment_variables,
+                create_url=config.create_url,
+                url_auth_type=config.url_auth_type,
+            )
+
+            # Deploy to AWS
+            if self.dry_run:
+                self.logger.info(
+                    f"[DRY RUN] Would deploy Lambda function: {config.function_name}"
+                )
+                result.success = True
+                result.function_arn = (
+                    f"arn:aws:lambda:{self.region}:123456789012:function:"
+                    f"{config.function_name}"
+                )
+                result.metadata = {
+                    "message": f"Would deploy Lambda function: {config.function_name}"
+                }
+                if config.create_url:
+                    result.function_url = (
+                        f"https://example.lambda-url.{self.region}.on.aws/"
+                    )
+            else:
+                deploy_result = self.aws_manager.create_resource(
+                    AWSResourceType.LAMBDA,
+                    lambda_spec.model_dump(),
+                )
+
+                if deploy_result.status in ["created", "updated"]:
+                    result.success = True
+
+                    # Extract function details from AWS response
+                    if deploy_result.resource:
+                        function_config = deploy_result.resource.get(
+                            "Configuration", {}
+                        )
+                        result.function_arn = function_config.get("FunctionArn")
+
+                        # Extract function URL if created
+                        function_url_config = function_config.get("FunctionUrl")
+                        if function_url_config and "FunctionUrl" in function_url_config:
+                            result.function_url = function_url_config["FunctionUrl"]
+
+                    self.logger.success(f"Successfully deployed {config.function_name}")
+                else:
+                    result.errors = deploy_result.errors
+                    self.logger.error(
+                        f"Failed to deploy {config.function_name}: "
+                        f"{', '.join(deploy_result.errors)}"
+                    )
+
+            # Clean up temporary package
+            if os.path.exists(package_path) and not self.dry_run:
+                os.unlink(package_path)
+
+        except (ValidationError, AWSError, OSError, zipfile.BadZipFile) as e:
+            result.errors.append(str(e))
+            self.logger.error(f"Deployment failed: {str(e)}")
+
+        return result
+
+    def deploy_predefined_service(
+        self,
+        service_type: ServiceType,
+        overrides: dict[str, Any] | None = None,
+    ) -> DeploymentResult:
+        """Deploy a predefined service type with optional overrides"""
+        # Get default configuration
+        default_config = self.get_default_config(service_type)
+        if not default_config:
+            raise ValidationError(
+                f"No default configuration for service type: {service_type}"
+            )
+
+        # Apply overrides
+        config_dict = {**default_config}
+        if overrides:
+            config_dict.update(overrides)
+
+        config_dict["service_type"] = service_type
+
+        # Create service config
+        config = ServiceConfig(**config_dict)
+
+        return self.deploy_service(config)
+
+    def list_deployed_services(self) -> list[dict[str, Any]]:
+        """List all deployed Lambda functions with enhanced service mapping"""
+        if self.dry_run:
+            self.logger.info("[DRY RUN] Would list deployed services")
+            return []
+
+        self.logger.info("Listing deployed services...")
+ (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==ha_connector.deployment.integration_installer:[507:684]
+==ha_connector.deployment.service_installer:[350:526]
+        return []
+
+    def plan_enhanced_installation(
+        self, scenario: InstallationScenario
+    ) -> dict[str, Any]:
+        """Plan installation using Configuration Manager resource discovery"""
+        self.logger.info(
+            f"Planning enhanced installation for scenario: {scenario.value}"
+        )
+
+        # Initialize configuration for the scenario
+        self.config_manager.init_config(scenario)
+
+        # Define resource requirements based on scenario
+        requirements: list[ResourceRequirement] = []
+
+        if scenario in [InstallationScenario.DIRECT_ALEXA, InstallationScenario.ALL]:
+            requirements.append(
+                ResourceRequirement(
+                    resource_type="lambda",
+                    resource_id="ha-alexa-proxy",
+                    description="Home Assistant Alexa Skills Proxy",
+                )
+            )
+
+        if scenario in [InstallationScenario.CLOUDFLARE_IOS, InstallationScenario.ALL]:
+            requirements.append(
+                ResourceRequirement(
+                    resource_type="lambda",
+                    resource_id="ha-ios-proxy",
+                    description="Home Assistant iOS Companion Proxy",
+                )
+            )
+
+        # Use Configuration Manager for resource matching
+        matched_resources = self.config_manager.match_resources_to_requirements(
+            requirements
+        )
+
+        # Analyze conflicts and plan installation steps
+        conflicts: list[dict[str, Any]] = []
+        installation_steps: list[dict[str, Any]] = []
+        user_decisions_needed: list[dict[str, Any]] = []
+
+        # Check for conflicts and required user decisions
+        for match in matched_resources:
+            if match.exists:
+                conflicts.append(
+                    {
+                        "resource": match.resource_id,
+                        "issue": "Existing resource found",
+                        "resource_type": match.resource_type,
+                    }
+                )
+                user_decisions_needed.append(
+                    {
+                        "type": "conflict_resolution",
+                        "message": (
+                            f"Resource {match.resource_id} already exists. "
+                            "Replace or update?"
+                        ),
+                        "options": ["replace", "update", "skip"],
+                    }
+                )
+
+        # Plan installation steps for missing resources
+        missing_requirements = [
+            req
+            for req in requirements
+            if not any(
+                match.resource_id == req.resource_id and match.exists
+                for match in matched_resources
+            )
+        ]
+
+        for requirement in missing_requirements:
+            installation_steps.append(
+                {
+                    "action": "create",
+                    "resource_type": requirement.resource_type,
+                    "resource_id": requirement.resource_id,
+                    "service_type": self._get_service_type_for_lambda(
+                        requirement.resource_id
+                    ),
+                }
+            )
+
+        installation_plan = {
+            "scenario": scenario.value,
+            "region": self.region,
+            "requirements": len(requirements),
+            "matched_resources": len(matched_resources),
+            "conflicts": conflicts,
+            "installation_steps": installation_steps,
+            "user_decisions_needed": user_decisions_needed,
+        }
+
+        plan_steps = len(installation_steps)
+        self.logger.info(f"Installation plan created with {plan_steps} steps")
+        return installation_plan
+
+    def execute_enhanced_installation(
+        self,
+        installation_plan: dict[str, Any],
+        user_choices: dict[str, str] | None = None,
+    ) -> DeploymentResult:
+        """Execute installation plan with user interaction handling"""
+        self.logger.info("Executing enhanced installation plan...")
+
+        user_choices = user_choices or {}
+        results = DeploymentResult(
+            success=True,
+            function_name="enhanced-installation-batch",
+            function_arn=None,
+            function_url=None,
+            role_arn=None,
+        )
+
+        # Handle user decisions for conflicts
+        for decision in installation_plan.get("user_decisions_needed", []):
+            resource_key = f"conflict_{decision.get('message', '').split()[1]}"
+            user_choice = user_choices.get(resource_key, "skip")
+
+            if user_choice == "skip":
+                results.warnings.append(
+                    "Skipped conflicted resource due to user choice"
+                )
+                continue
+            if user_choice == "replace":
+                results.warnings.append("Will replace existing resource")
+            if user_choice == "update":
+                results.warnings.append("Will update existing resource")
+
+        # Execute installation steps
+        for step in installation_plan.get("installation_steps", []):
+            if step["action"] == "create":
+                service_type = step["service_type"]
+                resource_id = step["resource_id"]
+
+                try:
+                    # Deploy the service using existing methods
+                    deploy_result = self.deploy_predefined_service(service_type)
+
+                    if deploy_result.success:
+                        results.metadata[f"deployed_{resource_id}"] = True
+                        self.logger.success(f"Successfully deployed {resource_id}")
+                    else:
+                        results.errors.extend(deploy_result.errors)
+                        results.warnings.extend(deploy_result.warnings)
+                        results.success = False
+
+                except (ValidationError, AWSError, OSError, KeyError) as e:
+                    error_msg = f"Failed to deploy {resource_id}: {str(e)}"
+                    results.errors.append(error_msg)
+                    results.success = False
+                    self.logger.error(error_msg)
+
+        # Store summary in metadata
+        if results.success:
+            deployed_count = len(
+                [k for k in results.metadata if k.startswith("deployed_")]
+            )
+            results.metadata["summary"] = (
+                f"Enhanced installation completed successfully. "
+                f"Deployed {deployed_count} services."
+            )
+        else:
+            error_count = len(results.errors)
+            results.metadata["summary"] = (
+                f"Enhanced installation completed with {error_count} errors"
+            )
+
+        return results
+
+    def _get_service_type_for_lambda(self, lambda_name: str) -> ServiceType:
+        """Map Lambda function name to ServiceType""" (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==ha_connector.deployment.integration_installer:[33:97]
+==ha_connector.deployment.service_installer:[31:93]
+    IOS_COMPANION = "ios_companion"
+    CLOUDFLARE_PROXY = "cloudflare_proxy"
+    GENERIC = "generic"
+
+
+class ServiceConfig(BaseModel):
+    """Configuration for a service deployment"""
+
+    service_type: ServiceType = Field(..., description="Type of service to deploy")
+    function_name: str = Field(..., description="Lambda function name")
+    handler: str = Field(..., description="Lambda handler function")
+    source_path: str = Field(..., description="Path to source code")
+    runtime: str = Field(default="python3.11", description="Lambda runtime")
+    timeout: int = Field(default=30, description="Function timeout in seconds")
+    memory_size: int = Field(default=512, description="Memory size in MB")
+    description: str | None = Field(default=None, description="Function description")
+    environment_variables: dict[str, str] | None = Field(
+        default=None, description="Environment variables"
+    )
+    create_url: bool = Field(
+        default=False, description="Whether to create function URL"
+    )
+    url_auth_type: str = Field(default="NONE", description="Function URL auth type")
+    role_arn: str | None = Field(
+        default=None, description="IAM role ARN (will be created if not provided)"
+    )
+
+
+class DeploymentResult(BaseModel):
+    """Result of a service deployment"""
+
+    success: bool = Field(..., description="Whether deployment was successful")
+    function_name: str = Field(..., description="Deployed function name")
+    function_arn: str | None = Field(None, description="Function ARN")
+    function_url: str | None = Field(None, description="Function URL if created")
+    role_arn: str | None = Field(None, description="IAM role ARN used")
+    errors: list[str] = Field(default_factory=list, description="Deployment errors")
+    warnings: list[str] = Field(default_factory=list, description="Deployment warnings")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional metadata",
+    )
+
+
+class ServiceInstaller:
+    """Enhanced service installer with resource discovery and conflict resolution"""
+
+    def __init__(
+        self, region: str = "us-east-1", dry_run: bool = False, verbose: bool = False
+    ):
+        self.region = region
+        self.dry_run = dry_run
+        self.verbose = verbose
+        self.logger = HAConnectorLogger("service_installer", verbose=verbose)
+        self.aws_manager = AWSResourceManager(region)
+
+        # Initialize Configuration Manager for enhanced resource discovery
+        self.config_manager = ConfigurationManager()
+
+        # Enhanced service configurations with dual naming system
+        # Maps ServiceType to both human-friendly names and technical IDs
+        self._default_configs: dict[ServiceType, dict[str, Any]] = {
+            ServiceType.ALEXA: {
+                # Clean naming convention (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==ha_connector.deployment.integration_installer:[735:772]
+==ha_connector.deployment.service_installer:[532:569]
+        return ServiceType.ALEXA  # Default fallback
+
+    def remove_service(self, function_name: str) -> bool:
+        """Remove a deployed service"""
+        if self.dry_run:
+            self.logger.info(f"[DRY RUN] Would remove service: {function_name}")
+            return True
+
+        self.logger.info(f"Removing service: {function_name}")
+        result = self.aws_manager.delete_resource(AWSResourceType.LAMBDA, function_name)
+
+        if result.status == "error":
+            self.logger.error(f"Failed to remove service: {', '.join(result.errors)}")
+            return False
+
+        self.logger.success(f"Successfully removed service: {function_name}")
+        return True
+
+
+# Module-level singleton registry for ServiceInstaller instances
+_service_installer_registry: dict[tuple[str, bool, bool], ServiceInstaller] = {}
+
+
+def get_service_installer(
+    region: str = "us-east-1",
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> ServiceInstaller:
+    """Get or create singleton service installer instance"""
+    key = (region, dry_run, verbose)
+
+    if key not in _service_installer_registry:
+        _service_installer_registry[key] = ServiceInstaller(
+            region=region, dry_run=dry_run, verbose=verbose
+        )
+
+    return _service_installer_registry[key] (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==scripts.lambda_deployment.deployment_manager:[571:584]
+==scripts.lambda_deployment.marker_validator:[221:234]
+        logger = logging.getLogger(__name__)
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter("%(levelname)s: %(message)s")
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+        return logger
+
+
+def main() -> None:
+    """Main entry point for the deployment manager."""
+    parser = argparse.ArgumentParser( (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==ha_connector.__init__:[100:109]
+==ha_connector.constants:[22:31]
+    "ServiceInstaller",
+    "ServiceType",
+    "ServiceConfig",
+    "DeploymentResult",
+    "DeploymentManager",
+    "DeploymentStrategy",
+    "DeploymentConfig",
+    "orchestrate_deployment",
+] (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==scripts.lambda_deployment.deployment_manager:[571:583]
+==scripts.lambda_deployment.validation_system:[369:377]
+        logger = logging.getLogger(__name__)
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter("%(levelname)s: %(message)s")
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+        return logger (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==ha_connector.security.lambda_validator:[220:225]
+==ha_connector.security.policy_validator:[129:134]
+            return [
+                SecurityCheckResult(
+                    check=check,
+                    status=SecurityStatus.WARNING,
+                    message=( (duplicate-code)
+scripts/lambda_deployment/test_new_system.py:1:0: R0801: Similar lines in 2 files
+==ha_connector.security.lambda_validator:[418:423]
+==ha_connector.security.policy_validator:[67:72]
+        if issues:
+            return [
+                SecurityCheckResult(
+                    check=check,
+                    status=SecurityStatus.FAIL, (duplicate-code)
+
+------------------------------------------------------------------
+Your code has been rated at 9.82/10 (previous run: 9.82/10, +0.00)
+
+
+
+============================================================
+
+
+============================================================
+TOOL: Mypy
+RETURN CODE: 1
+============================================================
+
+STDOUT:
+----------------------------------------
+src/ha_connector/automation/validation.py:43: error: Function is missing a return type annotation  [no-untyped-def]
+src/ha_connector/automation/validation.py:43: note: Use "-> None" if function does not return a value
+src/ha_connector/automation/matching.py:45: error: Function is missing a return type annotation  [no-untyped-def]
+src/ha_connector/automation/matching.py:45: note: Use "-> None" if function does not return a value
+src/ha_connector/automation/execution.py:44: error: Function is missing a return type annotation  [no-untyped-def]
+src/ha_connector/automation/execution.py:44: note: Use "-> None" if function does not return a value
+src/ha_connector/automation/decision_engine.py:45: error: Function is missing a return type annotation  [no-untyped-def]
+src/ha_connector/automation/decision_engine.py:45: note: Use "-> None" if function does not return a value
+src/ha_connector/automation/compatibility.py:43: error: Function is missing a return type annotation  [no-untyped-def]
+src/ha_connector/automation/compatibility.py:43: note: Use "-> None" if function does not return a value
+src/ha_connector/security/lambda_validator.py:42: error: Incompatible types in assignment (expression has type "types_boto3_lambda.client.LambdaClient | mypy_boto3_lambda.client.LambdaClient", variable has type "types_boto3_lambda.client.LambdaClient")  [assignment]
+src/ha_connector/security/lambda_validator.py:48: error: Incompatible types in assignment (expression has type "types_boto3_iam.client.IAMClient | mypy_boto3_iam.client.IAMClient", variable has type "types_boto3_iam.client.IAMClient")  [assignment]
+src/ha_connector/platforms/aws/resource_manager.py:167: error: Incompatible types in assignment (expression has type "mypy_boto3_iam.client.IAMClient", variable has type "types_boto3_iam.client.IAMClient")  [assignment]
+src/ha_connector/integrations/alexa/skill_automation_manager.py:82: error: Incompatible types in assignment (expression has type "mypy_boto3_lambda.client.LambdaClient", variable has type "types_boto3_lambda.client.LambdaClient | None")  [assignment]
+src/ha_connector/integrations/alexa/skill_automation_manager.py:85: error: Incompatible return value type (got "LambdaClient | None", expected "LambdaClient")  [return-value]
+src/ha_connector/integrations/alexa/lambda_functions/shared_configuration.py:1121: error: Incompatible return value type (got "object", expected "dict[str, Any]")  [return-value]
+src/ha_connector/integrations/alexa/lambda_functions/shared_configuration.py:1168: error: Returning Any from function declared to return "dict[str, Any] | None"  [no-any-return]
+tests/fixtures/aws_fixtures.py:49: error: Incompatible return value type (got "mypy_boto3_iam.client.IAMClient", expected "types_boto3_iam.client.IAMClient")  [return-value]
+tests/fixtures/aws_fixtures.py:56: error: Incompatible return value type (got "mypy_boto3_lambda.client.LambdaClient", expected "types_boto3_lambda.client.LambdaClient")  [return-value]
+tests/fixtures/aws_fixtures.py:63: error: Incompatible return value type (got "mypy_boto3_ssm.client.SSMClient", expected "types_boto3_ssm.client.SSMClient")  [return-value]
+src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py:389: error: Returning Any from function declared to return "dict[str, Any]"  [no-any-return]
+src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py:173: error: "Callable[[], Any]" has no attribute "client"  [attr-defined]
+tests/unit/test_lambda_security_validator.py:36: error: Incompatible types in assignment (expression has type "mypy_boto3_lambda.client.LambdaClient", variable has type "types_boto3_lambda.client.LambdaClient")  [assignment]
+tests/unit/test_lambda_security_validator.py:39: error: Incompatible types in assignment (expression has type "mypy_boto3_iam.client.IAMClient", variable has type "types_boto3_iam.client.IAMClient")  [assignment]
+Found 19 errors in 13 files (checked 77 source files)
+
+
+============================================================
+
+
+============================================================
+TOOL: Pyright
+RETURN CODE: 1
+============================================================
+
+STDOUT:
+----------------------------------------
+/mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:188:44 - error: Import "DeploymentManager" is not accessed (reportUnusedImport)
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:197:39 - error: Import "DeploymentMarkerSystem" is not accessed (reportUnusedImport)
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:206:43 - error: Import "DeploymentValidationSystem" is not accessed (reportUnusedImport)
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:215:42 - error: Import "MarkerValidator" is not accessed (reportUnusedImport)
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:287:44 - error: Import "DeploymentManager" is not accessed (reportUnusedImport)
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:288:39 - error: Import "DeploymentMarkerSystem" is not accessed (reportUnusedImport)
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:289:42 - error: Import "MarkerValidator" is not accessed (reportUnusedImport)
+  /mnt/development/GitHub/ha-external-connector/scripts/lambda_deployment/test_new_system.py:290:43 - error: Import "DeploymentValidationSystem" is not accessed (reportUnusedImport)
+/mnt/development/GitHub/ha-external-connector/src/ha_connector/integrations/alexa/skill_automation_manager.py
+  /mnt/development/GitHub/ha-external-connector/src/ha_connector/integrations/alexa/skill_automation_manager.py:85:16 - error: Type "mypy_boto3_lambda.client.LambdaClient | types_boto3_lambda.client.LambdaClient" is not assignable to return type "LambdaClient"
+    Type "mypy_boto3_lambda.client.LambdaClient | types_boto3_lambda.client.LambdaClient" is not assignable to type "LambdaClient"
+      "mypy_boto3_lambda.client.LambdaClient" is not assignable to "types_boto3_lambda.client.LambdaClient" (reportReturnType)
+/mnt/development/GitHub/ha-external-connector/src/ha_connector/platforms/aws/resource_manager.py
+  /mnt/development/GitHub/ha-external-connector/src/ha_connector/platforms/aws/resource_manager.py:167:34 - error: Cannot assign to attribute "client" for class "AWSIAMManager*"
+    "mypy_boto3_iam.client.IAMClient" is not assignable to "types_boto3_iam.client.IAMClient" (reportAttributeAccessIssue)
+  /mnt/development/GitHub/ha-external-connector/src/ha_connector/platforms/aws/resource_manager.py:362:13 - warning: Type of "sts_client" is unknown (reportUnknownVariableType)
+  /mnt/development/GitHub/ha-external-connector/src/ha_connector/platforms/aws/resource_manager.py:363:13 - warning: Type of "caller_identity" is partially unknown
+    Type of "caller_identity" is "GetCallerIdentityResponseTypeDef | Unknown" (reportUnknownVariableType)
+  /mnt/development/GitHub/ha-external-connector/src/ha_connector/platforms/aws/resource_manager.py:366:49 - warning: Argument type is partially unknown
+    Argument corresponds to parameter "map" in function "__init__"
+    Argument type is "GetCallerIdentityResponseTypeDef | Unknown" (reportUnknownArgumentType)
+/mnt/development/GitHub/ha-external-connector/tests/fixtures/aws_fixtures.py
+  /mnt/development/GitHub/ha-external-connector/tests/fixtures/aws_fixtures.py:49:16 - error: Type "IAMClient" is not assignable to return type "IAMClient"
+    "mypy_boto3_iam.client.IAMClient" is not assignable to "types_boto3_iam.client.IAMClient" (reportReturnType)
+  /mnt/development/GitHub/ha-external-connector/tests/fixtures/aws_fixtures.py:56:16 - error: Type "LambdaClient" is not assignable to return type "LambdaClient"
+    "mypy_boto3_lambda.client.LambdaClient" is not assignable to "types_boto3_lambda.client.LambdaClient" (reportReturnType)
+  /mnt/development/GitHub/ha-external-connector/tests/fixtures/aws_fixtures.py:63:16 - error: Type "SSMClient" is not assignable to return type "SSMClient"
+    "mypy_boto3_ssm.client.SSMClient" is not assignable to "types_boto3_ssm.client.SSMClient" (reportReturnType)
+/mnt/development/GitHub/ha-external-connector/tests/unit/test_lambda_security_validator.py
+  /mnt/development/GitHub/ha-external-connector/tests/unit/test_lambda_security_validator.py:36:30 - error: Cannot assign to attribute "lambda_client" for class "TestLambdaSecurityValidatorWithMoto*"
+    "mypy_boto3_lambda.client.LambdaClient" is not assignable to "types_boto3_lambda.client.LambdaClient" (reportAttributeAccessIssue)
+  /mnt/development/GitHub/ha-external-connector/tests/unit/test_lambda_security_validator.py:39:27 - error: Cannot assign to attribute "iam_client" for class "TestLambdaSecurityValidatorWithMoto*"
+    "mypy_boto3_iam.client.IAMClient" is not assignable to "types_boto3_iam.client.IAMClient" (reportAttributeAccessIssue)
+15 errors, 3 warnings, 0 informations 
+
+
+============================================================
+
+
+============================================================
+TOOL: Bandit
+RETURN CODE: 0
+============================================================
+
+STDOUT:
+----------------------------------------
+Working... ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:01
+Run started:2025-07-31 03:54:05.054843
+
+Test results:
+	No issues identified.
+
+Code scanned:
+	Total lines of code: 16820
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 13
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+Files skipped (0):
+
+
+STDERR:
+----------------------------------------
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	using config: pyproject.toml
+[main]	INFO	running on Python 3.13.5
+[manager]	WARNING	Test in comment: subprocess is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: call is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: Safe is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: because is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: tool is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: is is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: from is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: a is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: hardcoded is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: Only is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: used is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: for is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: exception is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: types is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: with is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: safe_exec is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: wrapper is not a test name or id, ignoring
+[tester]	WARNING	nosec encountered (B108), but no failed test on line 260
+[tester]	WARNING	nosec encountered (B108), but no failed test on line 147
+[tester]	WARNING	nosec encountered (B105), but no failed test on line 176
+[tester]	WARNING	nosec encountered (B105), but no failed test on line 177
+[manager]	WARNING	Test in comment: subprocess is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: call is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: with is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: validated is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: cmd is not a test name or id, ignoring
+[manager]	WARNING	Test in comment: list is not a test name or id, ignoring
+[tester]	WARNING	nosec encountered (B108), but no failed test on line 57
+
+
+============================================================
+
+
+============================================================
+TOOL: Safety
+RETURN CODE: 0
+============================================================
+
+STDOUT:
+----------------------------------------
++==============================================================================+
+
+                               /$$$$$$            /$$
+                              /$$__  $$          | $$
+           /$$$$$$$  /$$$$$$ | $$  \__//$$$$$$  /$$$$$$   /$$   /$$
+          /$$_____/ |____  $$| $$$$   /$$__  $$|_  $$_/  | $$  | $$
+         |  $$$$$$   /$$$$$$$| $$_/  | $$$$$$$$  | $$    | $$  | $$
+          \____  $$ /$$__  $$| $$    | $$_____/  | $$ /$$| $$  | $$
+          /$$$$$$$/|  $$$$$$$| $$    |  $$$$$$$  |  $$$$/|  $$$$$$$
+         |_______/  \_______/|__/     \_______/   \___/   \____  $$
+                                                          /$$  | $$
+                                                         |  $$$$$$/
+  by pyup.io                                              \______/
+
++==============================================================================+
+
+ [1mREPORT[0m 
+
+  Safety [1mv2.3.4[0m is scanning for [1mVulnerabilities[0m[1m...[0m
+[1m  Scanning dependencies[0m in your [1menvironment:[0m
+
+  -> /mnt/development/GitHub/ha-external-connector/.venv/lib/python3.13/site-
+    packages/setuptools/_vendor
+  -> /mnt/development/GitHub/ha-external-connector/.venv/lib/python3.13/site-
+    packages
+  -> /mnt/development/GitHub/ha-external-connector/.venv/lib64/python3.13/site-
+    packages
+
+  Using [1mnon-commercial database[0m
+[1m  Found and scanned 150 packages[0m
+  Timestamp [1m2025-07-30 22:54:06[0m
+[1m  0[0m[1m vulnerabilities found[0m
+[1m  0[0m[1m vulnerabilities ignored[0m
++==============================================================================+
+
+ [32m[1mNo known security vulnerabilities found.[0m 
+
++==============================================================================+[0m
+
+
+STDERR:
+----------------------------------------
+/mnt/development/GitHub/ha-external-connector/.venv/lib/python3.13/site-packages/safety/safety.py:594: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+
+
+============================================================
+
+
+============================================================
+TOOL: Pip-Audit
+RETURN CODE: 0
+============================================================
+
+STDOUT:
+----------------------------------------
+Name                  Skip Reason
+--------------------- ------------------------------------------------------------------------------------
+ha-external-connector Dependency not found on PyPI and could not be audited: ha-external-connector (0.1.0)
+
+
+STDERR:
+----------------------------------------
+No known vulnerabilities found
+
+
+============================================================
+
+
+================================================================================
+END VERBOSE OUTPUT
+================================================================================

@@ -41,7 +41,7 @@ class ChangeExecution:
     execution of infrastructure changes.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize change execution engine."""
 
     def execute_changes(self) -> list[ExecutionResult]:

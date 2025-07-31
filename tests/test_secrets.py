@@ -18,7 +18,9 @@ class SecretConfig(TypedDict):
 
 
 def generate_test_secret(
-    secret_type: Literal["alexa", "client", "token", "generic"] = "generic",  # nosec B107
+    secret_type: Literal[
+        "alexa", "client", "token", "generic"
+    ] = "generic",  # nosec B107
     min_length: int = 8,
     custom_length: int | None = None,
 ) -> str:

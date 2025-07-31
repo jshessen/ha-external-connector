@@ -40,14 +40,14 @@ class LambdaSecurityValidator:
         # Support dependency injection for better testability
         self._lambda_client: LambdaClient = (
             lambda_client
-            or boto3.client(  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
-                "lambda"
+            or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportAttributeAccessIssue]
+                "lambda", region_name=region
             )
         )
         self._iam_client: IAMClient = (
             iam_client
-            or boto3.client(  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType]
-                "iam"
+            or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportAttributeAccessIssue]
+                "iam", region_name=region
             )
         )
 
