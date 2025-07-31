@@ -1,83 +1,112 @@
 # VS Code GitHub Copilot Terminal Automation Setup
 
-## 🚨 CRITICAL: Post-Reload Environment Activation
+## 🚨 CRITICAL: Quick Environment Setup
 
-**When VS Code reloads, ALWAYS run this first:**
+**Single Command Setup:**
+
+```bash
+# NEW: One command for complete setup and validation
+python scripts/agent_helper.py setup
+```
+
+**Essential Commands for Agents:**
+
+```bash
+python scripts/agent_helper.py check          # Quick health check
+python scripts/agent_helper.py refresh        # Reload instructions
+python scripts/agent_helper.py quick-reference # Display key patterns
+```
+
+## 🔄 Instruction Hierarchy System
+
+This project uses a hierarchical instruction system to eliminate conflicts:
+
+### Conflict Resolution Precedence
+
+1. **`.github/copilot-instructions.md`** - Master guidelines (highest priority)
+2. **`instructions/core/`** - Fundamental patterns (medium priority)  
+3. **`instructions/specialized/`** - Domain-specific guidance (contextual priority)
+4. **`instructions/documentation/`** - Content standards (lowest priority)
+
+### Quick Pattern Reference
+
+- **AWS files** (`**/aws_*.py`, `**/adapters/**/*.py`) → `instructions/specialized/aws-patterns.md`
+- **Lambda functions** (`**/lambda_functions/**/*.py`) → `instructions/specialized/lambda-patterns.md`
+- **Test files** (`**/test_*.py`, `**/tests/**/*.py`) → `instructions/specialized/testing-patterns.md`
+- **Security files** (`**/security/**/*.py`) → `instructions/specialized/security-patterns.md`
+- **Markdown files** (`**/*.md`) → `instructions/documentation/markdown-standards.md`
+
+## ⚡ Streamlined Terminal Automation
+
+### Essential Allowlist Commands
+
+```json
+{
+  "github.copilot.chat.agent.terminal.allowList": {
+    "python": true,
+    "source": true,
+    "ruff": true,
+    "pylint": true,
+    "mypy": true,
+    "pytest": true,
+    "git": true
+  }
+}
+```
+
+### Environment Activation
+
+**Always activate first:**
 
 ```bash
 source .venv/bin/activate
 ```
 
-**Why this is critical:**
+**Why environment activation is critical:**
 
-- VS Code UI may show the correct interpreter (.venv)
-- But `run_in_terminal` tool creates new terminals without environment activation
-- Without activation: `ruff`, `black`, `pytest` commands will fail with "command not found"
-- Tools like `poetry` may work but use system Python instead of project environment
+- Commands like `ruff`, `pylint`, `pytest` will fail without activation
+- System Python may be used instead of project environment
+- Import paths may not be configured correctly
 
 ## Quick Start: Enable Automated Terminal Commands
 
-### 1. Configure User Settings
+### Simplified VS Code Configuration
 
-Add this to your VS Code user settings (`~/.config/Code/User/settings.json` on Linux):
+Add essential commands to your VS Code user settings:
 
 ```json
 {
   "github.copilot.chat.agent.terminal.allowList": {
-    // === GENERAL COMMANDS ===
-    "echo": true,
-    "ls": true,
-    "pwd": true,
-    "cat": true,
-    "head": true,
-    "tail": true,
-    "wc": true,
-    "grep": true,
-    "find": true,
-    "test": true,
-    "git": true,
-    "mv": true,
-    "cp": true,
-    "mkdir": true,
-    "touch": true,
-    "which": true,
-    "whoami": true,
-    "date": true,
-    "source": true,
-
-    // === PYTHON DEVELOPMENT ===
+    // Core development commands
     "python": true,
-    "pip": true,
-    "poetry": true,
+    "source": true,
     "ruff": true,
     "pylint": true,
     "mypy": true,
-    "flake8": true,
-    "bandit": true,
-    "black": true,
     "pytest": true,
-    "make": true
+    "git": true,
+    "echo": true,
+    "ls": true,
+    "cat": true
   }
 }
 ```
 
-### 2. Activate in VS Code UI
+### VS Code UI Activation
 
 1. Open **Settings** → **Extensions** → **GitHub Copilot** → **Agent** → **Terminal: Allow List**
-2. Add each command individually using the **"Add Item"** button
-3. Both JSON configuration AND UI activation are required
+2. Add commands using the **"Add Item"** button
+3. Both JSON and UI activation are required
 
-### 3. Test Your Setup
-
-Commands should now run without approval prompts:
+### Test Your Setup
 
 ```bash
-echo "Testing allowlist"           # ✅ Works automatically
-python --version                   # ✅ Works automatically (in VS Code terminal)
-ruff check src/                    # ✅ Works automatically (in VS Code terminal)
+# Quick validation
+python scripts/agent_helper.py check    # ✅ Should show environment ready
+source .venv/bin/activate && ruff check src/  # ✅ Should run without prompts
 ```
 
-### 4. AWS CLI Pager Configuration
+## AWS CLI Configuration
 
 **🚨 MANDATORY: Always use `--no-cli-pager` with AWS commands**
 
