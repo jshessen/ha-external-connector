@@ -42,8 +42,9 @@ class CompatibilityAnalysis:
 
     def __init__(self) -> None:
         """Initialize compatibility analysis engine."""
+        # Initialize any state needed for compatibility analysis
 
     def analyze_compatibility(self) -> list[CompatibilityResult]:
         """Analyze compatibility options."""
         logger.info("🔍 Compatibility analysis not yet implemented")
-        return []
+        return []  # Return empty list for now
