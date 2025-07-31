@@ -12,14 +12,10 @@ Issues present:
 - Security vulnerabilities in input validation and error handling
 """
 
-import ast
-import os
-import re
 import shutil
-import sys
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -37,7 +33,7 @@ class ImportGroup(BaseModel):
     """Import group classification"""
     import_type: ImportType
     module_name: str
-    import_names: List[str] = Field(default_factory=list)
+    import_names: list[str] = Field(default_factory=list)
     original_line: str
     line_number: int
 
@@ -46,33 +42,33 @@ class MarkerValidationResult(BaseModel):
     """Result of marker validation"""
     is_valid: bool
     file_path: str
-    missing_markers: List[str] = Field(default_factory=list)
-    orphaned_code: List[str] = Field(default_factory=list)
-    marker_issues: List[str] = Field(default_factory=list)
+    missing_markers: list[str] = Field(default_factory=list)
+    orphaned_code: list[str] = Field(default_factory=list)
+    marker_issues: list[str] = Field(default_factory=list)
 
 
 class LambdaMarkerValidator:
     """Validator for Lambda function deployment markers"""
-    
+
     def __init__(self, lambda_functions_dir: str):
         self.lambda_functions_dir = Path(lambda_functions_dir)
-        
-    def validate_all_lambda_markers(self) -> Dict[str, MarkerValidationResult]:
+
+    def validate_all_lambda_markers(self) -> dict[str, MarkerValidationResult]:
         """Validate markers for all Lambda functions"""
         results = {}
-        
+
         lambda_files = [
             "oauth_gateway.py",
-            "smart_home_bridge.py", 
+            "smart_home_bridge.py",
             "configuration_manager.py",
             "shared_configuration.py"
         ]
-        
+
         for file_name in lambda_files:
             file_path = self.lambda_functions_dir / file_name
             if file_path.exists():
                 results[file_name] = self.validate_lambda_markers(file_path)
-                
+
         return results
 
 
@@ -86,10 +82,10 @@ class DeploymentManager:
     - Poor error handling
     - Inefficient import parsing
     """
-    
+
     def __init__(self, source_dir: str, deployment_dir: str, verbose: bool = False):
         self.source_dir = Path(source_dir)
-        self.deployment_dir = Path(deployment_dir) 
+        self.deployment_dir = Path(deployment_dir)
         self.verbose = verbose
         self.shared_module = "shared_configuration"
         self.lambda_functions = [
@@ -97,8 +93,8 @@ class DeploymentManager:
             "smart_home_bridge.py",
             "configuration_manager.py"
         ]
-        
-    def process_deployment(self, force_rebuild: bool = False) -> Dict[str, Any]:
+
+    def process_deployment(self, force_rebuild: bool = False) -> dict[str, Any]:
         """Main deployment processing method"""
         results = {
             "success": False,
@@ -106,7 +102,7 @@ class DeploymentManager:
             "errors": [],
             "import_analysis": {}
         }
-        
+
         try:
             # Ensure deployment directory exists
             if not self.deployment_dir.exists():
@@ -114,44 +110,44 @@ class DeploymentManager:
             elif force_rebuild:
                 shutil.rmtree(self.deployment_dir)
                 self.deployment_dir.mkdir(parents=True, exist_ok=True)
-                
+
             # Process each Lambda function
             for lambda_file in self.lambda_functions:
                 source_path = self.source_dir / lambda_file
                 deployment_path = self.deployment_dir / lambda_file
-                
+
                 if not source_path.exists():
                     results["errors"].append(f"Source file not found: {lambda_file}")
                     continue
-                    
+
                 try:
                     # Complex import parsing with many issues
                     import_analysis = self._parse_imports_into_groups(source_path)
                     results["import_analysis"][lambda_file] = import_analysis
-                    
+
                     # Process deployment file
                     success = self._create_deployment_file(
                         source_path, deployment_path, import_analysis
                     )
-                    
+
                     if success:
                         results["processed_files"].append(lambda_file)
                     else:
                         results["errors"].append(f"Failed to create deployment: {lambda_file}")
-                        
+
                 except Exception as e:
                     # Poor error handling - catches everything
                     results["errors"].append(f"Error processing {lambda_file}: {str(e)}")
-                    
+
             results["success"] = len(results["errors"]) == 0
             return results
-            
+
         except Exception as e:
             # Another broad exception catch
             results["errors"].append(f"Deployment failed: {str(e)}")
             return results
-    
-    def _parse_imports_into_groups(self, file_path: Path) -> Dict[str, List[ImportGroup]]:
+
+    def _parse_imports_into_groups(self, file_path: Path) -> dict[str, list[ImportGroup]]:
         """
         PROBLEMATIC METHOD: Complex import parsing with multiple code quality issues
         
@@ -170,17 +166,17 @@ class DeploymentManager:
             "relative_imports": [],
             "unclassified": []
         }
-        
+
         try:
             # Unsafe file reading without proper error handling
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 content = f.read()
-                
+
             lines = content.split('\n')
-            
+
             for line_num, line in enumerate(lines, 1):
                 stripped = line.strip()
-                
+
                 # Complex branching logic starts here - R0912 trigger
                 if stripped.startswith('import '):
                     # Branch 1: Simple import handling
@@ -360,7 +356,7 @@ class DeploymentManager:
                                         line_number=line_num
                                     )
                                 )
-                                
+
                 elif stripped.startswith('from '):
                     # Branch 6: From imports
                     if ' import ' in stripped:
@@ -369,7 +365,7 @@ class DeploymentManager:
                         if len(parts) == 2:
                             module_part = parts[0].replace('from ', '').strip()
                             import_part = parts[1].strip()
-                            
+
                             # Branch 8: Check if shared configuration
                             if self.shared_module in module_part:
                                 import_groups["shared_config"].append(
@@ -451,13 +447,13 @@ class DeploymentManager:
                 elif stripped and not stripped.startswith('#'):
                     # Stop processing when we hit non-import code
                     break
-                    
+
             return import_groups
-            
+
         except Exception as e:
             # Poor error handling - loses original exception context
             raise RuntimeError(f"Failed to parse imports: {str(e)}")
-    
+
     def _is_standard_library(self, module_name: str) -> bool:
         """Check if module is standard library - inefficient implementation"""
         # Inefficient performance pattern - should use set lookup
@@ -472,13 +468,13 @@ class DeploymentManager:
             'subprocess', 'signal', 'sched', 'queue', 'contextlib', 'warnings',
             'unittest', 'doctest', 'pdb', 'profile', 'timeit', 'traceback'
         ]
-        
+
         # Inefficient linear search instead of set membership
         for std_module in standard_modules:
             if module_name.startswith(std_module):
                 return True
         return False
-    
+
     def _is_third_party_library(self, module_name: str) -> bool:
         """Check if module is third party - inefficient implementation"""
         # Another inefficient pattern
@@ -487,18 +483,18 @@ class DeploymentManager:
             'structlog', 'httpx', 'requests', 'asyncio_throttle', 'pytest',
             'mypy', 'ruff', 'pylint', 'black', 'isort'
         ]
-        
-        # More inefficient linear search  
+
+        # More inefficient linear search
         for tp_module in third_party_modules:
             if module_name.startswith(tp_module):
                 return True
         return False
-    
-    def _parse_import_names(self, import_string: str) -> List[str]:
+
+    def _parse_import_names(self, import_string: str) -> list[str]:
         """Parse import names from import string - complex logic"""
         # Remove parentheses and split by comma
         cleaned = import_string.strip().replace('(', '').replace(')', '')
-        
+
         # Handle various import patterns
         if ',' in cleaned:
             names = []
@@ -517,71 +513,71 @@ class DeploymentManager:
                 return [f"{original.strip()} as {alias.strip()}"]
             else:
                 return [cleaned] if cleaned else []
-    
+
     def _create_deployment_file(
-        self, 
-        source_path: Path, 
-        deployment_path: Path, 
-        import_analysis: Dict[str, List[ImportGroup]]
+        self,
+        source_path: Path,
+        deployment_path: Path,
+        import_analysis: dict[str, list[ImportGroup]]
     ) -> bool:
         """Create deployment file with embedded shared code"""
         try:
             # Read source file content
-            with open(source_path, 'r') as f:
+            with open(source_path) as f:
                 source_content = f.read()
-                
+
             # Extract shared configuration if available
             shared_config_path = self.source_dir / f"{self.shared_module}.py"
             shared_content = ""
             if shared_config_path.exists():
-                with open(shared_config_path, 'r') as f:
+                with open(shared_config_path) as f:
                     shared_content = f.read()
-            
+
             # Process and combine content
             deployment_content = self._combine_source_and_shared(
                 source_content, shared_content, import_analysis
             )
-            
+
             # Write deployment file
             with open(deployment_path, 'w') as f:
                 f.write(deployment_content)
-                
+
             return True
-            
+
         except Exception as e:
             # Poor error handling again
             print(f"Error creating deployment file: {str(e)}")
             return False
-    
+
     def _combine_source_and_shared(
-        self, 
-        source_content: str, 
-        shared_content: str, 
-        import_analysis: Dict[str, List[ImportGroup]]
+        self,
+        source_content: str,
+        shared_content: str,
+        import_analysis: dict[str, list[ImportGroup]]
     ) -> str:
         """Combine source and shared content - simplified implementation"""
         # This is a simplified version - real implementation would be more complex
         lines = source_content.split('\n')
-        
+
         # Remove shared configuration imports
         filtered_lines = []
         for line in lines:
-            if not (f"from .{self.shared_module} import" in line or 
+            if not (f"from .{self.shared_module} import" in line or
                     f"import {self.shared_module}" in line):
                 filtered_lines.append(line)
-        
+
         # Add embedded shared code marker
         if shared_content:
             filtered_lines.append("\n# === EMBEDDED SHARED CODE (AUTO-GENERATED) ===")
             filtered_lines.append(shared_content)
             filtered_lines.append("# === END EMBEDDED SHARED CODE ===\n")
-        
+
         return '\n'.join(filtered_lines)
-    
+
     def validate_lambda_markers(self, file_path: Path) -> MarkerValidationResult:
         """Validate Lambda function deployment markers"""
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 content = f.read()
         except Exception as e:
             return MarkerValidationResult(
@@ -589,28 +585,28 @@ class DeploymentManager:
                 file_path=str(file_path),
                 marker_issues=[f"Failed to read file: {str(e)}"]
             )
-            
+
         required_markers = [
             "IMPORT_BLOCK_START",
-            "IMPORT_BLOCK_END", 
+            "IMPORT_BLOCK_END",
             "FUNCTION_BLOCK_START",
             "FUNCTION_BLOCK_END"
         ]
-        
+
         missing_markers = []
         for marker in required_markers:
             if marker not in content:
                 missing_markers.append(marker)
-        
+
         # Check for orphaned code (simplified)
         orphaned_code = []
         lines = content.split('\n')
         in_marked_section = False
         current_section = None
-        
+
         for line_num, line in enumerate(lines, 1):
             stripped = line.strip()
-            
+
             if any(marker in line for marker in required_markers):
                 if "_START" in line:
                     in_marked_section = True
@@ -622,9 +618,9 @@ class DeploymentManager:
                 # Potential orphaned code
                 if not self._is_valid_outside_marker(stripped):
                     orphaned_code.append(f"Line {line_num}: {stripped}")
-        
+
         is_valid = len(missing_markers) == 0 and len(orphaned_code) == 0
-        
+
         return MarkerValidationResult(
             is_valid=is_valid,
             file_path=str(file_path),
@@ -632,7 +628,7 @@ class DeploymentManager:
             orphaned_code=orphaned_code,
             marker_issues=[]
         )
-    
+
     def _is_valid_outside_marker(self, line: str) -> bool:
         """Check if line is valid outside marker blocks"""
         # Allow module docstrings, imports at top level, etc.
