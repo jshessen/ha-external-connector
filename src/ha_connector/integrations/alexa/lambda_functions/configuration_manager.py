@@ -422,16 +422,14 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
             )
             return False
         # Initialize DynamoDB client
-        dynamodb: Any = boto3.client(  # pyright: ignore
+        dynamodb: Any = boto3.client(
             "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )
+        )  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
 
         # Initialize SSM client
-        ssm: Any = (
-            boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-                "ssm", region_name=os.environ.get("AWS_REGION", "us-east-1")
-            )
-        )
+        ssm: Any = boto3.client(
+            "ssm", region_name=os.environ.get("AWS_REGION", "us-east-1")
+        )  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
 
         # Create cache table if it doesn't exist
         table_name = "ha-external-connector-config-cache"

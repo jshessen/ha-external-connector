@@ -165,7 +165,10 @@ class AWSIAMManager(AWSBaseManager):
     def __init__(self, region: str = "us-east-1") -> None:
         super().__init__(region)
         self.client: IAMClient = cast(
-            IAMClient, boto3.client("iam", region_name=region)
+            "IAMClient",
+            boto3.client(
+                "iam", region_name=region
+            ),  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
         )
 
     def create_or_update(self, _spec: IAMResourceSpec) -> AWSResourceResponse:
@@ -362,7 +365,10 @@ class AWSResourceManager:
         try:
             # Basic AWS access validation using STS
             sts_client: STSClient = cast(
-                STSClient, boto3.client("sts", region_name=self.region)
+                "STSClient",
+                boto3.client(
+                    "sts", region_name=self.region
+                ),  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
             )
             caller_identity = sts_client.get_caller_identity()
             arn = caller_identity.get("Arn", "unknown")
