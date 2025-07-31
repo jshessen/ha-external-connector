@@ -67,12 +67,14 @@ python scripts/validate_lambda_markers.py
 ### Development Mode vs Deployment Mode
 
 **🔧 DEVELOPMENT MODE** (src/ha_connector/integrations/alexa/lambda_functions/):
+
 - Import shared code from `shared_configuration.py`
 - Fast iteration and testing
 - Single source of truth for shared implementations
 - Easy debugging with proper stack traces
 
 **🚀 DEPLOYMENT MODE** (infrastructure/deployment/):
+
 - Standalone Lambda function files
 - Shared code embedded directly into each function
 - No external dependencies in production
@@ -95,7 +97,7 @@ The `scripts/deploy_shared_config.py` handles the transformation:
 # Development/testing mode
 python scripts/deploy_shared_config.py --mode development
 
-# Production deployment mode  
+# Production deployment mode
 python scripts/deploy_shared_config.py --mode deployment
 
 # Validation of synchronization
@@ -150,12 +152,14 @@ def load_standardized_configuration(...):
 ### When to Use Transfer Blocks vs Shared Imports
 
 **✅ USE TRANSFER BLOCKS FOR:**
+
 - Performance-critical configuration loading
 - Voice command processing (<500ms requirement)
 - Container-level caching optimizations
 - Service-specific authentication flows
 
 **✅ USE SHARED IMPORTS FOR:**
+
 - Utility functions and validators
 - Common error handling patterns
 - Logging and security components
@@ -171,18 +175,19 @@ def load_standardized_configuration(...):
 """
 🌐 STREAMLINED CLOUDFLARE OAUTH GATEWAY: Essential Security Bridge for Alexa 🔐
 
-This is your "security checkpoint" that handles OAuth authentication with 
+This is your "security checkpoint" that handles OAuth authentication with
 CloudFlare protection for account linking workflows.
 """
 
 # Specialized for:
 # - OAuth token exchange and validation
-# - CloudFlare security integration  
+# - CloudFlare security integration
 # - High-security authentication workflows
 # - Account linking and token refresh
 ```
 
 **Key Patterns:**
+
 - CloudFlare header management
 - OAuth token caching with security
 - Dual-mode operations (OAuth + Smart Home proxy)
@@ -208,6 +213,7 @@ processing with maximum efficiency.
 ```
 
 **Key Patterns:**
+
 - Multi-layer caching strategy (Environment → DynamoDB → Container → SSM)
 - Connection reuse and optimization
 - Streamlined error handling
@@ -261,6 +267,7 @@ DUAL MODE ARCHITECTURE:
 ```
 
 **Key Principles:**
+
 - Lambda functions inherently need to be self-contained
 - Strategic code duplication is intentional for performance
 - Use targeted disables with clear architectural justification
@@ -321,7 +328,7 @@ def get_lambda_function_path(service_type: ServiceType) -> Path:
     """Resolve Lambda function file from ServiceType."""
     mapping = {
         ServiceType.ALEXA_OAUTH: "oauth_gateway.py",
-        ServiceType.ALEXA_SMART_HOME: "smart_home_bridge.py", 
+        ServiceType.ALEXA_SMART_HOME: "smart_home_bridge.py",
         ServiceType.ALEXA_CONFIG: "configuration_manager.py",
     }
     return LAMBDA_FUNCTIONS_DIR / mapping[service_type]
@@ -334,7 +341,7 @@ def get_lambda_function_path(service_type: ServiceType) -> Path:
 **⚡ PERFORMANCE HIERARCHY:**
 
 1. **Environment Variables** (0-1ms): Instant startup configuration
-2. **Container Cache** (0-1ms): Warm Lambda container optimization  
+2. **Container Cache** (0-1ms): Warm Lambda container optimization
 3. **DynamoDB Shared Cache** (20-50ms): Cross-Lambda function sharing
 4. **SSM Parameter Store** (100-200ms): Authoritative configuration source
 
@@ -393,6 +400,7 @@ def validate_transfer_block_sync():
 ### Critical Rules for AI Assistants
 
 **🚨 NEVER "Clean Up" Duplicate Code:**
+
 - The duplicate code between Lambda functions is INTENTIONAL
 - Strategic duplication ensures deployment independence
 - Performance optimization requires embedded implementations
@@ -400,7 +408,7 @@ def validate_transfer_block_sync():
 **✅ PRESERVE SYSTEM INTEGRITY:**
 
 1. **Maintain Marker System**: Always preserve deployment markers when editing
-2. **Sync Transfer Blocks**: Copy changes between synchronized transfer blocks  
+2. **Sync Transfer Blocks**: Copy changes between synchronized transfer blocks
 3. **Service Customizations**: Maintain service-specific prefixes and identifiers
 4. **Import Structure**: Keep shared imports within marker blocks
 5. **Validation Requirements**: Run marker validation after structural changes

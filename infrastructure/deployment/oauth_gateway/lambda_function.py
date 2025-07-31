@@ -46,30 +46,47 @@ Licensed under the Apache License, Version 2.0
 # pylint: disable=too-many-lines  # Lambda functions must be standalone
 # pylint: disable=duplicate-code  # Lambda functions must be standalone - no shared modules
 
-
 import configparser
 import json
 import logging
 import os
+import re
 import time
 import urllib
 import urllib.parse
+
 from dataclasses import dataclass
 from typing import Any, cast
 
 import boto3
 import urllib3
-from botocore.exceptions import BotoCoreError, ClientError
 
-# Import shared security infrastructure (Phase 2d integration)
-
-# === LOGGING CONFIGURATION ===
-
-
-import re
-from botocore.exceptions import NoCredentialsError
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 # === EMBEDDED SHARED CODE (AUTO-GENERATED) ===
+
+# This section contains shared configuration embedded for deployment
+
+
+
+# === PUBLIC API ===
+# Unified configuration loading and caching functions
+__all__ = [
+    "load_configuration",
+    "cache_configuration",
+    "get_cache_stats",
+    "test_dynamic_deployment",  # ← NEW FUNCTION ADDED
+    "load_environment",  # ← ENV VARIABLE LOADER (separate from config)
+    "validate_configuration",  # ← CONFIGURATION VALIDATION
+    # Security infrastructure (Phase 2c)
+    "SecurityConfig",  # ← SECURITY CONFIGURATION CONSTANTS
+    "RateLimiter",  # ← RATE LIMITING IMPLEMENTATION
+    "SecurityValidator",  # ← REQUEST VALIDATION FRAMEWORK
+    "SecurityEventLogger",  # ← SECURITY EVENT LOGGING SYSTEM
+    "AlexaValidator",  # ← ALEXA PROTOCOL & AUTHENTICATION VALIDATION
+]
+
+
 def test_dynamic_deployment() -> str:
     """Test function to prove dynamic deployment works automatically."""
     return (
@@ -1363,6 +1380,9 @@ def create_error_response(
         "body": json.dumps(error_body),
     }
 
+# === LOGGING CONFIGURATION ===
+
+
 def _initialize_logging() -> logging.Logger:
     """🔧 LOGGING INITIALIZER: Setup Smart Logging System"""
     logger = create_lambda_logger("StreamlinedOAuthGateway")
@@ -1925,7 +1945,3 @@ def _forward_to_home_assistant(
         return create_error_response(
             "internal_error", "Proxy request failed", 500, correlation_id
         )
-
-
-# === UTILITY FUNCTIONS ===
-# (All utility functions moved to shared_configuration.py for reuse)

@@ -1,439 +1,300 @@
+#!/usr/bin/env python3
 """
-Deployment Marker System
+🏗️ LAMBDA DEPLOYMENT MARKER SYSTEM
 
-This module provides comprehensive marker processing for Lambda deployment automation.
-Handles marker detection, validation, content extraction, and synchronization across
-Lambda functions with proper error handling and performance optimization.
+Core marker processing system for Lambda deployment automation.
+Provides standardized marker validation, content extraction, and processing.
 
-Features:
-- Advanced marker pattern recognition and validation
-- Content extraction between marker boundaries
-- Marker format validation and standardization  
-- Performance-optimized processing with O(1) lookups
-- Comprehensive error handling and logging
+Key Features:
+- Standardized marker definitions and validation
+- Content extraction between markers
+- Visual marker formatting consistency
+- Comprehensive error reporting
+
+Marker Format:
+    # ╭─────────────────── IMPORT_BLOCK_START ───────────────────╮
+    # ... content ...
+    # ╰─────────────────── IMPORT_BLOCK_END ─────────────────────╯
 """
 
 import logging
 import re
-from enum import Enum
 from pathlib import Path
-from typing import Any
-
-from pydantic import BaseModel, Field, field_validator
-
-# Configure logging with lazy formatting
-logger = logging.getLogger(__name__)
+from typing import NamedTuple
 
 
-class MarkerType(str, Enum):
-    """Types of deployment markers"""
-    IMPORT_BLOCK_START = "IMPORT_BLOCK_START"
-    IMPORT_BLOCK_END = "IMPORT_BLOCK_END"
-    FUNCTION_BLOCK_START = "FUNCTION_BLOCK_START"
-    FUNCTION_BLOCK_END = "FUNCTION_BLOCK_END"
-    DEPLOYMENT_BLOCK_START = "DEPLOYMENT_BLOCK_START"
-    DEPLOYMENT_BLOCK_END = "DEPLOYMENT_BLOCK_END"
-    TRANSFER_BLOCK_START = "TRANSFER_BLOCK_START"
-    TRANSFER_BLOCK_END = "TRANSFER_BLOCK_END"
+class MarkerValidationResult(NamedTuple):
+    """Result of marker validation."""
+
+    is_valid: bool
+    issues: list[str]
+    marker_positions: dict[str, int]
 
 
-class MarkerValidationIssue(BaseModel):
-    """Represents a marker validation issue"""
-    line_number: int
-    issue_type: str
-    marker_type: str
-    description: str
-    severity: str = Field(default="error")
+class ExtractedContent(NamedTuple):
+    """Content extracted using markers."""
 
-    @field_validator('severity')
-    @classmethod
-    def validate_severity(cls, v: str) -> str:
-        """Validate severity level"""
-        valid_severities = {"error", "warning", "info"}
-        if v not in valid_severities:
-            raise ValueError(f"Severity must be one of: {valid_severities}")
-        return v
-
-
-class MarkerBlock(BaseModel):
-    """Represents a marker block with content"""
-    start_marker: MarkerType
-    end_marker: MarkerType
-    start_line: int
-    end_line: int
-    content: list[str] = Field(default_factory=list)
-    is_valid: bool = True
-    issues: list[MarkerValidationIssue] = Field(default_factory=list)
+    header: str
+    imports: str
+    functions: str
+    shared_imports: list[str]
 
 
 class DeploymentMarkerSystem:
-    """
-    Advanced marker processing system for Lambda deployment automation
-    
-    Provides comprehensive marker detection, validation, and content extraction
-    with performance optimization and detailed error reporting.
-    """
+    """Core marker processing system for Lambda deployment."""
 
-    def __init__(self):
-        """Initialize marker system with optimized lookups"""
-        self.marker_patterns = self._build_marker_patterns()
-        self.required_marker_pairs = self._build_required_pairs()
-        self.marker_format_validators = self._build_format_validators()
+    # Standard deployment markers
+    MARKERS = {
+        "IMPORT_BLOCK_START": (
+            "# ╭─────────────────── IMPORT_BLOCK_START ───────────────────╮"
+        ),
+        "IMPORT_BLOCK_END": (
+            "# ╰─────────────────── IMPORT_BLOCK_END ─────────────────────╯"
+        ),
+        "FUNCTION_BLOCK_START": (
+            "# ╭─────────────────── FUNCTION_BLOCK_START ───────────────────╮"
+        ),
+        "FUNCTION_BLOCK_END": (
+            "# ╰─────────────────── FUNCTION_BLOCK_END ─────────────────────╯"
+        ),
+    }
 
-    def _build_marker_patterns(self) -> dict[str, re.Pattern]:
-        """Build optimized regex patterns for marker detection"""
-        patterns = {}
+    # Shared configuration patterns
+    SHARED_IMPORT_PATTERNS = [
+        r"from \.shared_configuration import",
+        r"import shared_configuration",
+        r"from shared_configuration import",
+    ]
 
-        # Start marker patterns with box drawing
-        start_pattern = re.compile(
-            r'^\s*#\s*╭─+\s*(\w+)_START\s*─+╮\s*$',
-            re.IGNORECASE
-        )
-        patterns['start'] = start_pattern
+    SHARED_IMPORT_MARKER = "# === SHARED CONFIGURATION IMPORTS ==="
 
-        # End marker patterns with box drawing
-        end_pattern = re.compile(
-            r'^\s*#\s*╰─+\s*(\w+)_END\s*─+╯\s*$',
-            re.IGNORECASE
-        )
-        patterns['end'] = end_pattern
+    def __init__(self, logger: logging.Logger | None = None):
+        self._logger = logger or logging.getLogger(__name__)
 
-        # Transfer block patterns (special case)
-        transfer_start = re.compile(
-            r'^\s*#\s*╭─+\s*TRANSFER\s+BLOCK\s+START\s*─+╮\s*$',
-            re.IGNORECASE
-        )
-        patterns['transfer_start'] = transfer_start
-
-        transfer_end = re.compile(
-            r'^\s*#\s*╰─+\s*TRANSFER\s+BLOCK\s+END\s*─+╯\s*$',
-            re.IGNORECASE
-        )
-        patterns['transfer_end'] = transfer_end
-
-        return patterns
-
-    def _build_required_pairs(self) -> dict[MarkerType, MarkerType]:
-        """Build required marker pairs for validation"""
-        return {
-            MarkerType.IMPORT_BLOCK_START: MarkerType.IMPORT_BLOCK_END,
-            MarkerType.FUNCTION_BLOCK_START: MarkerType.FUNCTION_BLOCK_END,
-            MarkerType.DEPLOYMENT_BLOCK_START: MarkerType.DEPLOYMENT_BLOCK_END,
-            MarkerType.TRANSFER_BLOCK_START: MarkerType.TRANSFER_BLOCK_END,
-        }
-
-    def _build_format_validators(self) -> dict[str, callable]:
-        """Build format validation functions"""
-        def validate_start_format(line: str) -> bool:
-            return line.strip().startswith("# ╭") and line.strip().endswith("╮")
-
-        def validate_end_format(line: str) -> bool:
-            return line.strip().startswith("# ╰") and line.strip().endswith("╯")
-
-        return {
-            'start': validate_start_format,
-            'end': validate_end_format
-        }
-
-    def detect_markers(self, file_path: Path) -> dict[str, list[tuple[int, str, str]]]:
+    def validate_markers(self, file_path: Path) -> MarkerValidationResult:
         """
-        Detect all markers in file with line numbers and types
-        
+        Validate that a file has proper deployment markers.
+
+        Args:
+            file_path: Path to the file to validate
+
         Returns:
-            Dict with marker types as keys and list of (line_num, marker_type, line_content)
+            MarkerValidationResult with validation status and details
         """
+        issues: list[str] = []
+        marker_positions: dict[str, int] = {}
+
         try:
-            content = self._read_file_safely(file_path)
-            lines = content.split('\n')
-
-            detected_markers = {
-                'start_markers': [],
-                'end_markers': [],
-                'all_markers': []
-            }
-
-            for line_num, line in enumerate(lines, 1):
-                marker_info = self._analyze_line_for_markers(line_num, line)
-                if marker_info:
-                    marker_type, marker_category = marker_info
-                    detected_markers[marker_category].append(
-                        (line_num, marker_type, line.strip())
-                    )
-                    detected_markers['all_markers'].append(
-                        (line_num, marker_type, line.strip())
-                    )
-
-            return detected_markers
-
-        except Exception as e:
-            logger.error("Failed to detect markers in %s: %s", file_path, str(e))
-            raise ValueError(f"Marker detection failed for {file_path}") from e
-
-    def _read_file_safely(self, file_path: Path) -> str:
-        """Safely read file with proper error handling"""
-        try:
-            return file_path.read_text(encoding='utf-8')
-        except UnicodeDecodeError as e:
-            logger.error("Unicode decode error in %s: %s", file_path, str(e))
-            raise ValueError(f"Cannot decode file {file_path}") from e
+            content = file_path.read_text(encoding="utf-8")
         except OSError as e:
-            logger.error("Cannot read file %s: %s", file_path, str(e))
-            raise ValueError(f"Cannot read file {file_path}") from e
+            issues.append(f"Failed to read file: {e}")
+            return MarkerValidationResult(False, issues, marker_positions)
 
-    def _analyze_line_for_markers(self, line_num: int, line: str) -> tuple[str, str] | None:
-        """Analyze single line for marker patterns"""
-        # Check for transfer block markers first (special handling)
-        if self.marker_patterns['transfer_start'].match(line):
-            return ("TRANSFER_BLOCK_START", "start_markers")
-        if self.marker_patterns['transfer_end'].match(line):
-            return ("TRANSFER_BLOCK_END", "end_markers")
+        lines = content.split("\n")
 
-        # Check for standard start markers
-        start_match = self.marker_patterns['start'].match(line)
-        if start_match:
-            marker_prefix = start_match.group(1).upper()
-            marker_type = f"{marker_prefix}_START"
-            return (marker_type, "start_markers")
+        # Check for required markers (excluding shared_configuration.py)
+        required_markers = [
+            "IMPORT_BLOCK_START",
+            "IMPORT_BLOCK_END",
+            "FUNCTION_BLOCK_START",
+            "FUNCTION_BLOCK_END",
+        ]
 
-        # Check for standard end markers
-        end_match = self.marker_patterns['end'].match(line)
-        if end_match:
-            marker_prefix = end_match.group(1).upper()
-            marker_type = f"{marker_prefix}_END"
-            return (marker_type, "end_markers")
+        if file_path.name == "shared_configuration.py":
+            # Shared config only needs function markers
+            required_markers = ["FUNCTION_BLOCK_START", "FUNCTION_BLOCK_END"]
 
-        return None
+        # Validate marker presence and count
+        for marker in required_markers:
+            count = content.count(marker)
+            if count == 0:
+                issues.append(f"Missing required marker: {marker}")
+            elif count > 1:
+                issues.append(f"Expected 1 {marker}, found {count}")
+            else:
+                # Find marker position
+                for i, line in enumerate(lines):
+                    if marker in line:
+                        marker_positions[marker] = i
+                        break
 
-    def extract_marker_blocks(self, file_path: Path) -> list[MarkerBlock]:
+        # Validate visual formatting
+        self._validate_marker_formatting(lines, issues)
+
+        # Validate shared configuration imports (if applicable)
+        if file_path.name != "shared_configuration.py":
+            self._validate_shared_imports(content, issues)
+
+        # Validate marker order
+        self._validate_marker_order(marker_positions, issues)
+
+        is_valid = len(issues) == 0
+        return MarkerValidationResult(is_valid, issues, marker_positions)
+
+    def extract_content(self, file_path: Path) -> ExtractedContent:
         """
-        Extract all marker blocks with content and validation
-        
+        Extract content using deployment markers.
+
+        Args:
+            file_path: Path to the file to process
+
         Returns:
-            List of MarkerBlock objects with content and validation status
+            ExtractedContent with extracted sections
         """
         try:
-            content = self._read_file_safely(file_path)
-            lines = content.split('\n')
+            content = file_path.read_text(encoding="utf-8")
+        except OSError as e:
+            self._logger.error("Failed to read file %s: %s", file_path, e)
+            return ExtractedContent("", "", "", [])
 
-            markers = self.detect_markers(file_path)
-            blocks = []
+        lines = content.split("\n")
 
-            # Group markers into blocks
-            start_markers = markers['start_markers']
-            end_markers = markers['end_markers']
+        # Extract sections
+        header_lines: list[str] = []
+        import_lines: list[str] = []
+        function_lines: list[str] = []
+        shared_imports: list[str] = []
 
-            for start_line, start_type, start_content in start_markers:
-                # Find matching end marker
-                end_marker_type = self._get_matching_end_marker(start_type)
-                end_match = self._find_matching_end_marker(
-                    end_markers, end_marker_type, start_line
-                )
+        current_section = "header"
+        in_import_block = False
+        in_function_block = False
+        in_shared_imports_section = False
 
-                if end_match:
-                    end_line, end_type, end_content = end_match
-                    block_content = lines[start_line:end_line-1]  # Exclude marker lines
+        for line in lines:
+            stripped = line.strip()
 
-                    # Create and validate block
-                    marker_block = MarkerBlock(
-                        start_marker=MarkerType(start_type),
-                        end_marker=MarkerType(end_type),
-                        start_line=start_line,
-                        end_line=end_line,
-                        content=block_content
-                    )
+            # Check for section markers
+            if "IMPORT_BLOCK_START" in stripped:
+                in_import_block = True
+                current_section = "imports"
+                continue
+            if "IMPORT_BLOCK_END" in stripped:
+                in_import_block = False
+                in_shared_imports_section = False
+                continue
+            if "FUNCTION_BLOCK_START" in stripped:
+                in_function_block = True
+                current_section = "functions"
+                continue
+            if "FUNCTION_BLOCK_END" in stripped:
+                in_function_block = False
+                continue
 
-                    # Validate block format and content
-                    self._validate_marker_block(marker_block, start_content, end_content)
-                    blocks.append(marker_block)
-                else:
-                    # Create incomplete block for missing end marker
-                    marker_block = MarkerBlock(
-                        start_marker=MarkerType(start_type),
-                        end_marker=MarkerType(end_marker_type),
-                        start_line=start_line,
-                        end_line=-1,
-                        content=[],
-                        is_valid=False
-                    )
-                    marker_block.issues.append(
-                        MarkerValidationIssue(
-                            line_number=start_line,
-                            issue_type="missing_end_marker",
-                            marker_type=start_type,
-                            description=f"Missing end marker {end_marker_type}",
-                            severity="error"
-                        )
-                    )
-                    blocks.append(marker_block)
+            # Check for shared configuration imports marker
+            if self.SHARED_IMPORT_MARKER in stripped:
+                in_shared_imports_section = True
+                continue
 
-            return blocks
+            # Check for shared configuration imports (individual lines)
+            if self._is_shared_import_line(stripped):
+                shared_imports.append(line)
+                continue
 
-        except Exception as e:
-            logger.error("Failed to extract marker blocks from %s: %s", file_path, str(e))
-            raise ValueError(f"Marker block extraction failed for {file_path}") from e
+            # If we're in the shared imports section, treat everything as shared imports
+            if in_shared_imports_section and in_import_block:
+                shared_imports.append(line)
+                continue
 
-    def _get_matching_end_marker(self, start_marker: str) -> str:
-        """Get the expected end marker for a start marker"""
-        try:
-            start_enum = MarkerType(start_marker)
-            return self.required_marker_pairs[start_enum].value
-        except (ValueError, KeyError):
-            # Handle unknown markers by pattern matching
-            if start_marker.endswith('_START'):
-                return start_marker.replace('_START', '_END')
-            return f"{start_marker}_END"
+            # Categorize content
+            if in_import_block:
+                import_lines.append(line)
+            elif in_function_block:
+                function_lines.append(line)
+            elif current_section == "header":
+                header_lines.append(line)
 
-    def _find_matching_end_marker(
-        self,
-        end_markers: list[tuple[int, str, str]],
-        target_type: str,
-        after_line: int
-    ) -> tuple[int, str, str] | None:
-        """Find the first matching end marker after the start line"""
-        for line_num, marker_type, content in end_markers:
-            if marker_type == target_type and line_num > after_line:
-                return (line_num, marker_type, content)
-        return None
-
-    def _validate_marker_block(
-        self,
-        block: MarkerBlock,
-        start_content: str,
-        end_content: str
-    ) -> None:
-        """Validate marker block format and content"""
-        issues = []
-
-        # Validate start marker format
-        if not self.marker_format_validators['start'](start_content):
-            issues.append(
-                MarkerValidationIssue(
-                    line_number=block.start_line,
-                    issue_type="invalid_format",
-                    marker_type=block.start_marker.value,
-                    description="Invalid start marker format",
-                    severity="error"
-                )
-            )
-
-        # Validate end marker format
-        if not self.marker_format_validators['end'](end_content):
-            issues.append(
-                MarkerValidationIssue(
-                    line_number=block.end_line,
-                    issue_type="invalid_format",
-                    marker_type=block.end_marker.value,
-                    description="Invalid end marker format",
-                    severity="error"
-                )
-            )
-
-        # Check for empty blocks (might be warning vs error)
-        if not block.content or all(not line.strip() for line in block.content):
-            issues.append(
-                MarkerValidationIssue(
-                    line_number=block.start_line,
-                    issue_type="empty_block",
-                    marker_type=block.start_marker.value,
-                    description="Marker block contains no content",
-                    severity="warning"
-                )
-            )
-
-        # Update block validation status
-        block.issues.extend(issues)
-        block.is_valid = not any(issue.severity == "error" for issue in issues)
-
-    def validate_all_markers(self, file_path: Path) -> dict[str, Any]:
-        """
-        Comprehensive marker validation for a file
-        
-        Returns:
-            Validation results with detailed analysis
-        """
-        try:
-            blocks = self.extract_marker_blocks(file_path)
-
-            total_blocks = len(blocks)
-            valid_blocks = sum(1 for block in blocks if block.is_valid)
-            error_count = sum(
-                len([issue for issue in block.issues if issue.severity == "error"])
-                for block in blocks
-            )
-            warning_count = sum(
-                len([issue for issue in block.issues if issue.severity == "warning"])
-                for block in blocks
-            )
-
-            # Check for orphaned code (content outside marker blocks)
-            orphaned_lines = self._detect_orphaned_code(file_path, blocks)
-
-            return {
-                'is_valid': error_count == 0,
-                'total_blocks': total_blocks,
-                'valid_blocks': valid_blocks,
-                'error_count': error_count,
-                'warning_count': warning_count,
-                'blocks': blocks,
-                'orphaned_lines': orphaned_lines,
-                'summary': f"{valid_blocks}/{total_blocks} blocks valid, "
-                          f"{error_count} errors, {warning_count} warnings"
-            }
-
-        except Exception as e:
-            logger.error("Failed to validate markers in %s: %s", file_path, str(e))
-            return {
-                'is_valid': False,
-                'error_count': 1,
-                'error_message': str(e),
-                'blocks': [],
-                'orphaned_lines': []
-            }
-
-    def _detect_orphaned_code(self, file_path: Path, blocks: list[MarkerBlock]) -> list[dict]:
-        """Detect code that exists outside of marker blocks"""
-        try:
-            content = self._read_file_safely(file_path)
-            lines = content.split('\n')
-
-            # Build set of lines that are within marker blocks
-            covered_lines = set()
-            for block in blocks:
-                if block.end_line > 0:  # Valid block with end marker
-                    for line_num in range(block.start_line, block.end_line + 1):
-                        covered_lines.add(line_num)
-
-            # Find orphaned code lines
-            orphaned_lines = []
-            for line_num, line in enumerate(lines, 1):
-                stripped = line.strip()
-
-                # Skip empty lines, comments, and covered lines
-                if (line_num in covered_lines or
-                    not stripped or
-                    stripped.startswith('#') or
-                    self._is_valid_outside_marker(stripped)):
-                    continue
-
-                orphaned_lines.append({
-                    'line_number': line_num,
-                    'content': line.rstrip(),
-                    'severity': 'warning'
-                })
-
-            return orphaned_lines
-
-        except Exception as e:
-            logger.error("Failed to detect orphaned code in %s: %s", file_path, str(e))
-            return []
-
-    def _is_valid_outside_marker(self, line: str) -> bool:
-        """Check if line is valid outside marker blocks"""
-        # Allow module docstrings, imports, and certain patterns
-        return (
-            line.startswith(('"""', "'''", 'import ', 'from ')) or
-            line.startswith('__') and line.endswith('__') or  # Module attributes
-            line in ('', 'pass') or
-            line.startswith('# ') or  # Comments
-            '=' in line and line.count('=') == 1  # Simple assignments
+        return ExtractedContent(
+            header="\n".join(header_lines),
+            imports="\n".join(import_lines),
+            functions="\n".join(function_lines),
+            shared_imports=shared_imports,
         )
+
+    def _validate_marker_formatting(self, lines: list[str], issues: list[str]) -> None:
+        """Validate visual consistency of marker formatting."""
+        for line in lines:
+            stripped = line.strip()
+
+            if "IMPORT_BLOCK_START" in stripped or "FUNCTION_BLOCK_START" in stripped:
+                if not stripped.startswith("# ╭") or not stripped.endswith("╮"):
+                    issues.append(
+                        f"START marker doesn't use proper visual brackets: {stripped}"
+                    )
+
+            elif (
+                "IMPORT_BLOCK_END" in stripped or "FUNCTION_BLOCK_END" in stripped
+            ) and (not stripped.startswith("# ╰") or not stripped.endswith("╯")):
+                issues.append(
+                    f"END marker doesn't use proper visual brackets: {stripped}"
+                )
+
+    def _validate_shared_imports(self, content: str, issues: list[str]) -> None:
+        """Validate shared configuration import identification."""
+        has_shared_imports = any(
+            re.search(pattern, content) for pattern in self.SHARED_IMPORT_PATTERNS
+        )
+
+        if has_shared_imports and self.SHARED_IMPORT_MARKER not in content:
+            issues.append("Missing shared configuration import identification comment")
+
+    def _validate_marker_order(
+        self, positions: dict[str, int], issues: list[str]
+    ) -> None:
+        """Validate that markers appear in the correct order."""
+        if (
+            "IMPORT_BLOCK_START" in positions
+            and "IMPORT_BLOCK_END" in positions
+            and positions["IMPORT_BLOCK_START"] >= positions["IMPORT_BLOCK_END"]
+        ):
+            issues.append("IMPORT_BLOCK_START must come before IMPORT_BLOCK_END")
+
+        if (
+            "FUNCTION_BLOCK_START" in positions
+            and "FUNCTION_BLOCK_END" in positions
+            and positions["FUNCTION_BLOCK_START"] >= positions["FUNCTION_BLOCK_END"]
+        ):
+            issues.append("FUNCTION_BLOCK_START must come before FUNCTION_BLOCK_END")
+
+        # Import blocks should come before function blocks
+        if (
+            "IMPORT_BLOCK_END" in positions
+            and "FUNCTION_BLOCK_START" in positions
+            and positions["IMPORT_BLOCK_END"] >= positions["FUNCTION_BLOCK_START"]
+        ):
+            issues.append("Import blocks must come before function blocks")
+
+    def _is_shared_import_line(self, line: str) -> bool:
+        """Check if a line is a shared configuration import."""
+        return any(re.search(pattern, line) for pattern in self.SHARED_IMPORT_PATTERNS)
+
+    def get_marker_template(self, marker_type: str) -> str:
+        """
+        Get the standard template for a marker.
+
+        Args:
+            marker_type: Type of marker (IMPORT_BLOCK_START, etc.)
+
+        Returns:
+            Standard marker template string
+        """
+        return self.MARKERS.get(marker_type, "")
+
+    def create_marked_section(self, marker_type: str, content: str) -> str:
+        """
+        Create a properly marked section with content.
+
+        Args:
+            marker_type: Type of marker (IMPORT_BLOCK_START, etc.)
+            content: Content to wrap with markers
+
+        Returns:
+            Content wrapped with proper start/end markers
+        """
+        if marker_type.endswith("_START"):
+            start_marker = self.MARKERS.get(marker_type, "")
+            end_marker_type = marker_type.replace("_START", "_END")
+            end_marker = self.MARKERS.get(end_marker_type, "")
+
+            return f"{start_marker}\n{content}\n{end_marker}"
+
+        return content

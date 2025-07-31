@@ -111,27 +111,44 @@ Licensed under the Apache License, Version 2.0
 # pylint: disable=too-many-lines  # Smart Home Bridge with comprehensive voice processing
 # pylint: disable=duplicate-code  # Lambda functions must be standalone - no shared modules
 
-
 import configparser
 import json
 import logging
 import os
+import re
 import time
+
 from typing import Any
 
+import boto3
 import urllib3
 
-# Shared configuration functions imported from separate module
-
-# === PERFORMANCE-OPTIMIZED CONFIGURATION ===
-# Using shared configuration system for optimal performance
-
-# Debug mode for detailed logging
-import re
-import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 # === EMBEDDED SHARED CODE (AUTO-GENERATED) ===
+
+# This section contains shared configuration embedded for deployment
+
+
+
+# === PUBLIC API ===
+# Unified configuration loading and caching functions
+__all__ = [
+    "load_configuration",
+    "cache_configuration",
+    "get_cache_stats",
+    "test_dynamic_deployment",  # ← NEW FUNCTION ADDED
+    "load_environment",  # ← ENV VARIABLE LOADER (separate from config)
+    "validate_configuration",  # ← CONFIGURATION VALIDATION
+    # Security infrastructure (Phase 2c)
+    "SecurityConfig",  # ← SECURITY CONFIGURATION CONSTANTS
+    "RateLimiter",  # ← RATE LIMITING IMPLEMENTATION
+    "SecurityValidator",  # ← REQUEST VALIDATION FRAMEWORK
+    "SecurityEventLogger",  # ← SECURITY EVENT LOGGING SYSTEM
+    "AlexaValidator",  # ← ALEXA PROTOCOL & AUTHENTICATION VALIDATION
+]
+
+
 def test_dynamic_deployment() -> str:
     """Test function to prove dynamic deployment works automatically."""
     return (
@@ -1425,12 +1442,15 @@ def create_error_response(
         "body": json.dumps(error_body),
     }
 
+# === PERFORMANCE-OPTIMIZED CONFIGURATION ===
+# Using shared configuration system for optimal performance
+
+# Debug mode for detailed logging
 _debug = bool(os.environ.get("DEBUG"))
 
 # Logger setup
 _logger = logging.getLogger("HomeAssistant-SmartHome")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
-
 
 # === LAMBDA HANDLER HELPER FUNCTIONS ===
 
