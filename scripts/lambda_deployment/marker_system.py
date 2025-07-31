@@ -158,6 +158,7 @@ class DeploymentMarkerSystem:
         current_section = "header"
         in_import_block = False
         in_function_block = False
+        in_shared_imports_section = False
 
         for line in lines:
             stripped = line.strip()
@@ -169,6 +170,7 @@ class DeploymentMarkerSystem:
                 continue
             if "IMPORT_BLOCK_END" in stripped:
                 in_import_block = False
+                in_shared_imports_section = False
                 continue
             if "FUNCTION_BLOCK_START" in stripped:
                 in_function_block = True
@@ -178,8 +180,18 @@ class DeploymentMarkerSystem:
                 in_function_block = False
                 continue
 
-            # Check for shared configuration imports
+            # Check for shared configuration imports marker
+            if self.SHARED_IMPORT_MARKER in stripped:
+                in_shared_imports_section = True
+                continue
+
+            # Check for shared configuration imports (individual lines)
             if self._is_shared_import_line(stripped):
+                shared_imports.append(line)
+                continue
+
+            # If we're in the shared imports section, treat everything as shared imports
+            if in_shared_imports_section and in_import_block:
                 shared_imports.append(line)
                 continue
 

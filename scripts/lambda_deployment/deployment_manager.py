@@ -19,9 +19,11 @@ Usage:
 
 import argparse
 import logging
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from marker_system import DeploymentMarkerSystem, ExtractedContent
 from validation_system import DeploymentValidationSystem
@@ -253,29 +255,310 @@ class DeploymentManager:
         """
         Merge and deduplicate imports from Lambda and shared code.
 
+        This method removes shared configuration imports from lambda imports,
+        merges with shared configuration imports, and consolidates imports
+        from the same modules (e.g., multiple "from typing import" lines).
+
         Args:
             lambda_imports: Import statements from Lambda function
             shared_imports: Import statements from shared configuration
 
         Returns:
-            Merged and deduplicated import statements
+            Merged and deduplicated import statements with proper formatting
         """
-        all_imports: set[str] = set()
+        import_groups = self._parse_imports_into_groups(lambda_imports, shared_imports)
+        return self._format_consolidated_imports(import_groups)
 
-        # Process Lambda imports
+    def _parse_imports_into_groups(
+        self, lambda_imports: str, shared_imports: str
+    ) -> dict[str, Any]:
+        """Parse imports into consolidated groups by module."""
+        # Dictionaries to track different import types
+        standard_imports: set[str] = set()  # import os, import sys
+        third_party_imports: set[str] = set()  # import boto3, import urllib3
+        standard_from_imports: dict[str, set[str]] = {}  # {"typing": ["Any"]}
+        third_party_from_imports: dict[str, set[str]] = {}  # {"botocore": ["..."]}
+
+        # Define standard library modules (Python 3.11+)
+        standard_library_modules = {
+            "os",
+            "sys",
+            "time",
+            "json",
+            "logging",
+            "configparser",
+            "urllib",
+            "re",
+            "collections",
+            "typing",
+            "dataclasses",
+            "pathlib",
+            "functools",
+            "itertools",
+            "datetime",
+            "calendar",
+            "math",
+            "random",
+            "hashlib",
+            "base64",
+            "uuid",
+            "secrets",
+            "ssl",
+            "socket",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.error",
+            "http",
+            "http.client",
+            "http.server",
+            "email",
+            "mimetypes",
+            "tempfile",
+            "shutil",
+            "glob",
+            "fnmatch",
+            "abc",
+            "contextlib",
+            "warnings",
+            "inspect",
+            "copy",
+            "pickle",
+            "enum",
+            "decimal",
+            "fractions",
+            "statistics",
+            "threading",
+            "multiprocessing",
+            "subprocess",
+            "signal",
+            "traceback",
+            "io",
+            "codecs",
+            "locale",
+            "gettext",
+            "argparse",
+            "optparse",
+            "textwrap",
+            "string",
+            "difflib",
+            "pprint",
+            "reprlib",
+            "weakref",
+            "gc",
+            "types",
+            "operator",
+            "keyword",
+            "heapq",
+            "bisect",
+            "array",
+            "struct",
+            "zlib",
+            "gzip",
+            "bz2",
+            "lzma",
+            "zipfile",
+            "tarfile",
+            "csv",
+            "xml",
+            "html",
+            "sqlite3",
+            "dbm",
+            "platform",
+            "ctypes",
+            "unittest",
+            "doctest",
+            "test",
+            "pdb",
+            "profile",
+            "cProfile",
+            "timeit",
+            "trace",
+            "distutils",
+            "venv",
+            "ensurepip",
+            "importlib",
+            "pkgutil",
+            "modulefinder",
+            "runpy",
+            "ast",
+            "symtable",
+            "token",
+            "tokenize",
+            "tabnanny",
+            "py_compile",
+            "compileall",
+            "dis",
+            "pickletools",
+        }
+
+        # Process both lambda and shared imports
+        all_import_lines: list[str] = []
+
+        # Add lambda imports (excluding shared config imports)
         for line in lambda_imports.split("\n"):
             line = line.strip()
-            if line and not line.startswith("#"):
-                all_imports.add(line)
+            if (
+                line
+                and not line.startswith("#")
+                and not self._is_shared_configuration_import(line)
+            ):
+                all_import_lines.append(line)
 
-        # Process shared imports
+        # Add shared imports
         for line in shared_imports.split("\n"):
             line = line.strip()
             if line and not line.startswith("#"):
-                all_imports.add(line)
+                all_import_lines.append(line)
 
-        # Sort imports for consistency
-        return "\n".join(sorted(all_imports))
+        # Parse each import line
+        for line in all_import_lines:
+            if line.startswith("import "):
+                # Standard import: import os, import sys
+                module = line[7:].strip()  # Remove "import "
+                if self._is_standard_library_module(module, standard_library_modules):
+                    standard_imports.add(module)
+                else:
+                    third_party_imports.add(module)
+            elif line.startswith("from "):
+                # From import: from typing import Any, cast
+                try:
+                    parts = line.split(" import ")
+                    if len(parts) == 2:
+                        module = parts[0][5:].strip()  # Remove "from "
+                        imports_str = parts[1].strip()
+
+                        # Parse imported items (handle commas)
+                        imported_items = [
+                            item.strip()
+                            for item in imports_str.split(",")
+                            if item.strip()
+                        ]
+
+                        # Categorize by module type
+                        is_stdlib = self._is_standard_library_module(
+                            module, standard_library_modules
+                        )
+                        if is_stdlib:
+                            if module not in standard_from_imports:
+                                standard_from_imports[module] = set()
+                            standard_from_imports[module].update(imported_items)
+                        else:
+                            if module not in third_party_from_imports:
+                                third_party_from_imports[module] = set()
+                            third_party_from_imports[module].update(imported_items)
+                except (IndexError, ValueError):
+                    # Malformed import, keep as third-party
+                    third_party_imports.add(line)
+
+        return {
+            "standard": standard_imports,
+            "third_party": third_party_imports,
+            "standard_from": standard_from_imports,
+            "third_party_from": third_party_from_imports,
+        }
+
+    def _is_standard_library_module(
+        self, module: str, standard_library_modules: set[str]
+    ) -> bool:
+        """Check if a module is part of the Python standard library."""
+        # Check exact match
+        if module in standard_library_modules:
+            return True
+
+        # Check if it's a submodule of a standard library module
+        module_parts = module.split(".")
+        for i in range(len(module_parts)):
+            parent_module = ".".join(module_parts[: i + 1])
+            if parent_module in standard_library_modules:
+                return True
+
+        return False
+
+    def _format_consolidated_imports(self, import_groups: dict[str, Any]) -> str:
+        """Format consolidated imports with proper grouping and sorting."""
+        lines: list[str] = []
+
+        # Group 1: Standard library imports (import statements)
+        if import_groups["standard"]:
+            lines.extend(sorted(f"import {imp}" for imp in import_groups["standard"]))
+
+        # Group 2: Standard library from imports
+        if import_groups["standard_from"]:
+            if lines:
+                lines.append("")  # Empty line between groups
+            for module, items in sorted(import_groups["standard_from"].items()):
+                lines.append(f"from {module} import {', '.join(sorted(items))}")
+
+        # Group 3: Third party imports (import statements)
+        if import_groups["third_party"]:
+            if lines:
+                lines.append("")  # Empty line between groups
+            third_party_import_lines = [
+                f"import {imp}" for imp in import_groups["third_party"]
+            ]
+            lines.extend(sorted(third_party_import_lines))
+
+        # Group 4: Third party from imports
+        if import_groups["third_party_from"]:
+            if lines:
+                lines.append("")  # Empty line between groups
+            for module, items in sorted(import_groups["third_party_from"].items()):
+                lines.append(f"from {module} import {', '.join(sorted(items))}")
+
+        return "\n".join(lines)
+
+    def _is_shared_configuration_import(self, line: str) -> bool:
+        """Check if an import line is from shared configuration."""
+        shared_patterns = [
+            r"from \.shared_configuration import",
+            r"import shared_configuration",
+            r"from shared_configuration import",
+            r"# === SHARED CONFIGURATION IMPORTS ===",
+            r"# SHARED_CONFIG_IMPORT:",
+        ]
+
+        return any(re.search(pattern, line) for pattern in shared_patterns)
+
+    def _sort_imports(self, imports: list[str]) -> list[str]:
+        """Sort imports with standard library first, then third party."""
+        standard_lib: list[str] = []
+        third_party: list[str] = []
+        from_imports: list[str] = []
+
+        for imp in imports:
+            if imp.startswith("from "):
+                from_imports.append(imp)
+            elif any(
+                lib in imp
+                for lib in [
+                    "import os",
+                    "import sys",
+                    "import time",
+                    "import json",
+                    "import logging",
+                    "import configparser",
+                    "import urllib",
+                    "import re",
+                ]
+            ):
+                standard_lib.append(imp)
+            else:
+                third_party.append(imp)
+
+        # Combine in proper order
+        result: list[str] = []
+        if standard_lib:
+            result.extend(sorted(standard_lib))
+        if third_party:
+            if result:
+                result.append("")  # Empty line between groups
+            result.extend(sorted(third_party))
+        if from_imports:
+            if result:
+                result.append("")  # Empty line between groups
+            result.extend(sorted(from_imports))
+
+        return result
 
     def _display_deployment_structure(self) -> None:
         """Display the deployment directory structure."""
@@ -340,10 +623,21 @@ Examples:
 
     args = parser.parse_args()
 
-    # Set up logging
-    logger = logging.getLogger()
+    # Set up logging with proper configuration
     if args.verbose:
-        logger.setLevel(logging.DEBUG)
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(levelname)s: %(message)s",
+            force=True,  # Override any existing configuration
+        )
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(levelname)s: %(message)s",
+            force=True,  # Override any existing configuration
+        )
+
+    logger = logging.getLogger()
 
     # Create deployment manager
     manager = DeploymentManager(args.workspace, logger)

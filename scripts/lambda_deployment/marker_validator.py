@@ -35,8 +35,7 @@ class MarkerValidator:
     def __init__(self, workspace_root: str, logger: logging.Logger | None = None):
         self.workspace_root = Path(workspace_root)
         self.source_dir = (
-            self.workspace_root
-            / "src/ha_connector/integrations/alexa/lambda_functions"
+            self.workspace_root / "src/ha_connector/integrations/alexa/lambda_functions"
         )
         self._logger = logger or self._setup_logger()
         self.marker_system = DeploymentMarkerSystem(self._logger)
@@ -296,6 +295,7 @@ Examples:
 
     # Execute requested operation
     try:
+        success = False  # Initialize success variable
         if args.file:
             success = validator.validate_file(args.file)
         elif args.all:
