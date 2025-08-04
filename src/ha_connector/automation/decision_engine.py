@@ -50,4 +50,3 @@ class AutomationDecisionEngine:
         """Make automation decisions."""
         logger.info("🤖 Decision engine not yet implemented")
         return []  # Return empty list for now
-        return []

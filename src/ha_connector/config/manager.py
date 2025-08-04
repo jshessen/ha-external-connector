@@ -98,7 +98,7 @@ class ConfigurationManager:
 
     def init_config(self, scenario: InstallationScenario) -> ConfigurationState:
         """Initialize configuration for a scenario."""
-        logger.info("Initializing configuration for scenario: %s", scenario.value)
+        logger.info(f"Initializing configuration for scenario: {scenario.value}")
         # Create fresh configuration state
         self.config = ConfigurationState(scenario=scenario)
         return self.config
@@ -110,7 +110,7 @@ class ConfigurationManager:
             return False
 
         if not url.startswith("https://"):
-            logger.error("HA_BASE_URL must use HTTPS: %s", url)
+            logger.error(f"HA_BASE_URL must use HTTPS: {url}")
             return False
 
         return True

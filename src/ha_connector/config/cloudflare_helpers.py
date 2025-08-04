@@ -38,7 +38,7 @@ def validate_cloudflare_domain_setup(domain: str) -> None:
     Raises:
         ValueError: If validation fails
     """
-    logger.debug("Validating CloudFlare setup for domain: %s", domain)
+    logger.debug(f"Validating CloudFlare setup for domain: {domain}")
 
     # Basic domain format validation
     if not domain or "." not in domain:
@@ -85,10 +85,10 @@ def _perform_cloudflare_api_validation(domain: str) -> None:
             # Test 3: Check if Access applications exist for this domain
             _check_cloudflare_access_applications(cf_manager, domain, account_id)
 
-        logger.info("✅ CloudFlare API validation completed for %s", domain)
+        logger.info(f"✅ CloudFlare API validation completed for {domain}")
 
     except (ImportError, AttributeError, TypeError) as e:
-        logger.warning("CloudFlare API validation failed: %s", str(e))
+        logger.warning(f"CloudFlare API validation failed: {str(e)}")
         logger.info("This may indicate missing permissions or network issues")
 
 
@@ -126,7 +126,7 @@ def _validate_cloudflare_domain_zone(cf_manager: Any, domain: str) -> None:
     """
     try:
         zone_id: str = cf_manager.get_zone_id(domain)
-        logger.debug("✅ Domain zone found (Zone: %s...)", zone_id[:8])
+        logger.debug(f"✅ Domain zone found (Zone: {zone_id[:8]}...)")
     except (ValueError, ConnectionError, OSError) as e:
         raise ValueError(f"Domain '{domain}' not found in CloudFlare zones: {e}") from e
 
@@ -160,10 +160,10 @@ def _check_cloudflare_access_applications(
                     f"✅ Found {len(domain_apps)} Access application(s) for domain"
                 )
             else:
-                logger.info("ℹ️  No existing Access applications found for %s", domain)
+                logger.info(f"ℹ️  No existing Access applications found for {domain}")
         else:
             logger.debug("⚠️  Could not verify Access applications (may be normal)")
 
     except (ValueError, ConnectionError, OSError) as e:
         # Access application check is optional - don't fail validation
-        logger.debug("Access application check failed (non-critical): %s", str(e))
+        logger.debug(f"Access application check failed (non-critical): {str(e)}")

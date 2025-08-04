@@ -28,7 +28,7 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: Configured application instance
     """
-    app = FastAPI(
+    web_app = FastAPI(
         title="HA External Connector",
         description="Home Assistant External Service Integration Manager",
         version="3.0.0",
@@ -37,16 +37,16 @@ def create_app() -> FastAPI:
     )
 
     # Static files (CSS, JS, images)
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    web_app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     # API Routes
-    app.include_router(
+    web_app.include_router(
         integration_router, prefix="/api/integrations", tags=["integrations"]
     )
-    app.include_router(status_router, prefix="/api/status", tags=["status"])
-    app.include_router(setup_router, prefix="/api/setup", tags=["setup"])
+    web_app.include_router(status_router, prefix="/api/status", tags=["status"])
+    web_app.include_router(setup_router, prefix="/api/setup", tags=["setup"])
 
-    return app
+    return web_app
 
 
 # Global templates instance
