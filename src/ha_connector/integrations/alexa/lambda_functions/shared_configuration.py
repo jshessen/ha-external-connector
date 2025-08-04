@@ -863,9 +863,9 @@ def _create_ssm_client() -> Any:
     """Create SSM client with lazy initialization."""
     global _ssm_client  # pylint: disable=global-statement
     if _ssm_client is None:
-        _ssm_client = boto3.client(
+        _ssm_client = boto3.client(  # pyright: ignore
             "ssm", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+        )
     return _ssm_client  # pyright: ignore[reportUnknownVariableType]
 
 
@@ -873,9 +873,9 @@ def _get_dynamodb_client() -> Any:
     """Get DynamoDB client with lazy initialization."""
     global _dynamodb_client  # pylint: disable=global-statement
     if _dynamodb_client is None:
-        _dynamodb_client = boto3.client(
+        _dynamodb_client = boto3.client(  # pyright: ignore
             "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+        )
     return _dynamodb_client  # pyright: ignore[reportUnknownVariableType]
 
 

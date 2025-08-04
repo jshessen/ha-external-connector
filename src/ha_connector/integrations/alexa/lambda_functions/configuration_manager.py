@@ -129,7 +129,7 @@ and unified methodology
 import json
 import os
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -139,6 +139,10 @@ from .shared_configuration import (  # SHARED_CONFIG_IMPORT
     RateLimiter,
     SecurityEventLogger,
 )
+
+# Type imports for better type hinting
+if TYPE_CHECKING:
+    pass  # boto3-stubs types will be used if available
 
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
 
@@ -422,14 +426,14 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
             )
             return False
         # Initialize DynamoDB client
-        dynamodb: Any = boto3.client(
+        dynamodb: Any = boto3.client(  # pyright: ignore
             "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+        )
 
         # Initialize SSM client
-        ssm: Any = boto3.client(
+        ssm: Any = boto3.client(  # pyright: ignore
             "ssm", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+        )
 
         # Create cache table if it doesn't exist
         table_name = "ha-external-connector-config-cache"

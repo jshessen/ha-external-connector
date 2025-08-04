@@ -81,9 +81,7 @@ class SmartHomeSkillAutomator:
         if self._lambda_client is None:
             self._lambda_client = cast(
                 "LambdaClient",
-                boto3.client(
-                    "lambda", region_name=self.region
-                ),  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+                boto3.client("lambda", region_name=self.region),  # pyright: ignore
             )
         return self._lambda_client
 
