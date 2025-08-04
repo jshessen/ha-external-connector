@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 # Add src to path for development
-src_path = str(Path(__file__).parent.parent / "src")
-if src_path not in sys.path:
-    sys.path.insert(0, src_path)
+SRC_PATH = str(Path(__file__).parent.parent / "src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
 
 if __name__ == "__main__":
     import uvicorn
@@ -26,5 +26,5 @@ if __name__ == "__main__":
         port=8000,
         reload=True,
         log_level="info",
-        reload_dirs=[src_path],  # Watch the src directory for changes
+        reload_dirs=[SRC_PATH],  # Watch the src directory for changes
     )

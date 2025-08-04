@@ -273,14 +273,31 @@ class DeploymentManager:
         self, lambda_imports: str, shared_imports: str
     ) -> dict[str, Any]:
         """Parse imports into consolidated groups by module."""
-        # Dictionaries to track different import types
-        standard_imports: set[str] = set()  # import os, import sys
-        third_party_imports: set[str] = set()  # import boto3, import urllib3
-        standard_from_imports: dict[str, set[str]] = {}  # {"typing": ["Any"]}
-        third_party_from_imports: dict[str, set[str]] = {}  # {"botocore": ["..."]}
+        # Initialize import group containers
+        import_groups = self._initialize_import_groups()
+        standard_library_modules = self._get_standard_library_modules()
 
-        # Define standard library modules (Python 3.11+)
-        standard_library_modules = {
+        # Collect all import lines
+        all_import_lines = self._collect_import_lines(lambda_imports, shared_imports)
+
+        # Process each import line
+        for line in all_import_lines:
+            self._process_import_line(line, import_groups, standard_library_modules)
+
+        return import_groups
+
+    def _initialize_import_groups(self) -> dict[str, Any]:
+        """Initialize containers for different import types."""
+        return {
+            "standard": set(),
+            "third_party": set(),
+            "standard_from": {},
+            "third_party_from": {},
+        }
+
+    def _get_standard_library_modules(self) -> set[str]:
+        """Get the set of Python standard library modules."""
+        return {
             "os",
             "sys",
             "time",
@@ -391,71 +408,119 @@ class DeploymentManager:
             "pickletools",
         }
 
-        # Process both lambda and shared imports
+    def _collect_import_lines(
+        self, lambda_imports: str, shared_imports: str
+    ) -> list[str]:
+        """Collect and filter import lines from lambda and shared imports."""
         all_import_lines: list[str] = []
 
         # Add lambda imports (excluding shared config imports)
-        for line in lambda_imports.split("\n"):
-            line = line.strip()
-            if (
-                line
-                and not line.startswith("#")
-                and not self._is_shared_configuration_import(line)
-            ):
-                all_import_lines.append(line)
+        all_import_lines.extend(
+            self._filter_import_lines(lambda_imports, exclude_shared_config=True)
+        )
 
         # Add shared imports
-        for line in shared_imports.split("\n"):
+        all_import_lines.extend(
+            self._filter_import_lines(shared_imports, exclude_shared_config=False)
+        )
+
+        return all_import_lines
+
+    def _filter_import_lines(
+        self, imports_text: str, exclude_shared_config: bool = False
+    ) -> list[str]:
+        """
+        Filter import lines, removing comments and optionally shared config imports.
+        """
+        filtered_lines: list[str] = []
+
+        for line in imports_text.split("\n"):
             line = line.strip()
-            if line and not line.startswith("#"):
-                all_import_lines.append(line)
+            if not line or line.startswith("#"):
+                continue
 
-        # Parse each import line
-        for line in all_import_lines:
-            if line.startswith("import "):
-                # Standard import: import os, import sys
-                module = line[7:].strip()  # Remove "import "
-                if self._is_standard_library_module(module, standard_library_modules):
-                    standard_imports.add(module)
-                else:
-                    third_party_imports.add(module)
-            elif line.startswith("from "):
-                # From import: from typing import Any, cast
-                try:
-                    parts = line.split(" import ")
-                    if len(parts) == 2:
-                        module = parts[0][5:].strip()  # Remove "from "
-                        imports_str = parts[1].strip()
+            if exclude_shared_config and self._is_shared_configuration_import(line):
+                continue
 
-                        # Parse imported items (handle commas)
-                        imported_items = [
-                            item.strip()
-                            for item in imports_str.split(",")
-                            if item.strip()
-                        ]
+            filtered_lines.append(line)
 
-                        # Categorize by module type
-                        is_stdlib = self._is_standard_library_module(
-                            module, standard_library_modules
-                        )
-                        if is_stdlib:
-                            if module not in standard_from_imports:
-                                standard_from_imports[module] = set()
-                            standard_from_imports[module].update(imported_items)
-                        else:
-                            if module not in third_party_from_imports:
-                                third_party_from_imports[module] = set()
-                            third_party_from_imports[module].update(imported_items)
-                except (IndexError, ValueError):
-                    # Malformed import, keep as third-party
-                    third_party_imports.add(line)
+        return filtered_lines
 
-        return {
-            "standard": standard_imports,
-            "third_party": third_party_imports,
-            "standard_from": standard_from_imports,
-            "third_party_from": third_party_from_imports,
-        }
+    def _process_import_line(
+        self,
+        line: str,
+        import_groups: dict[str, Any],
+        standard_library_modules: set[str],
+    ) -> None:
+        """Process a single import line and add it to appropriate groups."""
+        if line.startswith("import "):
+            self._process_standard_import(line, import_groups, standard_library_modules)
+        elif line.startswith("from "):
+            self._process_from_import(line, import_groups, standard_library_modules)
+
+    def _process_standard_import(
+        self,
+        line: str,
+        import_groups: dict[str, Any],
+        standard_library_modules: set[str],
+    ) -> None:
+        """Process standard import statements (import module)."""
+        module = line[7:].strip()  # Remove "import "
+
+        if self._is_standard_library_module(module, standard_library_modules):
+            import_groups["standard"].add(module)
+        else:
+            import_groups["third_party"].add(module)
+
+    def _process_from_import(
+        self,
+        line: str,
+        import_groups: dict[str, Any],
+        standard_library_modules: set[str],
+    ) -> None:
+        """Process from import statements (from module import items)."""
+        try:
+            module, imported_items = self._parse_from_import(line)
+            is_stdlib = self._is_standard_library_module(
+                module, standard_library_modules
+            )
+
+            # Add to appropriate group
+            target_group = "standard_from" if is_stdlib else "third_party_from"
+            self._add_to_from_imports(
+                import_groups[target_group], module, imported_items
+            )
+
+        except (IndexError, ValueError):
+            # Malformed import, treat as third-party
+            import_groups["third_party"].add(line)
+
+    def _parse_from_import(self, line: str) -> tuple[str, list[str]]:
+        """Parse a from import line into module and imported items."""
+        parts = line.split(" import ")
+        if len(parts) != 2:
+            raise ValueError("Invalid from import format")
+
+        module = parts[0][5:].strip()  # Remove "from "
+        imports_str = parts[1].strip()
+
+        # Parse imported items (handle commas)
+        imported_items = [
+            item.strip() for item in imports_str.split(",") if item.strip()
+        ]
+
+        return module, imported_items
+
+    def _add_to_from_imports(
+        self,
+        from_imports_dict: dict[str, set[str]],
+        module: str,
+        imported_items: list[str],
+    ) -> None:
+        """Add imported items to the from imports dictionary."""
+        if module not in from_imports_dict:
+            from_imports_dict[module] = set()
+        from_imports_dict[module].update(imported_items)
 
     def _is_standard_library_module(
         self, module: str, standard_library_modules: set[str]

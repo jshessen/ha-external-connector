@@ -16,7 +16,6 @@ This directory contains the new modular Lambda deployment system that replaces t
 ### 🔧 Utility Scripts
 
 - **`migrate_deployment_system.py`** - Migration tool from old to new system
-- **`test_new_system.py`** - Comprehensive testing suite
 
 ## Quick Start
 
@@ -46,15 +45,14 @@ python scripts/lambda_deployment/deployment_manager.py --validate
 python scripts/lambda_deployment/deployment_manager.py --clean
 ```
 
-### 3. Run System Tests
+### 3. System Validation
 
 ```bash
-# Run complete test suite
-python scripts/lambda_deployment/test_new_system.py --all
+# Validate the complete system
+python scripts/lambda_deployment/deployment_manager.py --validate
 
-# Run specific test categories
-python scripts/lambda_deployment/test_new_system.py --unit
-python scripts/lambda_deployment/test_new_system.py --integration
+# Check system integration
+python scripts/lambda_deployment/marker_validator.py --complete
 ```
 
 ## Architecture Overview
@@ -93,7 +91,6 @@ scripts/lambda_deployment/
 ├── validation_system.py      # Validation framework
 ├── marker_validator.py       # Standalone validation tool
 ├── migrate_deployment_system.py  # Migration utility
-├── test_new_system.py        # Testing suite
 └── README.md                 # This file
 ```
 

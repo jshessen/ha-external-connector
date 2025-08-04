@@ -167,7 +167,17 @@ PROFILES = {
     "ci": {
         "description": "Comprehensive checks for CI/CD pipeline",
         "categories": ["formatters", "linters", "type-checkers", "security"],
-        "tools": ["black", "isort", "ruff", "flake8", "pylint", "mypy", "bandit", "safety", "pip-audit"],  # Exclude pyright (Node.js tool)
+        "tools": [
+            "black",
+            "isort",
+            "ruff",
+            "flake8",
+            "pylint",
+            "mypy",
+            "bandit",
+            "safety",
+            "pip-audit",
+        ],  # Exclude pyright (Node.js tool)
     },
     "pre-commit": {
         "description": "Fast pre-commit hooks",
