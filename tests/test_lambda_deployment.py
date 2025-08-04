@@ -5,11 +5,10 @@ Tests for the deployment manager and marker validation functionality,
 including validation of the refactoring improvements.
 """
 
-import pytest
 import tempfile
 from pathlib import Path
-from typing import Dict, List
-from unittest.mock import Mock, patch
+
+import pytest
 
 from scripts.lambda_deployment.deployment_manager import (
     DeploymentManager,
@@ -32,7 +31,7 @@ class TestDeploymentManager:
             deployment_dir = temp_path / "deployment"
             source_dir.mkdir()
             deployment_dir.mkdir()
-            
+
             yield {
                 "source": source_dir,
                 "deployment": deployment_dir,
@@ -44,7 +43,7 @@ class TestDeploymentManager:
         """Create a sample Lambda function file"""
         source_dir = temp_dirs["source"]
         lambda_file = source_dir / "test_lambda.py"
-        
+
         content = '''"""Sample Lambda function"""
 import os
 import sys
@@ -66,7 +65,7 @@ def lambda_handler(event, context):
             source_dir=str(temp_dirs["source"]),
             deployment_dir=str(temp_dirs["deployment"])
         )
-        
+
         assert manager.config.source_dir == temp_dirs["source"]
         assert manager.config.deployment_dir == temp_dirs["deployment"]
         assert manager.config.shared_module == "shared_configuration"
@@ -77,20 +76,20 @@ def lambda_handler(event, context):
             source_dir=str(temp_dirs["source"]),
             deployment_dir=str(temp_dirs["deployment"])
         )
-        
+
         # This tests the refactored function
         import_groups = manager._parse_imports_into_groups(sample_lambda_file)
-        
+
         assert isinstance(import_groups, dict)
         assert "standard_library" in import_groups
         assert "third_party" in import_groups
         assert "shared_config" in import_groups
-        
+
         # Check that imports are categorized correctly
         standard_imports = import_groups["standard_library"]
         assert len(standard_imports) > 0
-        
-        third_party_imports = import_groups["third_party"]  
+
+        third_party_imports = import_groups["third_party"]
         assert len(third_party_imports) > 0
 
     def test_is_standard_library_performance(self, temp_dirs):
@@ -99,7 +98,7 @@ def lambda_handler(event, context):
             source_dir=str(temp_dirs["source"]),
             deployment_dir=str(temp_dirs["deployment"])
         )
-        
+
         # Test standard library detection
         assert manager._is_standard_library("os") is True
         assert manager._is_standard_library("sys") is True
@@ -112,10 +111,10 @@ def lambda_handler(event, context):
             source_dir=str(temp_dirs["source"]),
             deployment_dir=str(temp_dirs["deployment"])
         )
-        
+
         # Test with non-existent files
         result = manager.process_deployment()
-        
+
         assert isinstance(result, dict)
         assert "success" in result
         assert "errors" in result
@@ -179,7 +178,7 @@ def lambda_handler(event, context):
         """Test validation of file with valid markers"""
         validator = LambdaMarkerValidator(str(temp_lambda_dir))
         result = validator.validate_lambda_markers(valid_lambda_file)
-        
+
         assert isinstance(result, MarkerValidationResult)
         assert result.is_valid is True
         assert len(result.missing_markers) == 0
@@ -189,7 +188,7 @@ def lambda_handler(event, context):
         """Test validation of file with missing markers"""
         validator = LambdaMarkerValidator(str(temp_lambda_dir))
         result = validator.validate_lambda_markers(invalid_lambda_file)
-        
+
         assert isinstance(result, MarkerValidationResult)
         assert result.is_valid is False
         assert len(result.missing_markers) > 0
@@ -216,7 +215,7 @@ class TestImportGroupAndTypes:
             original_line="from os import path, environ",
             line_number=5
         )
-        
+
         assert group.import_type == ImportType.STANDARD_LIBRARY
         assert group.module_name == "os"
         assert group.import_names == ["path", "environ"]
@@ -232,7 +231,7 @@ class TestImportGroupAndTypes:
             orphaned_code=["line 10: orphaned code"],
             marker_issues=["Invalid marker format"]
         )
-        
+
         assert result.is_valid is False
         assert result.file_path == "/path/to/file.py"
         assert "IMPORT_BLOCK_START" in result.missing_markers
@@ -249,18 +248,18 @@ class TestPerformanceAndSecurity:
             source_dir=str(temp_dirs["source"]),
             deployment_dir=str(temp_dirs["deployment"])
         )
-        
+
         # This should be slow due to linear search
         import time
         start_time = time.time()
-        
+
         # Test multiple modules to demonstrate inefficiency
         test_modules = ["os", "sys", "json", "unknown"] * 100
         for module in test_modules:
             manager._is_standard_library(module)
-            
+
         elapsed = time.time() - start_time
-        
+
         # This test documents current poor performance
         # After refactoring, this should be much faster
         assert elapsed > 0  # Just ensuring the test runs
@@ -271,10 +270,10 @@ class TestPerformanceAndSecurity:
             source_dir=str(temp_dirs["source"]),
             deployment_dir=str(temp_dirs["deployment"])
         )
-        
+
         # Test with invalid file path
         invalid_path = Path("/nonexistent/file.py")
-        
+
         # The current implementation should catch and re-raise with poor context
         with pytest.raises(RuntimeError, match="Failed to parse imports"):
             manager._parse_imports_into_groups(invalid_path)
@@ -289,29 +288,29 @@ class TestPerformanceBenchmarks:
         # Create a file with many imports
         source_dir = temp_dirs["source"]
         large_file = source_dir / "large_lambda.py"
-        
+
         import_lines = []
         for i in range(100):
             import_lines.append(f"import module_{i}")
             import_lines.append(f"from package_{i} import function_{i}")
-            
+
         content = "\n".join(import_lines) + "\n\ndef handler(): pass"
         large_file.write_text(content)
-        
+
         manager = DeploymentManager(
             source_dir=str(source_dir),
             deployment_dir=str(temp_dirs["deployment"])
         )
-        
+
         import time
         start_time = time.time()
         result = manager._parse_imports_into_groups(large_file)
         elapsed = time.time() - start_time
-        
+
         # Document current performance
         assert isinstance(result, dict)
         assert elapsed > 0  # Baseline measurement
-        
+
         # After refactoring, this should be significantly faster
         print(f"Current performance: {elapsed:.4f} seconds for 200 imports")
 

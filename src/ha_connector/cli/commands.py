@@ -40,7 +40,7 @@ from ..utils import HAConnectorLogger, ValidationError
 
 class InstallCommandConfig(BaseModel):
     """Configuration object for install command to reduce parameter count."""
-    
+
     scenario: str
     region: str = "us-east-1"
     environment: str = "prod"
@@ -49,24 +49,25 @@ class InstallCommandConfig(BaseModel):
     verbose: bool = False
     dry_run: bool = False
     auto_setup_cloudflare: bool = False
-    cloudflare_domain: Optional[str] = None
+    cloudflare_domain: str | None = None
     interactive: bool = False
 
 
 class AlexaSetupConfig(BaseModel):
     """Configuration object for alexa_setup command to reduce parameter count."""
-    
+
     function_name: str
-    skill_id: Optional[str] = None
+    skill_id: str | None = None
     region: str = "us-east-1"
     generate_test_data: bool = True
     generate_guide: bool = True
-    lambda_function_url: Optional[str] = None
-    oauth_gateway_url: Optional[str] = None
-    ha_base_url: Optional[str] = None
-    alexa_secret: Optional[str] = None
+    lambda_function_url: str | None = None
+    oauth_gateway_url: str | None = None
+    ha_base_url: str | None = None
+    alexa_secret: str | None = None
     validate_config: bool = True
     verbose: bool = False
+
 
 console = Console()
 logger = HAConnectorLogger("ha-connector-cli")
@@ -669,7 +670,7 @@ def install(  # pylint: disable=too-many-positional-arguments
         cloudflare_domain=cloudflare_domain,
         interactive=interactive,
     )
-    
+
     _execute_install_workflow(config)
 
 
@@ -680,7 +681,9 @@ def _execute_install_workflow(config: InstallCommandConfig) -> None:
         install_wizard()
         return
 
-    _print_installation_header(config.scenario, config.region, config.environment, config.dry_run)
+    _print_installation_header(
+        config.scenario, config.region, config.environment, config.dry_run
+    )
 
     try:
         installation_scenario = _validate_and_get_scenario(config.scenario)
@@ -1176,20 +1179,6 @@ def _display_service_status(services: list[dict[str, Any]], verbose: bool) -> No
     console.print(table)
 
 
-class AlexaSetupConfig(BaseModel):
-    """Configuration for Alexa setup command."""
-
-    function_name: str
-    skill_id: Optional[str] = None  # noqa: UP045
-    region: str
-    generate_test_data: bool
-    generate_guide: bool
-    lambda_function_url: Optional[str] = None  # noqa: UP045
-    oauth_gateway_url: Optional[str] = None  # noqa: UP045
-    ha_base_url: Optional[str] = None  # noqa: UP045
-    verbose: bool
-
-
 def _validate_alexa_region(alexa_manager: SmartHomeSkillAutomator, region: str) -> None:
     """Validate AWS region compatibility for Alexa."""
     console.print("📍 [blue]Step 1: Validating AWS region compatibility[/blue]")
@@ -1401,7 +1390,7 @@ def alexa_setup(  # pylint: disable=too-many-positional-arguments
         ha_base_url=ha_base_url,
         verbose=verbose,
     )
-    
+
     _execute_alexa_setup_workflow(config)
 
 
@@ -1441,4 +1430,3 @@ configure_command = configure
 status_command = status
 remove_command = remove
 alexa_setup_command = alexa_setup
-wizard = wizard
