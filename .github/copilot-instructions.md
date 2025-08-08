@@ -24,7 +24,7 @@ This project uses a hierarchical instruction system to eliminate conflicts:
 ### Conflict Resolution Precedence
 
 1. **`.github/copilot-instructions.md`** - Master guidelines (highest priority)
-2. **`instructions/core/`** - Fundamental patterns (medium priority)  
+2. **`instructions/core/`** - Fundamental patterns (medium priority)
 3. **`instructions/specialized/`** - Domain-specific guidance (contextual priority)
 4. **`instructions/documentation/`** - Content standards (lowest priority)
 
@@ -68,11 +68,93 @@ source .venv/bin/activate
 - System Python may be used instead of project environment
 - Import paths may not be configured correctly
 
-## Quick Start: Enable Automated Terminal Commands
+## Quick Start: Enable Automated Tool Approvals (VS Code 2024+)
 
-### Simplified VS Code Configuration
+### 1. Configure New Tool Approval System
 
-Add essential commands to your VS Code user settings:
+Add this to your VS Code user settings (`~/.config/Code/User/settings.json` on Linux):
+
+```json
+{
+  "github.copilot.chat.tools.autoApprove": {
+    "run_in_terminal": [
+      // === GENERAL COMMANDS ===
+      "echo",
+      "ls",
+      "pwd",
+      "cat",
+      "head",
+      "tail",
+      "wc",
+      "grep",
+      "find",
+      "test",
+      "git",
+      "mv",
+      "cp",
+      "mkdir",
+      "touch",
+      "which",
+      "whoami",
+      "date",
+      "source",
+
+      // === PYTHON DEVELOPMENT ===
+      "python",
+      "pip",
+      "poetry",
+      "ruff",
+      "pylint",
+      "mypy",
+      "flake8",
+      "bandit",
+      "black",
+      "pytest",
+      "make",
+
+      // === AWS CLI (with pager disabled) ===
+      "aws --no-cli-pager"
+    ]
+  }
+}
+```
+
+### 2. Activate in VS Code UI
+
+1. Open **Settings** → **Extensions** → **GitHub Copilot** → **Chat** → **Tools: Auto Approve**
+2. **CRITICAL**: Check the checkbox to enable the experimental feature
+3. Add tools using the UI or directly edit `settings.json`
+4. **Both JSON configuration AND UI activation are required for experimental features**
+
+### 3. Migration from Legacy System
+
+#### ⚠️ DEPRECATED: Legacy Terminal Allowlist (Pre-2024)
+
+```json
+// OLD SYSTEM - No longer supported
+{
+  "github.copilot.chat.agent.terminal.allowList": {
+    "python": true,
+    "source": true
+  }
+}
+```
+
+#### ✅ NEW SYSTEM: Unified Tool Approval
+
+```json
+// NEW SYSTEM - Current standard
+{
+  "github.copilot.chat.tools.autoApprove": {
+    "run_in_terminal": ["python", "source"]
+  }
+}
+```
+
+## ⚠️ LEGACY SECTION (DEPRECATED) - For Reference Only
+
+> **Note**: The following configuration uses the deprecated terminal allowlist system.
+> Use the new [Tool Approval System](#quick-start-enable-automated-tool-approvals-vs-code-2024) instead.
 
 ```json
 {
@@ -92,7 +174,7 @@ Add essential commands to your VS Code user settings:
 }
 ```
 
-### VS Code UI Activation
+### Legacy VS Code UI Activation (Deprecated)
 
 1. Open **Settings** → **Extensions** → **GitHub Copilot** → **Agent** → **Terminal: Allow List**
 2. Add commands using the **"Add Item"** button
@@ -101,10 +183,13 @@ Add essential commands to your VS Code user settings:
 ### Test Your Setup
 
 ```bash
-# Quick validation
-python scripts/agent_helper.py check    # ✅ Should show environment ready
-source .venv/bin/activate && ruff check src/  # ✅ Should run without prompts
+# Quick validation - these commands should work with session approval
+echo "Testing tool approval system"     # Use "Always approve for session"
+python scripts/agent_helper.py env     # Use "Always approve for session"
+ruff check src/ --no-fix               # Use "Always approve for session"
 ```
+
+**Note**: The auto-approve configuration is experimental and may require manual approval initially. Use the "Continue" dropdown to select "Always approve for this session" or "Always approve for this workspace" for seamless operation within the current session.
 
 ## AWS CLI Configuration
 

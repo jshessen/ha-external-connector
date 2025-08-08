@@ -264,5 +264,69 @@
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
     "chat.instructionsFilesLocations": [
         ".github/instructions"
-    ]
+    ],
+
+    // GitHub Copilot tool auto-approval configuration
+    "github.copilot.chat.tools.autoApprove": true,
+    "github.copilot.chat.tools.terminal.autoApprove": {
+        // === SYSTEM COMMANDS ===
+        "echo": true,
+        "ls": true,
+        "pwd": true,
+        "cat": true,
+        "head": true,
+        "tail": true,
+        "wc": true,
+        "grep": true,
+        "find": true,
+        "test": true,
+        "which": true,
+        "whoami": true,
+        "date": true,
+
+        // === SAFE FILE OPERATIONS ===
+        "mkdir": true,
+        "touch": true,
+        "cp": true,
+        "mv": true,
+
+        // === GIT OPERATIONS ===
+        "git": true,
+
+        // === ENVIRONMENT MANAGEMENT ===
+        "source": true,
+
+        // === PYTHON DEVELOPMENT ===
+        "python": true,
+        "pip": true,
+        "poetry": true,
+
+        // === CODE QUALITY TOOLS ===
+        "ruff": true,
+        "pylint": true,
+        "mypy": true,
+        "black": true,
+        "pytest": true,
+        "make": true,
+
+        // === AWS CLI (with pager safety) ===
+        "aws --no-cli-pager": true,
+        "/^aws\\s+.*--no-cli-pager/": true,
+
+        // === REGEX PATTERNS FOR FLEXIBILITY ===
+        "/^python\\s+-c\\s+/": true,
+        "/^python\\s+scripts\\//": true,
+        "/^\\$\\{workspaceFolder\\}/": true,
+
+        // === SECURITY DENIALS ===
+        "rm": false,
+        "sudo": false,
+        "chmod": false,
+        "chown": false,
+        "/.*\\brm\\b.*/": false,
+        "/.*\\bsudo\\b.*/": false,
+
+        // === AWS CLI WITHOUT PAGER (denied for safety) ===
+        "/^aws\\s+(?!.*--no-cli-pager)/": false
+    }
 }
