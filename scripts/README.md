@@ -25,11 +25,6 @@ This directory contains utility scripts for the Home Assistant External Connecto
   - **Tools**: Black, isort, Ruff, Flake8, Pylint, MyPy, Pyright, Bandit, Safety, pip-audit, Vulture
   - Usage: `python scripts/code_quality.py [options] [targets]`
 
-- **`lint.sh`** - Legacy shell-based linting script
-  - Lightweight alternative for quick checks
-  - **⚠️ Deprecated**: Use `code_quality.py` for all new workflows
-  - Usage: `./scripts/lint.sh`
-
 ## 🚀 Code Quality Suite Features
 
 ### Tool Categories
