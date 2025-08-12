@@ -16,30 +16,38 @@ from moto import mock_aws
 from ha_connector.security import LambdaSecurityValidator, SecurityStatus
 
 if TYPE_CHECKING:
-    # Import AWS client types from types-boto3 packages
-    from types_boto3_iam.client import IAMClient
-    from types_boto3_lambda.client import LambdaClient
+    # Import AWS client types from types-boto3 packages for correct type checking
+    pass
 
 
-@mock_aws
 class TestLambdaSecurityValidatorWithMoto:
     """Test Lambda security validator using moto for realistic AWS mocking."""
 
-    # Class variables for type checking
-    if TYPE_CHECKING:
-        lambda_client: LambdaClient
-        iam_client: IAMClient
-        test_role_arn: str
+    def __init__(self) -> None:
+        """Initialize test class attributes."""
+        # Initialize attributes to avoid W0201 warnings
+        self.mock: Any = None
+        self.lambda_client: Any = None
+        self.iam_client: Any = None
+        self.test_role_arn: str = ""
 
     def setup_method(self, _method: Any) -> None:
         """Set up test environment with mocked AWS services."""
-        self.lambda_client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
+        # Use moto context manager to mock AWS services for each test
+        self.mock = mock_aws()
+        self.mock.start()
+        # Use Any for runtime assignment to avoid static type conflicts
+        self.lambda_client = boto3.client(  # pyright: ignore
             "lambda", region_name="us-east-1"
         )
-        self.iam_client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
+        self.iam_client = boto3.client(  # pyright: ignore
             "iam", region_name="us-east-1"
         )
         self.test_role_arn = self._create_test_role()
+
+    def teardown_method(self, _method: Any) -> None:
+        """Tear down moto mocks after each test."""
+        self.mock.stop()
 
     def _create_test_role(self) -> str:
         """Create a test IAM role for Lambda functions."""
