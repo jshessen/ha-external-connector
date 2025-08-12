@@ -1,534 +1,152 @@
 """
-⚡ OPTIMIZED HOME ASSISTANT ↔ ALEXA VOICE COMMAND BRIDGE 🗣️
+⚡ HOME ASSISTANT ↔ ALEXA SMART HOME BRIDGE 🗣️
 
-=== WHAT THIS FILE DOES (Executive Summary) ===
+High-performance voice command processor optimized for sub-500ms response times.
+Handles Alexa Smart Home directives and translates them for Home Assistant.
 
-This is the **EXECUTIVE RECEPTIONIST** in your Alexa Smart Home ecosystem - the
-high-performance component that handles your daily voice commands with speed
-and efficiency.
+Original work: Copyright 2019 Jason Hu <awaregit at gmail.com>
+Enhanced by: Jeff Hessenflow <jeff.hessenflow@gmail.com>
 
-When you say "Alexa, turn on the lights", here's what happens:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-1. 🗣️  You speak to Alexa: "Alexa, turn on the kitchen lights"
-2. 🌐  Alexa sends your request to Amazon's servers
-3. 🔀  Amazon forwards the request to THIS CODE (running on AWS Lambda)
-4. 🏠  THIS CODE translates and forwards your request to Home Assistant
-5. 💡  Home Assistant turns on your kitchen lights
-6. ✅  Home Assistant sends back "success" through this same path
-7. 🗣️  Alexa responds: "OK" (typically within 500ms)
+    http://www.apache.org/licenses/LICENSE-2.0
 
-=== THE COMPLETE ALEXA SKILL ECOSYSTEM: PROFESSIONAL TEAM APPROACH ===
-
-🏢 **TWO-MEMBER PROFESSIONAL TEAM FOR OPTIMAL PERFORMANCE & SECURITY**
-
-Your Alexa Smart Home system operates like a prestigious corporate office with
-two specialized staff:
-
-👮 **SECURITY GUARD (oauth_gateway.py)**
-- 🏛️ **Job**: Manages entrance security and visitor credentials
-- 🎫 **Location**: Main lobby (OAuth authentication endpoint)
-- 📋 **Specializes In**:
-  * Account linking and OAuth token exchange
-  * CloudFlare security clearance
-  * High-security authentication workflows
-  * Token refresh and validation
-
-💼 **EXECUTIVE RECEPTIONIST (THIS FILE - smart_home_bridge.py)**
-- 🏢 **Job**: Handles daily business operations with maximum efficiency
-- 📞 **Location**: Executive floor (Smart home command processor)
-- 📋 **Specializes In**:
-  * Processing voice commands with <500ms response time
-  * Managing configuration cache for optimal performance
-  * Translating between Alexa and Home Assistant protocols
-  * Container-level optimizations and shared cache utilization
-
-🔄 **COMPLETE WORKFLOW: HOW THE TEAM COORDINATES**
-
-**PHASE 1: INITIAL SETUP (Account Linking) - Security Guard Takes the Lead**
-1. 👤 User opens Alexa app → Skills & Games → [Your Smart Home Skill]
-2. 📱 User clicks "Enable Skill" → "Link Account"
-3. 🌐 Alexa redirects to OAuth Gateway (👮 Security Guard)
-4. 🔐 Security Guard handles OAuth authentication with Home Assistant
-5. 🎫 Security Guard issues access token and caches it for future use
-6. ✅ Alexa app shows: "Account successfully linked!"
-
-**PHASE 2: DAILY OPERATIONS (Voice Commands) - Receptionist Takes the Lead**
-1. 🗣️ User says: "Alexa, turn on the kitchen lights"
-2. 🌐 Alexa processes command → sends to AWS Lambda
-3. 💼 **EXECUTIVE RECEPTIONIST (THIS FILE)** receives the request
-4. 🔍 Receptionist validates bearer token (using cached configuration)
-5. 📞 Receptionist translates request to Home Assistant API format
-6. 🏠 Receptionist forwards command to Home Assistant
-7. 💡 Home Assistant turns on lights → sends confirmation
-8. 📋 Receptionist translates response back to Alexa format
-9. 🗣️ Alexa responds: "OK" (total time: ~500ms)
-
-**WHY THIS PROFESSIONAL TEAM APPROACH WORKS:**
-- 👮 **Security Guard** specializes in complex OAuth flows (security-first)
-- 💼 **Receptionist** specializes in rapid daily operations (performance-first)
-- 👮 **Security Guard** handles CloudFlare protection (which adds latency)
-- 💼 **Receptionist** uses optimized caching (for sub-500ms responses)
-- 👮 **Security Guard** manages token lifecycle (authentication expertise)
-- 💼 **Receptionist** processes commands efficiently (operational expertise)
-
-=== PERFORMANCE ARCHITECTURE HIGHLIGHTS ===
-
-⚡ **MULTI-LAYER CACHING STRATEGY:**
-- Priority 1: Environment variables (instant startup)
-- Priority 2: DynamoDB shared cache (cross-Lambda function sharing)
-- Priority 3: Container-level cache (warm request optimization)
-- Priority 4: SSM Parameter Store (secure fallback)
-- Priority 5: Graceful error handling with detailed logging
-
-🚀 **OPTIMIZATION FEATURES:**
-- Container-level configuration caching to avoid repeated API calls
-- Environment variable priority for 75-85% faster cold starts
-- Shared cache integration for cross-Lambda function efficiency
-- Bearer token processing to authenticate with Home Assistant
-- Streamlined request processing with connection reuse
-
-🛡️ **SECURITY & RELIABILITY:**
-- Bearer token validation with Home Assistant API calls
-- Rate limiting protection and request size validation
-- Comprehensive error handling with secure logging
-- CloudFlare Access integration for additional security layer
-
-=== FOR TECHNICAL TEAMS ===
-
-This file implements the high-performance voice command processor optimized for:
-- Sub-500ms voice command response times
-- AWS Lambda container lifecycle optimization
-- Multi-layer configuration caching architecture
-- Cross-Lambda function state sharing via DynamoDB
-- Production-ready error handling and monitoring
-
-Author: Jeff Hessenflow <jeff.hessenflow@gmail.com>
-Based on original work by: Jason Hu <awaregit@gmail.com>
-Copyright 2019 Jason Hu <awaregit at gmail.com>
-Licensed under the Apache License, Version 2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
-
-# pylint: disable=too-many-lines  # Smart Home Bridge with comprehensive voice processing
-# pylint: disable=duplicate-code  # Lambda functions must be standalone - no shared modules
 
 # ╭─────────────────── IMPORT_BLOCK_START ───────────────────╮
 import configparser
 import json
 import logging
 import os
-import time
 from typing import Any
 
+import boto3
 import urllib3
 
 # === SHARED CONFIGURATION IMPORTS ===
 # SHARED_CONFIG_IMPORT: Development-only imports replaced in deployment
-from .shared_configuration import (  # Security infrastructure (Phase 2c)
-    AlexaValidator,
-    RateLimiter,
-    SecurityEventLogger,
-    cache_configuration,
-    load_configuration,
-    load_environment,
-)
-
+try:
+    from .shared_configuration import (
+        AlexaValidator,
+        ConnectionPoolManager,
+        PerformanceOptimizer,
+        RateLimiter,
+        ResponseCache,
+        SecurityEventLogger,
+        create_lambda_logger,
+        extract_correlation_id,
+        load_configuration,
+    )
+except ImportError:
+    # Fallback for deployment context
+    from shared_configuration import (
+        AlexaValidator,
+        ConnectionPoolManager,
+        PerformanceOptimizer,
+        RateLimiter,
+        ResponseCache,
+        SecurityEventLogger,
+        create_lambda_logger,
+        extract_correlation_id,
+        load_configuration,
+    )
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
 
 # ╭─────────────────── FUNCTION_BLOCK_START ───────────────────╮
-# === PERFORMANCE-OPTIMIZED CONFIGURATION ===
-# Using shared configuration system for optimal performance
 
-# Debug mode for detailed logging
+# === LOGGING CONFIGURATION ===
 _debug = bool(os.environ.get("DEBUG"))
 
-# Logger setup
-_logger = logging.getLogger("HomeAssistant-SmartHome")
+# Use shared configuration logger instead of local setup
+_logger = create_lambda_logger("SmartHomeBridge")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
 
-# === LAMBDA HANDLER HELPER FUNCTIONS ===
+# Initialize boto3 client at global scope for connection reuse
+client = boto3.client("ssm")  # type: ignore[assignment]
+app_config_path = os.environ.get("APP_CONFIG_PATH", "/alexa/auth/")
+
+# ⚡ PHASE 4 PERFORMANCE OPTIMIZATION: Initialize performance monitoring at global scope
+_performance_optimizer = PerformanceOptimizer()
+_response_cache = ResponseCache()
+_connection_pool = ConnectionPoolManager()
+
+# Initialize app at global scope for reuse across invocations
+app = None  # pylint: disable=invalid-name  # Lambda container reuse pattern
 
 
-def _setup_request_logging(correlation_id: str, event: dict[str, Any]) -> None:
-    """Set up request logging with correlation ID and event info."""
-    _logger.info("=== LAMBDA START (correlation: %s) ===", correlation_id)
-    _logger.info("Event type: %s", type(event))
-    event_keys = list(event.keys()) if event else "EMPTY_EVENT"
-    _logger.info("Event keys: %s", event_keys)
+class HAConfig:
+    def __init__(self, config: configparser.ConfigParser) -> None:
+        """
+        Construct new app with configuration
+        :param config: application configuration
+        """
+        self.config = config
+
+    def get_config(self):
+        return self.config
 
 
-def _configure_logging_from_env(env_vars: dict[str, str]) -> None:
-    """Configure logging level from environment variables."""
-    if env_vars["DEBUG"] or env_vars["LOG_LEVEL"]:
-        if env_vars["DEBUG"]:
-            _logger.setLevel(logging.DEBUG)
-            _logger.debug("DEBUG mode enabled via environment variable")
-        elif env_vars["LOG_LEVEL"]:
-            level_map = {
-                "DEBUG": logging.DEBUG,
-                "INFO": logging.INFO,
-                "WARNING": logging.WARNING,
-                "ERROR": logging.ERROR,
-            }
-            level = level_map.get(env_vars["LOG_LEVEL"].upper(), logging.INFO)
-            _logger.setLevel(level)
-            _logger.debug("Log level set to %s via environment", env_vars["LOG_LEVEL"])
-
-
-def _log_directive_info(directive: dict[str, Any]) -> None:
-    """Log directive information for debugging."""
-    _logger.info(
-        "Directive validated - namespace: %s, name: %s",
-        directive.get("header", {}).get("namespace", "UNKNOWN"),
-        directive.get("header", {}).get("name", "UNKNOWN"),
-    )
-
-
-def _load_and_merge_configuration(env_vars: dict[str, str]) -> dict[str, Any]:
-    """Load configuration from SSM and merge with environment variables."""
-    _logger.debug("Loading configuration...")
-    app_config: dict[str, Any] = {}
-
-    # Always try to load configuration, using APP_CONFIG_PATH if available
-    app_config_path = env_vars["APP_CONFIG_PATH"]
-    _logger.debug("Loading configuration from path: %s", app_config_path or "default")
-    try:
-        config = load_configuration(
-            app_config_path=app_config_path,
-            return_format="configparser",
-        )
-        if isinstance(config, configparser.ConfigParser) and config.has_section(
-            "appConfig"
-        ):
-            app_config = dict(config["appConfig"])
-            _logger.debug("Configuration loaded from SSM/cache")
-        else:
-            _logger.warning("No appConfig section found in configuration")
-    except (ValueError, KeyError, TypeError) as e:
-        _logger.warning("Failed to load configuration from SSM: %s", str(e))
-
-    # Merge environment variables (ENV takes priority)
-    if env_vars["BASE_URL"] or env_vars["HA_BASE_URL"]:
-        app_config["HA_BASE_URL"] = env_vars["BASE_URL"] or env_vars["HA_BASE_URL"]
-    if env_vars["CF_CLIENT_ID"]:
-        app_config["CF_CLIENT_ID"] = env_vars["CF_CLIENT_ID"]
-    if env_vars["CF_CLIENT_SECRET"]:
-        app_config["CF_CLIENT_SECRET"] = env_vars["CF_CLIENT_SECRET"]
-    if env_vars["LONG_LIVED_ACCESS_TOKEN"] or env_vars["HA_TOKEN"]:
-        app_config["HA_TOKEN"] = (
-            env_vars["LONG_LIVED_ACCESS_TOKEN"] or env_vars["HA_TOKEN"]
-        )
-
-    return app_config
-
-
-def _configure_logging_from_config(
-    env_vars: dict[str, str], app_config: dict[str, Any]
-) -> None:
-    """Configure logging from config if not already set by environment."""
-    if not env_vars["DEBUG"] and not env_vars["LOG_LEVEL"]:
-        config_debug = app_config.get("debug", "").lower() in ("true", "1", "yes")
-        if config_debug:
-            _logger.setLevel(logging.DEBUG)
-            _logger.debug("DEBUG mode enabled via configuration")
-
-
-def _extract_authentication_config(
-    directive: dict[str, Any], app_config: dict[str, Any]
+def _execute_alexa_request(
+    event: dict[str, Any],
+    base_url: str,
+    token: str,
+    cf_client_id: str,
+    cf_client_secret: str,
 ) -> dict[str, Any]:
-    """Extract and validate authentication configuration."""
-    _logger.debug("Extracting authentication token...")
-    token, error = AlexaValidator.extract_auth_token(
-        directive, app_config, debug_mode=_debug
-    )
-    if error or token is None:
-        _logger.error("Token extraction failed: %s", error)
-        return {
-            "error": error
-            or AlexaValidator.create_alexa_error_response(
-                "INVALID_AUTHORIZATION_CREDENTIAL", "Token extraction failed"
-            )
-        }
-
-    token_length = len(token) if token else 0
-    _logger.info("Token extracted successfully (length: %d)", token_length)
-
-    # Extract base URL
-    base_url = app_config.get("homeAssistantBaseUrl") or app_config.get("HA_BASE_URL")
-    if not base_url:
-        _logger.error("Base URL not found in configuration")
-        return {
-            "error": AlexaValidator.create_alexa_error_response(
-                "INTERNAL_ERROR", "Base URL not configured"
-            )
-        }
-    _logger.info("Base URL validated: %s", base_url)
-
-    # Extract CloudFlare config (only if BOTH are present)
-    cf_client_id = app_config.get("cf_client_id") or app_config.get("CF_CLIENT_ID")
-    cf_client_secret = app_config.get("cf_client_secret") or app_config.get(
-        "CF_CLIENT_SECRET"
-    )
-    use_cloudflare = bool(cf_client_id and cf_client_secret)
-
-    if use_cloudflare:
-        _logger.debug("CloudFlare Access enabled")
-    else:
-        _logger.debug("CloudFlare Access disabled (credentials not configured)")
-
-    return {
-        "token": token,
-        "base_url": base_url,
-        "cf_client_id": cf_client_id if use_cloudflare else None,
-        "cf_client_secret": cf_client_secret if use_cloudflare else None,
-    }
-
-
-def _execute_ha_request(
-    event: dict[str, Any], auth_config: dict[str, Any], env_vars: dict[str, str]
-) -> dict[str, Any]:
-    """Execute the request to Home Assistant."""
-    _logger.info("Forwarding request to Home Assistant...")
-    request_config = HARequestConfig(
-        base_url=auth_config["base_url"],
-        token=auth_config["token"],
-        cf_client_id=auth_config["cf_client_id"],
-        cf_client_secret=auth_config["cf_client_secret"],
-        verify_ssl=not bool(env_vars["NOT_VERIFY_SSL"]),
-    )
-    return _make_ha_request(event, request_config)
-
-
-def _cache_successful_configuration(
-    result: dict[str, Any],
-    auth_config: dict[str, Any],
-    correlation_id: str,
-    env_vars: dict[str, str],
-) -> None:
-    """Cache configuration after successful request."""
-    error_type = result.get("event", {}).get("payload", {}).get("type", "")
-    if result and not error_type.startswith("INTERNAL_ERROR"):
-        # Cache successful token configuration for performance optimization
-        token_config = {"token": auth_config["token"], "correlation_id": correlation_id}
-        cache_configuration(
-            config_section="oauth_token",
-            ssm_path=env_vars["APP_CONFIG_PATH"] or "fallback",
-            config=token_config,
-        )
-
-
-def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    🚪 AWS LAMBDA ENTRY POINT: Executive Receptionist's Main Desk
-
-    Clean separation of concerns workflow orchestrated through helper functions.
-    Each step has a single responsibility and clear error handling.
-    """
-    # 1. Initialize request context
-    correlation_id = getattr(context, "aws_request_id", "unknown")[:8]
-    _setup_request_logging(correlation_id, event)
-
-    # 🛡️ SECURITY VALIDATION (Phase 2c): Medium security for voice commands
-    client_ip = event.get("headers", {}).get("X-Forwarded-For", "alexa-service")
-    client_ip = client_ip.split(",")[0] if client_ip else "alexa-service"
-
-    # Initialize rate limiter for this request
-    rate_limiter = RateLimiter()
-
-    # Rate limiting for Alexa requests
-    is_allowed, rate_limit_reason = rate_limiter.is_allowed(client_ip)
-    if not is_allowed:
-        SecurityEventLogger.log_rate_limit_violation(client_ip, rate_limit_reason)
-        _logger.warning("Rate limit exceeded: %s", rate_limit_reason)
-        return AlexaValidator.create_alexa_error_response(
-            "RATE_LIMITED", "Too many requests"
-        )
-
-    # Basic request validation
-    if not event:
-        SecurityEventLogger.log_validation_failure(
-            client_ip, "empty_event", "Empty event received"
-        )
-        return AlexaValidator.create_alexa_error_response(
-            "INVALID_DIRECTIVE", "Empty request"
-        )
-
-    # Log security event for voice command processing
-    SecurityEventLogger.log_security_event(
-        "voice_command_start",
-        client_ip,
-        f"Smart home voice command processing starting (correlation: {correlation_id})",
-        "INFO",
-    )
-
-    # 2. Load and validate environment
-    env_vars = load_environment()
-    _configure_logging_from_env(env_vars)
-
-    # 3. Validate directive structure
-    directive, error = AlexaValidator.validate_directive(event)
-    if error or directive is None:
-        SecurityEventLogger.log_validation_failure(
-            client_ip, "invalid_directive", "Directive validation failed"
-        )
-        _logger.error("Directive validation failed: %s", error)
-        return error or AlexaValidator.create_alexa_error_response(
-            "INVALID_DIRECTIVE", "Directive validation failed"
-        )
-
-    _log_directive_info(directive)
-
-    # 4. Load and merge configuration
-    app_config = _load_and_merge_configuration(env_vars)
-
-    # 5. Configure logging from config (if not set by ENV)
-    _configure_logging_from_config(env_vars, app_config)
-
-    # 6. Extract authentication and connection info
-    auth_config = _extract_authentication_config(directive, app_config)
-    if "error" in auth_config:
-        return auth_config["error"]
-
-    # 7. Send request to Home Assistant
-    result = _execute_ha_request(event, auth_config, env_vars)
-
-    # 8. Cache successful configuration
-    _cache_successful_configuration(result, auth_config, correlation_id, env_vars)
-
-    # 🛡️ SECURITY LOGGING (Phase 2c): Log successful voice command completion
-    SecurityEventLogger.log_security_event(
-        "voice_command_success",
-        client_ip,
-        f"Smart home voice command completed successfully "
-        f"(correlation: {correlation_id})",
-        "INFO",
-    )
-
-    _logger.info("=== LAMBDA END (correlation: %s) ===", correlation_id)
-    return result
-
-
-# === HELPER FUNCTION DEFINITIONS ===
-
-
-class HARequestConfig:
-    """Configuration object for Home Assistant API requests."""
-
-    def __init__(  # pylint: disable=too-many-positional-arguments,too-many-arguments
-        self,
-        base_url: str,
-        token: str,
-        cf_client_id: str | None = None,
-        cf_client_secret: str | None = None,
-        verify_ssl: bool = True,
-    ) -> None:
-        self.base_url = base_url
-        self.token = token
-        self.cf_client_id = cf_client_id
-        self.cf_client_secret = cf_client_secret
-        self.verify_ssl = verify_ssl
-
-
-def _make_ha_request(event: dict[str, Any], config: HARequestConfig) -> dict[str, Any]:
-    """
-    📞 HOME ASSISTANT COMMUNICATION MANAGER: Professional External Relations
-
-    Like an executive assistant making important business calls on behalf
-    of the company. This function handles the critical communication between
-    Alexa's request and your Home Assistant system with professional-grade
-    reliability and performance optimization.
-
-    **PROFESSIONAL COMMUNICATION WORKFLOW:**
-    1. 🔍 Prepare secure communication channel (HTTPS with SSL verification)
-    2. 📋 Format request in Home Assistant's expected protocol
-    3. 🔄 Execute with OAuth resilience and progressive retry logic
-    4. 📊 Monitor performance metrics for sub-500ms target
-    5. ✅ Return properly formatted response for Alexa consumption
-
-    **RESILIENCE FEATURES:**
-    - Progressive backoff retry logic (1s, 2s delays)
-    - OAuth token refresh handling
-    - SSL certificate validation
-    - Connection timeout management (2s connect, 10s read)
-    - Comprehensive error logging for troubleshooting
+    Execute HTTP request to Home Assistant Alexa API.
 
     Args:
-        event: Alexa directive containing voice command details
-        config: Optimized request configuration object
+        event: Lambda event dictionary to forward
+        base_url: Home Assistant base URL
+        token: Bearer token for authentication
+        cf_client_id: CloudFlare client ID for access
+        cf_client_secret: CloudFlare client secret for access
 
     Returns:
-        Formatted response dictionary for Alexa consumption
-    """
-    base_url = config.base_url.strip("/")
-    _logger.debug("Base URL: %s", base_url)
+        Response dictionary from Home Assistant API
 
-    # Create HTTP client with optimized settings
+    Raises:
+        ValueError: If HTTP request fails with client/server error
+    """
+    verify_ssl = not bool(os.environ.get("NOT_VERIFY_SSL"))
+    base_url = base_url.strip("/")
+    _logger.debug("Base url: %s", base_url)
+
     http = urllib3.PoolManager(
-        cert_reqs="CERT_REQUIRED" if config.verify_ssl else "CERT_NONE",
+        cert_reqs="CERT_REQUIRED" if verify_ssl else "CERT_NONE",
         timeout=urllib3.Timeout(connect=2.0, read=10.0),
     )
 
-    # Forward request to Home Assistant
     api_path = f"{base_url}/api/alexa/smart_home"
 
-    # OAuth resilience: Retry logic for token refresh scenarios
-    max_retries = 2
-    retry_delay_ms = [1000, 2000]  # Progressive backoff: 1s, 2s
-
-    for attempt in range(max_retries + 1):
-        try:
-            _logger.debug(
-                "Request attempt %d/%d to Home Assistant", attempt + 1, max_retries + 1
-            )
-
-            response = http.request(
-                "POST",
-                api_path,
-                headers={
-                    "Authorization": f"Bearer {config.token}",
-                    "Content-Type": "application/json",
-                    "CF-Access-Client-Id": config.cf_client_id or "",
-                    "CF-Access-Client-Secret": config.cf_client_secret or "",
-                },
-                body=json.dumps(event).encode("utf-8"),
-            )
-
-            if response.status >= 400:
-                error_type = (
-                    "INVALID_AUTHORIZATION_CREDENTIAL"
-                    if response.status in (401, 403)
-                    else f"INTERNAL_ERROR {response.status}"
-                )
-
-                # Don't retry on authentication errors (token issue, not OAuth refresh)
-                if response.status in (401, 403):
-                    _logger.warning(
-                        "Authentication failed (status: %d), not retrying",
-                        response.status,
-                    )
-                    return {
-                        "event": {
-                            "payload": {
-                                "type": error_type,
-                                "message": response.data.decode("utf-8"),
-                            }
-                        }
-                    }
-
-                # For server errors, retry if attempts remain
-                if attempt < max_retries:
-                    delay_ms = retry_delay_ms[attempt]
-                    _logger.warning(
-                        "Server error (status: %d), retrying in %dms (attempt %d/%d)",
-                        response.status,
-                        delay_ms,
-                        attempt + 1,
-                        max_retries + 1,
-                    )
-                    time.sleep(delay_ms / 1000.0)
-                    continue
-
-                # Final attempt failed
-                return {
+    response = http.request(
+        "POST",
+        api_path,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "CF-Access-Client-Id": cf_client_id,
+            "CF-Access-Client-Secret": cf_client_secret,
+        },
+        body=json.dumps(event).encode("utf-8"),
+    )
+    if response.status >= 400:
+        error_type = (
+            "INVALID_AUTHORIZATION_CREDENTIAL"
+            if response.status in (401, 403)
+            else f"INTERNAL_ERROR {response.status}"
+        )
+        raise ValueError(
+            json.dumps(
+                {
                     "event": {
                         "payload": {
                             "type": error_type,
@@ -536,70 +154,407 @@ def _make_ha_request(event: dict[str, Any], config: HARequestConfig) -> dict[str
                         }
                     }
                 }
-
-            _logger.debug("Response: %s", response.data.decode("utf-8"))
-            return json.loads(response.data.decode("utf-8"))  # type: ignore[no-any-return]
-
-        except urllib3.exceptions.TimeoutError as timeout_err:
-            # Timeout might indicate OAuth refresh in progress - retry
-            if attempt < max_retries:
-                delay_ms = retry_delay_ms[attempt]
-                _logger.warning(
-                    "Timeout error (possible OAuth refresh), retrying in %dms "
-                    "(attempt %d/%d): %s",
-                    delay_ms,
-                    attempt + 1,
-                    max_retries + 1,
-                    str(timeout_err),
-                )
-                time.sleep(delay_ms / 1000.0)
-                continue
-
-            # Final timeout
-            _logger.error(
-                "Final timeout after %d retries: %s", max_retries, str(timeout_err)
             )
-            return {
-                "event": {
-                    "payload": {
-                        "type": "INTERNAL_ERROR",
-                        "message": (
-                            f"Request timeout after {max_retries} retries "
-                            "(possible OAuth refresh in progress)"
-                        ),
-                    }
-                }
-            }
+        )
+    _logger.debug("Response: %s", response.data.decode("utf-8"))
+    return json.loads(response.data.decode("utf-8"))
 
-        except (
-            urllib3.exceptions.HTTPError,
-            json.JSONDecodeError,
-            UnicodeDecodeError,
-        ) as err:
-            # Don't retry on non-network errors
-            _logger.error(
-                "Non-retryable error forwarding request to Home Assistant: %s", str(err)
-            )
-            return {
-                "event": {
-                    "payload": {
-                        "type": "INTERNAL_ERROR",
-                        "message": (
-                            f"Failed to communicate with Home Assistant: {str(err)}"
-                        ),
-                    }
-                }
-            }
 
-    # Should never reach here, but safety fallback
-    return {
+def _extract_and_validate_directive(
+    event: dict[str, Any], app_config: dict[str, Any]
+) -> tuple[dict[str, Any], str]:
+    """
+    Extract and validate Alexa directive with token extraction.
+
+    Args:
+        event: Lambda event dictionary
+        app_config: Application configuration dictionary
+
+    Returns:
+        Tuple of (directive dict, bearer token string)
+
+    Raises:
+        ValueError: If directive validation fails or token is missing
+    """
+    directive = event.get("directive")
+    if directive is None:
+        raise ValueError("Malformatted request - missing directive")
+    if directive.get("header", {}).get("payloadVersion") != "3":
+        raise ValueError("Only support payloadVersion == 3")
+
+    scope = directive.get("endpoint", {}).get("scope")
+    if scope is None:
+        # token is in grantee for Linking directive
+        scope = directive.get("payload", {}).get("grantee")
+    if scope is None:
+        # token is in payload for Discovery directive
+        scope = directive.get("payload", {}).get("scope")
+    if scope is None:
+        raise ValueError("Malformatted request - missing endpoint.scope")
+    if scope.get("type") != "BearerToken":
+        raise ValueError("Only support BearerToken")
+
+    token = scope.get("token")
+    if token is None and _debug:
+        token = app_config["HA_TOKEN"]  # only for debug purpose
+
+    if token is None:
+        raise ValueError("Missing bearer token")
+
+    return directive, token
+
+
+def _validate_request_security(
+    event: dict[str, Any],
+    correlation_id: str,
+    rate_limiter: Any,
+    alexa_validator: Any,
+    security_logger: Any,
+) -> None:
+    """
+    Validate request security including rate limiting and Alexa request validation.
+
+    Args:
+        event: Lambda event dictionary
+        correlation_id: Request correlation ID for logging
+        rate_limiter: Rate limiting service instance
+        alexa_validator: Alexa validation service instance
+        security_logger: Security logging service instance
+
+    Raises:
+        ValueError: If security validation fails
+        RuntimeError: If rate limit is exceeded
+        KeyError: If required security fields are missing
+    """
+    # Validate request rate limiting
+    client_ip = (
+        event.get("requestContext", {}).get("identity", {}).get("sourceIp", "unknown")
+    )
+    is_allowed, reason = rate_limiter.is_allowed(client_ip)
+    if not is_allowed:
+        security_logger.log_security_event(
+            "rate_limit_exceeded",
+            client_ip,
+            f"Rate limit exceeded: {reason}, correlation_id: {correlation_id}",
+            "WARNING",
+        )
+        raise RuntimeError("Rate limit exceeded")
+
+    # Security validation
+    directive, error_response = alexa_validator.validate_directive(event)
+    if error_response is not None:
+        raise ValueError(f"Directive validation failed: {error_response}")
+
+    directive_namespace = (
+        directive.get("header", {}).get("namespace") if directive else None
+    )
+    security_logger.log_security_event(
+        "request_validated",
+        client_ip,
+        f"Request validated: namespace={directive_namespace}, "
+        f"correlation_id={correlation_id}",
+    )
+
+
+def _setup_configuration() -> configparser.ConfigParser:
+    """
+    ⚡ PERFORMANCE-OPTIMIZED: Set up application configuration with multi-layer caching.
+
+    CACHING STRATEGY:
+    1. Container Cache: 0-1ms (warm Lambda containers)
+    2. DynamoDB Shared Cache: 20-50ms (cross-Lambda sharing)
+    3. SSM Parameter Store: 100-200ms (authoritative source)
+
+    Returns:
+        ConfigParser instance with loaded configuration
+    """
+    start_time = _performance_optimizer.start_timing("config_load")
+
+    try:
+        # Use shared configuration loading which handles all caching internally
+        config = load_configuration(
+            app_config_path=app_config_path,
+            config_section="appConfig",
+            return_format="configparser",
+        )
+
+        # Ensure config is a ConfigParser instance
+        if isinstance(config, configparser.ConfigParser):
+            _performance_optimizer.record_cache_hit()
+            duration = _performance_optimizer.end_timing("config_load", start_time)
+            _logger.info("✅ Configuration loaded (%.1fms)", duration * 1000)
+            return config
+
+        raise ValueError("Configuration must be a ConfigParser instance")
+
+    except (ValueError, RuntimeError, KeyError, ImportError) as e:
+        _performance_optimizer.record_cache_miss()
+        _logger.warning("Enhanced config loading failed, using fallback: %s", e)
+
+        # Fallback to basic shared configuration loading
+        config = load_configuration(
+            app_config_path=app_config_path,
+            config_section="appConfig",
+            return_format="configparser",
+        )
+
+        duration = _performance_optimizer.end_timing("config_load", start_time)
+        _logger.warning("⚠️ Fallback configuration loaded (%.1fms)", duration * 1000)
+
+        if isinstance(config, configparser.ConfigParser):
+            return config
+        raise RuntimeError("Failed to load configuration as ConfigParser") from e
+
+
+def _handle_response_caching_and_performance(
+    request_hash: str, request_start: float, response: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Handle response caching and performance logging for successful requests.
+
+    Args:
+        request_hash: Hash of the request for caching
+        request_start: Start time of the request for performance measurement
+        response: Response dictionary to cache and return
+
+    Returns:
+        The response dictionary (pass-through)
+    """
+    # 🚀 PHASE 4: Cache successful responses for 5 minutes
+    _response_cache.set(request_hash, response, ttl_seconds=300)
+
+    # Log performance statistics
+    total_duration = _performance_optimizer.end_timing("total_request", request_start)
+    _logger.info("✅ Request completed in %.1fms", total_duration * 1000)
+
+    # Log performance stats every 10 requests for monitoring
+    perf_stats = _performance_optimizer.get_performance_stats()
+    total_requests = perf_stats.get("cache_hits", 0) + perf_stats.get("cache_misses", 0)
+    if total_requests % 10 == 0:
+        _logger.info("📊 Performance stats: %s", perf_stats)
+
+    return response
+
+
+def _handle_api_error_caching(
+    request_error: ValueError, request_hash: str, request_start: float
+) -> dict[str, Any]:
+    """
+    Handle API error response caching and performance logging.
+
+    Args:
+        request_error: ValueError containing JSON error response
+        request_hash: Hash of the request for caching
+        request_start: Start time of the request for performance measurement
+
+    Returns:
+        Error response dictionary parsed from the exception
+    """
+    # _execute_alexa_request raises ValueError with JSON error response
+    error_response = json.loads(str(request_error))
+
+    # Cache API errors for 1 minute to prevent repeated failures
+    _response_cache.set(request_hash, error_response, ttl_seconds=60)
+
+    total_duration = _performance_optimizer.end_timing("total_request", request_start)
+    _logger.warning("⚠️ Request failed in %.1fms", total_duration * 1000)
+
+    return error_response
+
+
+def _check_response_cache(
+    request_hash: str, request_start: float
+) -> dict[str, Any] | None:
+    """
+    Check response cache for identical requests and handle cache hits.
+
+    Args:
+        request_hash: Hash of the request to check in cache
+        request_start: Start time of the request for performance measurement
+
+    Returns:
+        Cached response if found, None if cache miss
+    """
+    cached_response, cache_hit = _response_cache.get(request_hash)
+    if cache_hit:
+        _performance_optimizer.record_cache_hit()
+        duration = _performance_optimizer.end_timing("total_request", request_start)
+        _logger.info("✅ Cache HIT - Response served in %.1fms", duration * 1000)
+        return cached_response
+
+    _performance_optimizer.record_cache_miss()
+    return None
+
+
+def _create_security_error_response(
+    security_error: Exception, correlation_id: str, request_hash: str
+) -> dict[str, Any]:
+    """
+    Create and cache security validation error response.
+
+    Args:
+        security_error: The security validation exception
+        correlation_id: Request correlation ID for logging
+        request_hash: Hash of the request for caching
+
+    Returns:
+        Error response dictionary
+    """
+    _logger.error("Security validation failed: %s", security_error)
+    security_logger = SecurityEventLogger()
+    security_logger.log_security_event(
+        "validation_failure",
+        "unknown",
+        f"Security validation failed: {security_error}, "
+        f"correlation_id: {correlation_id}",
+        "ERROR",
+    )
+    error_response = {
         "event": {
             "payload": {
                 "type": "INTERNAL_ERROR",
-                "message": "Unexpected error in retry logic",
+                "message": "Security validation failed",
             }
         }
     }
+    # Cache security errors for 60 seconds
+    _response_cache.set(request_hash, error_response, ttl_seconds=60)
+    return error_response
+
+
+def _create_rate_limit_error_response(request_hash: str) -> dict[str, Any]:
+    """
+    Create and cache rate limit exceeded error response.
+
+    Args:
+        request_hash: Hash of the request for caching
+
+    Returns:
+        Rate limit error response dictionary
+    """
+    error_response = {
+        "event": {
+            "payload": {
+                "type": "RATE_LIMIT_EXCEEDED",
+                "message": "Too many requests",
+            }
+        }
+    }
+    # Cache rate limit responses for 60 seconds
+    _response_cache.set(request_hash, error_response, ttl_seconds=60)
+    return error_response
+
+
+def _initialize_security_components_and_validate(
+    event: dict[str, Any], correlation_id: str
+) -> tuple[float, Exception | None]:
+    """
+    Initialize security components and validate the request.
+
+    Args:
+        event: Lambda event dictionary
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Tuple of (security_start_time, exception_if_any)
+        If exception is not None, caller should handle the error
+    """
+    # Initialize security components
+    security_start = _performance_optimizer.start_timing("security_validation")
+    rate_limiter = RateLimiter()
+    alexa_validator = AlexaValidator()
+    security_logger = SecurityEventLogger()
+
+    try:
+        # Validate request security
+        _validate_request_security(
+            event, correlation_id, rate_limiter, alexa_validator, security_logger
+        )
+        _performance_optimizer.end_timing("security_validation", security_start)
+        return security_start, None
+    except RuntimeError as rate_error:
+        if "Rate limit exceeded" in str(rate_error):
+            return security_start, rate_error  # Signal rate limit error
+        raise  # Re-raise other RuntimeErrors
+    except (ValueError, KeyError) as security_error:
+        return security_start, security_error  # Return error for caller to handle
+
+
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """
+    ⚡ PERFORMANCE-OPTIMIZED: Enhanced Lambda handler with response caching and timing.
+
+    Processes Alexa Smart Home directives using:
+    - Multi-layer configuration caching
+    - Response caching for identical requests
+    - Performance timing and monitoring
+    - Enhanced error handling and security validation
+
+    TARGET: <300ms total response time for voice commands
+    """
+    global app  # pylint: disable=global-statement  # Required for Lambda container reuse
+
+    # 🚀 PHASE 4: Start performance timing for entire request
+    request_start = _performance_optimizer.start_timing("total_request")
+
+    # Extract correlation ID for request tracking
+    correlation_id = extract_correlation_id(context)
+    _logger.info("🎯 Processing request %s", correlation_id)
+
+    # 🚀 PHASE 4: Check response cache for identical requests
+    request_hash = str(hash(str(event)))
+    cached_response = _check_response_cache(request_hash, request_start)
+    if cached_response is not None:
+        return cached_response
+
+    # Initialize security components and validate request
+    _, security_error = _initialize_security_components_and_validate(
+        event, correlation_id
+    )
+
+    # Handle security validation errors
+    if security_error is not None:
+        if isinstance(security_error, RuntimeError) and "Rate limit exceeded" in str(
+            security_error
+        ):
+            return _create_rate_limit_error_response(request_hash)
+        return _create_security_error_response(
+            security_error, correlation_id, request_hash
+        )
+
+    # Initialize app if it doesn't yet exist
+    if app is None:
+        _logger.info("Loading config and creating persistence object...")
+        config = _setup_configuration()
+        app = HAConfig(config)
+
+    app_config = app.get_config()["appConfig"]
+
+    # Extract and validate directive with token
+    directive_start = _performance_optimizer.start_timing("directive_processing")
+    _, token = _extract_and_validate_directive(event, dict(app_config))
+    _performance_optimizer.end_timing("directive_processing", directive_start)
+
+    _logger.debug("Event: %s", event)
+
+    try:
+        # Execute request to Home Assistant API
+        ha_request_start = _performance_optimizer.start_timing("ha_api_request")
+        response = _execute_alexa_request(
+            event,
+            app_config["HA_BASE_URL"],
+            token,
+            app_config["CF_CLIENT_ID"],
+            app_config["CF_CLIENT_SECRET"],
+        )
+        _performance_optimizer.end_timing("ha_api_request", ha_request_start)
+
+        return _handle_response_caching_and_performance(
+            request_hash, request_start, response
+        )
+
+    except ValueError as request_error:
+        return _handle_api_error_caching(request_error, request_hash, request_start)
 
 
 # ╰─────────────────── FUNCTION_BLOCK_END ───────────────────╯

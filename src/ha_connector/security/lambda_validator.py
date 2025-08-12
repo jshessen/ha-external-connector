@@ -38,17 +38,11 @@ class LambdaSecurityValidator:
         """
         self.region = region
         # Support dependency injection for better testability
-        self._lambda_client: LambdaClient = (
-            lambda_client
-            or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportAttributeAccessIssue]
-                "lambda", region_name=region
-            )
+        self._lambda_client: LambdaClient = lambda_client or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportAttributeAccessIssue]
+            "lambda", region_name=region
         )
-        self._iam_client: IAMClient = (
-            iam_client
-            or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportAttributeAccessIssue]
-                "iam", region_name=region
-            )
+        self._iam_client: IAMClient = iam_client or boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportAttributeAccessIssue]
+            "iam", region_name=region
         )
 
     @property
@@ -1018,8 +1012,7 @@ class LambdaSecurityValidator:
                     check=check,
                     status=SecurityStatus.WARNING,
                     message=(
-                        f"CloudFlare integration security issues: "
-                        f"{len(issues)} issues"
+                        f"CloudFlare integration security issues: {len(issues)} issues"
                     ),
                     details={"issues": issues},
                     recommendations=recommendations,

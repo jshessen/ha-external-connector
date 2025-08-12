@@ -557,9 +557,7 @@ def load_from_ssm(ssm: Any, ssm_path: str) -> dict[str, Any] | None:
 
         config_data: dict[str, Any] = {}
         if "Parameters" in response and response.get("Parameters"):
-            for param in response.get(
-                "Parameters"
-            ):  # pylint: disable=duplicate-code # AWS parameter processing pattern
+            for param in response.get("Parameters"):  # pylint: disable=duplicate-code # AWS parameter processing pattern
                 param_name = param.get("Name")
                 param_value = param.get("Value")
                 if param_name and param_value:
