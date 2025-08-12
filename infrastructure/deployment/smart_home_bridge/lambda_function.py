@@ -20,24 +20,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+# pylint: disable=too-many-lines,too-many-branches,redefined-outer-name,too-many-locals,too-many-statements
+# ↑ Deployment file constraints: Combined source files create naming conflicts and size issues
+
 import configparser
 import json
 import logging
 import os
 import re
 import time
-
 from typing import Any
 
 import boto3
 import urllib3
-
 from botocore.exceptions import ClientError, NoCredentialsError
 
 # === EMBEDDED SHARED CODE (AUTO-GENERATED) ===
 
 # This section contains shared configuration embedded for deployment
-
 
 
 # === PUBLIC API ===
@@ -1682,6 +1682,7 @@ def _get_env_fallback_config() -> dict[str, Any]:
         "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET", "fallback_secret"),
     }
 
+
 # === LOGGING CONFIGURATION ===
 _debug = bool(os.environ.get("DEBUG"))
 
@@ -1927,6 +1928,180 @@ def _setup_configuration() -> configparser.ConfigParser:
         raise RuntimeError("Failed to load configuration as ConfigParser") from e
 
 
+def _handle_response_caching_and_performance(
+    request_hash: str, request_start: float, response: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Handle response caching and performance logging for successful requests.
+
+    Args:
+        request_hash: Hash of the request for caching
+        request_start: Start time of the request for performance measurement
+        response: Response dictionary to cache and return
+
+    Returns:
+        The response dictionary (pass-through)
+    """
+    # 🚀 PHASE 4: Cache successful responses for 5 minutes
+    _response_cache.set(request_hash, response, ttl_seconds=300)
+
+    # Log performance statistics
+    total_duration = _performance_optimizer.end_timing("total_request", request_start)
+    _logger.info("✅ Request completed in %.1fms", total_duration * 1000)
+
+    # Log performance stats every 10 requests for monitoring
+    perf_stats = _performance_optimizer.get_performance_stats()
+    total_requests = perf_stats.get("cache_hits", 0) + perf_stats.get("cache_misses", 0)
+    if total_requests % 10 == 0:
+        _logger.info("📊 Performance stats: %s", perf_stats)
+
+    return response
+
+
+def _handle_api_error_caching(
+    request_error: ValueError, request_hash: str, request_start: float
+) -> dict[str, Any]:
+    """
+    Handle API error response caching and performance logging.
+
+    Args:
+        request_error: ValueError containing JSON error response
+        request_hash: Hash of the request for caching
+        request_start: Start time of the request for performance measurement
+
+    Returns:
+        Error response dictionary parsed from the exception
+    """
+    # _execute_alexa_request raises ValueError with JSON error response
+    error_response = json.loads(str(request_error))
+
+    # Cache API errors for 1 minute to prevent repeated failures
+    _response_cache.set(request_hash, error_response, ttl_seconds=60)
+
+    total_duration = _performance_optimizer.end_timing("total_request", request_start)
+    _logger.warning("⚠️ Request failed in %.1fms", total_duration * 1000)
+
+    return error_response
+
+
+def _check_response_cache(
+    request_hash: str, request_start: float
+) -> dict[str, Any] | None:
+    """
+    Check response cache for identical requests and handle cache hits.
+
+    Args:
+        request_hash: Hash of the request to check in cache
+        request_start: Start time of the request for performance measurement
+
+    Returns:
+        Cached response if found, None if cache miss
+    """
+    cached_response, cache_hit = _response_cache.get(request_hash)
+    if cache_hit:
+        _performance_optimizer.record_cache_hit()
+        duration = _performance_optimizer.end_timing("total_request", request_start)
+        _logger.info("✅ Cache HIT - Response served in %.1fms", duration * 1000)
+        return cached_response
+
+    _performance_optimizer.record_cache_miss()
+    return None
+
+
+def _create_security_error_response(
+    security_error: Exception, correlation_id: str, request_hash: str
+) -> dict[str, Any]:
+    """
+    Create and cache security validation error response.
+
+    Args:
+        security_error: The security validation exception
+        correlation_id: Request correlation ID for logging
+        request_hash: Hash of the request for caching
+
+    Returns:
+        Error response dictionary
+    """
+    _logger.error("Security validation failed: %s", security_error)
+    security_logger = SecurityEventLogger()
+    security_logger.log_security_event(
+        "validation_failure",
+        "unknown",
+        f"Security validation failed: {security_error}, "
+        f"correlation_id: {correlation_id}",
+        "ERROR",
+    )
+    error_response = {
+        "event": {
+            "payload": {
+                "type": "INTERNAL_ERROR",
+                "message": "Security validation failed",
+            }
+        }
+    }
+    # Cache security errors for 60 seconds
+    _response_cache.set(request_hash, error_response, ttl_seconds=60)
+    return error_response
+
+
+def _create_rate_limit_error_response(request_hash: str) -> dict[str, Any]:
+    """
+    Create and cache rate limit exceeded error response.
+
+    Args:
+        request_hash: Hash of the request for caching
+
+    Returns:
+        Rate limit error response dictionary
+    """
+    error_response = {
+        "event": {
+            "payload": {
+                "type": "RATE_LIMIT_EXCEEDED",
+                "message": "Too many requests",
+            }
+        }
+    }
+    # Cache rate limit responses for 60 seconds
+    _response_cache.set(request_hash, error_response, ttl_seconds=60)
+    return error_response
+
+
+def _initialize_security_components_and_validate(
+    event: dict[str, Any], correlation_id: str
+) -> tuple[float, Exception | None]:
+    """
+    Initialize security components and validate the request.
+
+    Args:
+        event: Lambda event dictionary
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Tuple of (security_start_time, exception_if_any)
+        If exception is not None, caller should handle the error
+    """
+    # Initialize security components
+    security_start = _performance_optimizer.start_timing("security_validation")
+    rate_limiter = RateLimiter()
+    alexa_validator = AlexaValidator()
+    security_logger = SecurityEventLogger()
+
+    try:
+        # Validate request security
+        _validate_request_security(
+            event, correlation_id, rate_limiter, alexa_validator, security_logger
+        )
+        _performance_optimizer.end_timing("security_validation", security_start)
+        return security_start, None
+    except RuntimeError as rate_error:
+        if "Rate limit exceeded" in str(rate_error):
+            return security_start, rate_error  # Signal rate limit error
+        raise  # Re-raise other RuntimeErrors
+    except (ValueError, KeyError) as security_error:
+        return security_start, security_error  # Return error for caller to handle
+
+
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     ⚡ PERFORMANCE-OPTIMIZED: Enhanced Lambda handler with response caching and timing.
@@ -1950,61 +2125,24 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # 🚀 PHASE 4: Check response cache for identical requests
     request_hash = str(hash(str(event)))
-    cached_response, cache_hit = _response_cache.get(request_hash)
-    if cache_hit:
-        _performance_optimizer.record_cache_hit()
-        duration = _performance_optimizer.end_timing("total_request", request_start)
-        _logger.info("✅ Cache HIT - Response served in %.1fms", duration * 1000)
+    cached_response = _check_response_cache(request_hash, request_start)
+    if cached_response is not None:
         return cached_response
 
-    _performance_optimizer.record_cache_miss()
+    # Initialize security components and validate request
+    _, security_error = _initialize_security_components_and_validate(
+        event, correlation_id
+    )
 
-    # Initialize security components
-    security_start = _performance_optimizer.start_timing("security_validation")
-    rate_limiter = RateLimiter()
-    alexa_validator = AlexaValidator()
-    security_logger = SecurityEventLogger()
-
-    try:
-        # Validate request security
-        _validate_request_security(
-            event, correlation_id, rate_limiter, alexa_validator, security_logger
+    # Handle security validation errors
+    if security_error is not None:
+        if isinstance(security_error, RuntimeError) and "Rate limit exceeded" in str(
+            security_error
+        ):
+            return _create_rate_limit_error_response(request_hash)
+        return _create_security_error_response(
+            security_error, correlation_id, request_hash
         )
-        _performance_optimizer.end_timing("security_validation", security_start)
-    except RuntimeError as rate_error:
-        if "Rate limit exceeded" in str(rate_error):
-            error_response = {
-                "event": {
-                    "payload": {
-                        "type": "RATE_LIMIT_EXCEEDED",
-                        "message": "Too many requests",
-                    }
-                }
-            }
-            # Cache rate limit responses for 60 seconds
-            _response_cache.set(request_hash, error_response, ttl_seconds=60)
-            return error_response
-        raise  # Re-raise other RuntimeErrors
-    except (ValueError, KeyError) as security_error:
-        _logger.error("Security validation failed: %s", security_error)
-        security_logger.log_security_event(
-            "validation_failure",
-            "unknown",
-            f"Security validation failed: {security_error}, "
-            f"correlation_id: {correlation_id}",
-            "ERROR",
-        )
-        error_response = {
-            "event": {
-                "payload": {
-                    "type": "INTERNAL_ERROR",
-                    "message": "Security validation failed",
-                }
-            }
-        }
-        # Cache security errors for 60 seconds
-        _response_cache.set(request_hash, error_response, ttl_seconds=60)
-        return error_response
 
     # Initialize app if it doesn't yet exist
     if app is None:
@@ -2033,35 +2171,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         )
         _performance_optimizer.end_timing("ha_api_request", ha_request_start)
 
-        # 🚀 PHASE 4: Cache successful responses for 5 minutes
-        _response_cache.set(request_hash, response, ttl_seconds=300)
-
-        # Log performance statistics
-        total_duration = _performance_optimizer.end_timing(
-            "total_request", request_start
+        return _handle_response_caching_and_performance(
+            request_hash, request_start, response
         )
-        _logger.info("✅ Request completed in %.1fms", total_duration * 1000)
-
-        # Log performance stats every 10 requests for monitoring
-        perf_stats = _performance_optimizer.get_performance_stats()
-        total_requests = perf_stats.get("cache_hits", 0) + perf_stats.get(
-            "cache_misses", 0
-        )
-        if total_requests % 10 == 0:
-            _logger.info("📊 Performance stats: %s", perf_stats)
-
-        return response
 
     except ValueError as request_error:
-        # _execute_alexa_request raises ValueError with JSON error response
-        error_response = json.loads(str(request_error))
-
-        # Cache API errors for 1 minute to prevent repeated failures
-        _response_cache.set(request_hash, error_response, ttl_seconds=60)
-
-        total_duration = _performance_optimizer.end_timing(
-            "total_request", request_start
-        )
-        _logger.warning("⚠️ Request failed in %.1fms", total_duration * 1000)
-
-        return error_response
+        return _handle_api_error_caching(request_error, request_hash, request_start)
