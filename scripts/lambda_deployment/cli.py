@@ -125,7 +125,7 @@ Examples:
             "--function",
             help=(
                 "Specify which function to operate on "
-                "(smart_home_bridge, oauth_gateway, or all)"
+                "(smart_home_bridge, oauth_gateway, configuration_manager, or all)"
             ),
         )
         parser.add_argument(
@@ -157,7 +157,12 @@ Examples:
                 )
 
             # Validate function name
-            available_functions = ["smart_home_bridge", "oauth_gateway", "all"]
+            available_functions = [
+                "smart_home_bridge",
+                "oauth_gateway",
+                "configuration_manager",
+                "all",
+            ]
             if args.test and args.function == "all":
                 self.parser.error("--test cannot be used with --function all")
             if args.function not in available_functions:

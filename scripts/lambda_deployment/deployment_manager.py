@@ -58,10 +58,12 @@ class DeploymentConfig:
             lambda_functions=[
                 ("oauth_gateway.py", "oauth_gateway"),
                 ("smart_home_bridge.py", "smart_home_bridge"),
+                ("configuration_manager.py", "configuration_manager"),
             ],
             lambda_function_names={
                 "oauth_gateway": "CloudFlare-Wrapper",
                 "smart_home_bridge": "HomeAssistant",
+                "configuration_manager": "ConfigurationManager",
             },
         )
 

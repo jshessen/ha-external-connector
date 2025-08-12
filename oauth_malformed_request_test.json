@@ -1,0 +1,9 @@
+{
+  "errorMessage": "Invalid base64-encoded string: number of data characters (17) cannot be 1 more than a multiple of 4",
+  "errorType": "Error",
+  "requestId": "84468bb0-6c38-4539-943b-cac1a68f6223",
+  "stackTrace": [
+    "  File \"/var/task/lambda_function.py\", line 96, in lambda_handler\n    req_body = base64.b64decode(event.get('body')) if event.get('isBase64Encoded') else event.get('body')\n",
+    "  File \"/var/lang/lib/python3.13/base64.py\", line 88, in b64decode\n    return binascii.a2b_base64(s, strict_mode=validate)\n"
+  ]
+}

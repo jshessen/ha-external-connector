@@ -1,0 +1,17 @@
+{
+  "httpMethod": "POST",
+  "path": "/oauth/token",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "User-Agent": "Amazon-Alexa-Skill-Oauth-Client/1.0",
+    "Accept": "application/json"
+  },
+  "body": "Z3JhbnRfdHlwZT1hdXRob3JpemF0aW9uX2NvZGUmY2xpZW50X2lkPWh0dHBzJTNBJTJGJTJGcGl0YW5ndWkuYW1hem9uLmNvbSUyRiZjbGllbnRfc2VjcmV0PWI5NTQyOGFlYmRkYmIxMjdjZmVmZDNmYzNmYWI5MDAyMzBiMmVjYmZkMzVjZTJkNmY1ZGExMDk5NjAwOWMxZDMmY29kZT10ZXN0X2F1dGhvcml6YXRpb25fY29kZSZyZWRpcmVjdF91cmk9aHR0cHMlM0ElMkYlMkZhbGV4YS5hbWF6b24uY28uanAlMkZzcGElMkZza2lsbC1hY2NvdW50LWxpbmtpbmctc3RhdHVzLmh0bWw=",
+  "isBase64Encoded": true,
+  "requestContext": {
+    "requestId": "d838c31e-7b41-4b98-b132-97483d9ac503",
+    "identity": {
+      "sourceIp": "52.84.89.85"
+    }
+  }
+}

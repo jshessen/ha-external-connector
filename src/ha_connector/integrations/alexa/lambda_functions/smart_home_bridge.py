@@ -273,6 +273,19 @@ def _setup_configuration() -> configparser.ConfigParser:
     start_time = _performance_optimizer.start_timing("config_load")
 
     try:
+        # ╭─────────────────── TRANSFER BLOCK START ───────────────────╮
+        # ║                           🚀 TRANSFER-READY CODE 🚀                       ║
+        # ║ 📋 BLOCK PURPOSE: Strategic 3-tier caching for <500ms voice commands     ║
+        # ║ 🔄 TRANSFER STATUS: Ready for duplication across Lambda functions        ║
+        # ║ ⚡ PERFORMANCE: Container 0-1ms | Shared 20-50ms | SSM 100-200ms         ║
+        # ║                                                                           ║
+        # ║ 🎯 USAGE PATTERN:                                                         ║
+        # ║   1. Copy entire block between "BLOCK_START" and "BLOCK_END" markers     ║
+        # ║   2. Update function prefixes as needed (e.g., _oauth_ → _bridge_)        ║
+        # ║   3. Adjust cache keys and table names for target service                ║
+        # ║   4. Maintain identical core functionality across Lambda functions       ║
+        # ╚═══════════════════════════════════════════════════════════════════════════╝
+
         # Use shared configuration loading which handles all caching internally
         config = load_configuration(
             app_config_path=app_config_path,
@@ -286,6 +299,8 @@ def _setup_configuration() -> configparser.ConfigParser:
             duration = _performance_optimizer.end_timing("config_load", start_time)
             _logger.info("✅ Configuration loaded (%.1fms)", duration * 1000)
             return config
+
+        # ╭─────────────────── TRANSFER BLOCK END ───────────────────╮
 
         raise ValueError("Configuration must be a ConfigParser instance")
 
