@@ -15,7 +15,10 @@ This directory contains the new modular Lambda deployment system that replaces t
 
 ### 🔧 Utility Scripts
 
-- **`migrate_deployment_system.py`** - Migration tool from old to new system
+- **`deployment_manager.py`** - Main orchestrator for deployment operations
+- **`marker_system.py`** - Core marker processing and content extraction
+- **`validation_system.py`** - Comprehensive validation framework
+- **`marker_validator.py`** - Standalone validation tool
 
 ## Quick Start
 
@@ -90,7 +93,6 @@ scripts/lambda_deployment/
 ├── marker_system.py          # Core marker processing
 ├── validation_system.py      # Validation framework
 ├── marker_validator.py       # Standalone validation tool
-├── migrate_deployment_system.py  # Migration utility
 └── README.md                 # This file
 ```
 
@@ -121,20 +123,14 @@ scripts/lambda_deployment/
 - **Verbose Modes** - Detailed output for debugging
 - **Help Documentation** - Built-in help for all commands
 
-## Migration from Old System
+## Deployment Best Practices
 
-If migrating from the legacy deployment system:
+The Lambda deployment system follows established patterns for maintainable deployment:
 
-```bash
-# Create backup and migrate to new system
-python scripts/lambda_deployment/migrate_deployment_system.py --migrate
-
-# Validate migration
-python scripts/lambda_deployment/migrate_deployment_system.py --validate
-
-# Rollback if needed
-python scripts/lambda_deployment/migrate_deployment_system.py --rollback
-```
+- **Marker-based extraction**: Shared code sections are clearly marked and extracted
+- **Validation before deployment**: All deployment files are validated for syntax and imports
+- **Clean separation**: Development and deployment modes are clearly separated
+- **Version tracking**: Changes to shared code are tracked across all Lambda functions
 
 ## Development Guidelines
 

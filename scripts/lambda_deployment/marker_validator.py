@@ -22,7 +22,7 @@ import logging
 import sys
 from pathlib import Path
 
-from marker_system import (
+from scripts.lambda_deployment.marker_system import (
     DeploymentMarkerSystem,
     ExtractedContent,
     MarkerValidationResult,
