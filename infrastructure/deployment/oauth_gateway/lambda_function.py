@@ -32,6 +32,7 @@ import os
 import re
 import time
 import urllib.parse
+from dataclasses import dataclass
 from typing import Any
 
 import boto3
@@ -41,10 +42,222 @@ from botocore.exceptions import ClientError, NoCredentialsError
 # Use generic boto3 client type for runtime compatibility
 SSMClient = Any
 
+# === EMBEDDED SHARED CONFIGURATION CLASSES (AUTO-GENERATED) ===
+
+# This section contains shared configuration classes embedded for deployment
+
+
+
+@dataclass
+class RetryConfig:
+    """Configuration for exponential backoff retry logic."""
+
+    max_retries: int = 3
+    base_delay: float = 1.0
+    max_delay: float = 10.0
+    backoff_factor: float = 2.0
+    retriable_exceptions: tuple[type[Exception], ...] = (Exception,)
+
+
+@dataclass
+class CircuitBreakerConfig:
+    """Configuration for circuit breaker pattern."""
+
+    failure_threshold: int = 5
+    reset_timeout: float = 60.0
+
+
+@dataclass
+class HomeAssistantApiConfig:
+    """Configuration for Home Assistant API connections."""
+
+    base_url: str
+    token: str
+    correlation_id: str = ""
+    retry_config: RetryConfig | None = None
+    circuit_breaker_config: CircuitBreakerConfig | None = None
+
+    def __post_init__(self):
+        """Initialize default configs if not provided."""
+        if self.retry_config is None:
+            self.retry_config = RetryConfig()
+        if self.circuit_breaker_config is None:
+            self.circuit_breaker_config = CircuitBreakerConfig()
+
+
+@dataclass
+class AlexaRequestConfig:
+    """Configuration for Alexa Smart Home API requests."""
+
+    base_url: str
+    token: str
+    correlation_id: str = ""
+    cf_client_id: str = ""
+    cf_client_secret: str = ""
+
+    @property
+    def cloudflare_headers(self) -> dict[str, str]:
+        """Generate CloudFlare headers if both client ID and secret are provided."""
+        if self.cf_client_id and self.cf_client_secret:
+            return {
+                "CF-Access-Client-Id": self.cf_client_id,
+                "CF-Access-Client-Secret": self.cf_client_secret,
+            }
+        return {}
+
+    @property
+    def has_cloudflare_config(self) -> bool:
+        """Check if CloudFlare configuration is complete."""
+        return bool(self.cf_client_id and self.cf_client_secret)
+
 # === EMBEDDED SHARED CODE (AUTO-GENERATED) ===
 
 # This section contains shared configuration embedded for deployment
 
+
+
+# ╭─────────────────── SSM_PATH_CONSTANTS_START ───────────────────╮
+# ║                    🔧 CENTRALIZED SSM PATH MANAGEMENT 🔧                    ║
+# ║                                                                             ║
+# ║ Single source of truth for all SSM parameter paths and configuration       ║
+# ║ Used across all Lambda functions for consistent path management             ║
+# ╚═════════════════════════════════════════════════════════════════════════════╝
+
+# SSM Path Base Patterns
+SSM_BASE_HOME_ASSISTANT = "/home-assistant"  # Gen3 base path
+
+# Gen 2 Configuration Paths (dkaser's CloudFlare + SSM approach)
+# Gen 2 uses: APP_CONFIG_PATH="/ha-alexa/" with single JSON at "/ha-alexa/appConfig"
+SSM_GEN2_BASE_PATH = "/ha-alexa"
+SSM_GEN2_APP_CONFIG = "/ha-alexa/appConfig"  # Single JSON parameter
+
+# Gen 3 Configuration Storage Paths (modular SSM approach)
+SSM_ALEXA_CONFIG_PATH = "/home-assistant/alexa/config"
+SSM_OAUTH_CONFIG_PATH = "/home-assistant/oauth/config"
+SSM_AWS_RUNTIME_PATH = "/home-assistant/aws/runtime"
+SSM_SECURITY_POLICIES_PATH = "/home-assistant/security/policies"
+
+# Lambda ARN Storage Paths (Gen3 standard format)
+SSM_LAMBDA_ARN_BASE = "/home-assistant/alexa/lambda"
+SSM_OAUTH_GATEWAY_ARN = "/home-assistant/alexa/lambda/oauth-gateway-arn"
+SSM_SMART_HOME_BRIDGE_ARN = "/home-assistant/alexa/lambda/smart-home-bridge-arn"
+
+# APP_CONFIG_PATH: Base reference point for finding SSM parameters
+# Gen 1: No APP_CONFIG_PATH (pure environment variables)
+# Gen 2: /ha-alexa (with appConfig appended → /ha-alexa/appConfig for JSON dump)
+# Gen 3: /home-assistant/config (base for structured parameters)
+APP_CONFIG_PATH_GEN2_DEFAULT = "/ha-alexa"
+APP_CONFIG_PATH_GEN3_DEFAULT = "/home-assistant/config"
+
+# Generation-specific defaults
+APP_CONFIG_PATHS_BY_GENERATION = {
+    "generation_1_env_only": None,  # No SSM path needed
+    "generation_2_env_ssm_json": APP_CONFIG_PATH_GEN2_DEFAULT,
+    "generation_3_modular_ssm": APP_CONFIG_PATH_GEN3_DEFAULT,
+}
+
+
+def build_ssm_gen2_config_path(base_path: str = SSM_GEN2_BASE_PATH) -> str:
+    """
+    Build Gen2 SSM configuration path (dkaser's CloudFlare + SSM approach).
+
+    Gen2 uses a single JSON parameter at {base_path}/appConfig
+
+    Args:
+        base_path: Gen2 base path (default: "/ha-alexa")
+
+    Returns:
+        Gen2 SSM appConfig path
+
+    Examples:
+        build_ssm_gen2_config_path() -> "/ha-alexa/appConfig"
+        build_ssm_gen2_config_path("/custom-alexa") -> "/custom-alexa/appConfig"
+    """
+    return f"{base_path.rstrip('/')}/appConfig"
+
+
+def build_ssm_gen3_config_path(service: str, config_type: str = "config") -> str:
+    """
+    Build Gen3 SSM configuration path (modular SSM approach).
+
+    Args:
+        service: Service name (alexa, oauth, etc.)
+        config_type: Configuration type (config, runtime, etc.)
+
+    Returns:
+        Gen3 modular SSM path
+
+    Examples:
+        build_ssm_gen3_config_path("alexa", "config") -> "/home-assistant/alexa/config"
+        build_ssm_gen3_config_path("oauth", "config") -> "/home-assistant/oauth/config"
+    """
+    return f"{SSM_BASE_HOME_ASSISTANT}/{service}/{config_type}"
+
+
+def build_ssm_lambda_arn_path(lambda_name: str) -> str:
+    """
+    Build standardized SSM Lambda ARN storage path.
+
+    Args:
+        lambda_name: Lambda function name (oauth-gateway, smart-home-bridge, etc.)
+
+    Returns:
+        Standardized SSM Lambda ARN path
+
+    Examples:
+        build_ssm_lambda_arn_path("oauth-gateway")
+        -> "/home-assistant/alexa/lambda/oauth-gateway-arn"
+        build_ssm_lambda_arn_path("smart-home-bridge")
+        -> "/home-assistant/alexa/lambda/smart-home-bridge-arn"
+    """
+    return f"{SSM_LAMBDA_ARN_BASE}/{lambda_name}-arn"
+
+
+def get_app_config_path_for_generation(generation: str) -> str | None:
+    """
+    Get standard APP_CONFIG_PATH base for a configuration generation.
+
+    Args:
+        generation: Configuration generation type
+
+    Returns:
+        Standard APP_CONFIG_PATH base for the generation, or None for env-only
+
+    Raises:
+        ValueError: If generation is not recognized
+
+    Examples:
+        get_app_config_path_for_generation("generation_2_env_ssm_json") -> "/ha-alexa"
+        get_app_config_path_for_generation("generation_3_modular_ssm")
+        -> "/home-assistant/config"
+        get_app_config_path_for_generation("generation_1_env_only") -> None
+    """
+    if generation not in APP_CONFIG_PATHS_BY_GENERATION:
+        available = ", ".join(APP_CONFIG_PATHS_BY_GENERATION.keys())
+        raise ValueError(f"Unknown generation '{generation}'. Available: {available}")
+
+    return APP_CONFIG_PATHS_BY_GENERATION[generation]
+
+
+def build_ssm_config_subpath(base_path: str, subpath: str) -> str:
+    """
+    Build SSM configuration subpath with proper formatting.
+
+    Args:
+        base_path: Base SSM path
+        subpath: Subpath to append (appConfig, config, etc.)
+
+    Returns:
+        Properly formatted SSM path
+
+    Examples:
+        build_ssm_config_subpath("/homeassistant/alexa", "appConfig")
+        -> "/homeassistant/alexa/appConfig"
+    """
+    return f"{base_path.rstrip('/')}/{subpath}"
+
+
+# ╰─────────────────── SSM_PATH_CONSTANTS_END ─────────────────────╯
 
 # === PUBLIC API ===
 # Unified configuration loading and caching functions
@@ -58,7 +271,6 @@ __all__ = [
     # Configuration management system
     "ConfigurationGeneration",
     "ConfigurationManager",
-    "load_multi_generation_configuration",
     "get_configuration_stats",
     # Security infrastructure
     "SecurityConfig",
@@ -77,12 +289,399 @@ __all__ = [
     "OAuthRequestProcessor",
     "OAuthSecurityValidator",
     "OAuthConfigurationManager",
+    # Container warming utilities
+    "handle_warmup_request",
+    "create_warmup_response",
+    # Retry and resilience utilities
+    "retry_with_exponential_backoff",
+    "create_resilient_http_session",
+    "HomeAssistantRetryHandler",
+    "create_home_assistant_retry_handler",
+    # Configuration classes
+    "RetryConfig",
+    "CircuitBreakerConfig",
+    "HomeAssistantApiConfig",
+    "AlexaRequestConfig",
 ]
 
 
 def test_dynamic_deployment() -> str:
     """Test function to prove dynamic deployment works automatically."""
     return "Dynamic deployment working! This function was auto-detected and embedded."
+
+
+def handle_warmup_request(
+    event: dict[str, Any], correlation_id: str, function_name: str
+) -> bool:
+    """
+    🔥 Container Warmup Handler: Standardized Warmup Detection and Processing
+
+    Detects and handles warmup requests from the configuration manager, providing
+    consistent warmup behavior across all Lambda functions.
+
+    Args:
+        event: Lambda event dictionary to check for warmup flag
+        correlation_id: Request correlation ID for logging
+        function_name: Name of the current Lambda function for logging
+
+    Returns:
+        True if this is a warmup request, False otherwise
+    """
+    if event.get("warmup") is True:
+        _logger.info(
+            "🔥 Container warmup request received for %s (correlation: %s)",
+            function_name,
+            correlation_id,
+        )
+        return True
+    return False
+
+
+def create_warmup_response(function_name: str, correlation_id: str) -> dict[str, Any]:
+    """
+    🔥 Warmup Response Generator: Standardized Warmup Response Creation
+
+    Creates a consistent warmup response for all Lambda functions, providing
+    status information and timing data for monitoring warmup effectiveness.
+
+    Args:
+        function_name: Name of the Lambda function responding to warmup
+        correlation_id: Request correlation ID for tracking
+
+    Returns:
+        Standardized warmup response dictionary
+    """
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            {
+                "status": "warm",
+                "function": function_name,
+                "timestamp": int(time.time()),
+                "correlation_id": correlation_id,
+                "container_ready": True,
+                "warmup_source": "configuration_manager",
+            }
+        ),
+    }
+
+
+def retry_with_exponential_backoff(
+    func: Any,
+    retry_config: RetryConfig | None = None,
+    correlation_id: str = "",
+) -> Any:
+    """
+    🔄 Exponential Backoff Retry: Resilient API Call Handler
+
+    Executes a function with exponential backoff retry logic, designed specifically
+    for handling Home Assistant API timeouts and network failures during voice commands.
+
+    Args:
+        func: Function to execute with retry logic
+        retry_config: Retry configuration (uses defaults if None)
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Function result on success
+
+    Raises:
+        Last exception encountered after all retries are exhausted
+    """
+    if retry_config is None:
+        retry_config = RetryConfig()
+
+    def decorator(*args: Any, **kwargs: Any) -> Any:
+        last_exception = None
+        current_delay = retry_config.base_delay
+
+        for attempt in range(retry_config.max_retries + 1):
+            try:
+                if attempt > 0:
+                    _logger.info(
+                        "🔄 Retry attempt %d/%d after %.2fs delay (correlation: %s)",
+                        attempt,
+                        retry_config.max_retries,
+                        current_delay,
+                        correlation_id,
+                    )
+                    time.sleep(current_delay)
+
+                result = func(*args, **kwargs)
+                if attempt > 0:
+                    _logger.info(
+                        "✅ Retry successful on attempt %d (correlation: %s)",
+                        attempt + 1,
+                        correlation_id,
+                    )
+                return result
+
+            except (*retry_config.retriable_exceptions,) as e:
+                last_exception = e
+                if attempt < retry_config.max_retries:
+                    _logger.warning(
+                        "⚠️ Attempt %d failed: %s (retrying in %.2fs, correlation: %s)",
+                        attempt + 1,
+                        str(e),
+                        current_delay,
+                        correlation_id,
+                    )
+                    current_delay = min(
+                        current_delay * retry_config.backoff_factor,
+                        retry_config.max_delay,
+                    )
+                else:
+                    _logger.error(
+                        "❌ All %d attempts failed (correlation: %s)",
+                        retry_config.max_retries + 1,
+                        correlation_id,
+                    )
+
+        # All retries exhausted, raise the last exception
+        if last_exception is not None:
+            raise last_exception
+        raise RuntimeError("Exponential backoff failed but no exception was captured")
+
+    return decorator
+
+
+def create_resilient_http_session(
+    connect_timeout: float = 5.0,
+    read_timeout: float = 30.0,
+    total_timeout: float = 35.0,
+    max_retries: int = 3,
+) -> urllib3.PoolManager:
+    """
+    🌐 Resilient HTTP Session: Optimized for Home Assistant API
+
+    Creates a urllib3 PoolManager configured for reliable Home Assistant API
+    communication with appropriate timeouts and retry configuration.
+
+    Args:
+        connect_timeout: TCP connection timeout in seconds
+        read_timeout: HTTP read timeout in seconds
+        total_timeout: Total request timeout in seconds
+        max_retries: Maximum number of connection retries
+
+    Returns:
+        Configured urllib3.PoolManager for reliable HTTP requests
+    """
+    return urllib3.PoolManager(
+        timeout=urllib3.Timeout(
+            connect=connect_timeout, read=read_timeout, total=total_timeout
+        ),
+        retries=urllib3.Retry(
+            total=max_retries,
+            connect=max_retries,
+            read=max_retries,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504],
+        ),
+        headers={
+            "User-Agent": "HomeAssistant-Alexa-Bridge/2.0",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+class HomeAssistantRetryHandler:
+    """
+    🏠 Home Assistant API Retry Handler: Voice Command Resilience
+
+    Specialized retry handler for Home Assistant API calls, designed to handle
+    the specific timeout and connectivity issues identified in your CloudWatch
+    log analysis.
+
+    RESILIENCE FEATURES:
+    - Exponential backoff for temporary failures
+    - Circuit breaker pattern for persistent failures
+    - Request-specific timeout configuration
+    - Detailed logging for performance monitoring
+
+    TIMEOUT STRATEGY:
+    - Connect: 5s (network connection establishment)
+    - Read: 30s (Home Assistant processing time)
+    - Total: 35s (overall request timeout)
+    - Retries: 3 attempts with 0.5s, 1.0s, 2.0s delays
+    """
+
+    def __init__(self, api_config: HomeAssistantApiConfig):
+        """Initialize retry handler with API configuration."""
+        self.api_config = api_config
+        self.http = create_resilient_http_session()
+
+        # Circuit breaker state tracking
+        self._circuit_breaker_failures = 0
+        self._last_failure_time = 0
+
+    def make_api_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        data: dict[str, Any] | None = None,
+        additional_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Make a resilient API request to Home Assistant with retry logic.
+
+        Args:
+            endpoint: API endpoint path (e.g., "/api/states")
+            method: HTTP method (GET, POST, etc.)
+            data: Request data for POST/PUT requests
+            additional_headers: Optional additional headers (e.g., CloudFlare)
+
+        Returns:
+            Parsed JSON response from Home Assistant
+
+        Raises:
+            Exception: After all retries are exhausted
+        """
+        # Circuit breaker check
+        if self._is_circuit_breaker_open():
+            raise RuntimeError(
+                f"Circuit breaker open: too many recent failures "
+                f"(correlation: {self.api_config.correlation_id})"
+            )
+
+        url = f"{self.api_config.base_url.rstrip('/')}{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {self.api_config.token}",
+            "Content-Type": "application/json",
+        }
+
+        # Add optional additional headers (e.g., CloudFlare)
+        if additional_headers:
+            headers.update(additional_headers)
+
+        # Prepare request data
+        body = json.dumps(data) if data else None
+
+        def _make_request():
+            _logger.debug(
+                "🌐 HA API Request: %s %s (correlation: %s)",
+                method,
+                endpoint,
+                self.api_config.correlation_id,
+            )
+            start_time = time.time()
+
+            response = self.http.request(
+                method=method,
+                url=url,
+                headers=headers,
+                body=body,
+            )
+
+            duration_ms = (time.time() - start_time) * 1000
+            _logger.info(
+                "📊 HA API Response: %d in %.0fms (correlation: %s)",
+                response.status,
+                duration_ms,
+                self.api_config.correlation_id,
+            )
+
+            if response.status >= 400:
+                error_msg = f"HTTP {response.status}: {response.data.decode()}"
+                raise urllib3.exceptions.HTTPError(error_msg)
+
+            # Reset circuit breaker on success
+            self._circuit_breaker_failures = 0
+
+            return json.loads(response.data.decode())
+
+        retry_decorator = retry_with_exponential_backoff(
+            func=_make_request,
+            retry_config=self.api_config.retry_config,
+            correlation_id=self.api_config.correlation_id,
+        )
+
+        try:
+            return retry_decorator()
+        except Exception as e:
+            # Update circuit breaker
+            self._circuit_breaker_failures += 1
+            self._last_failure_time = time.time()
+            raise e
+
+    def _is_circuit_breaker_open(self) -> bool:
+        """Check if circuit breaker should prevent requests."""
+        if self.api_config.circuit_breaker_config is None:
+            return False
+
+        failure_threshold = self.api_config.circuit_breaker_config.failure_threshold
+        if self._circuit_breaker_failures < failure_threshold:
+            return False
+
+        # Auto-reset circuit breaker after configured timeout
+        reset_timeout = self.api_config.circuit_breaker_config.reset_timeout
+        if time.time() - self._last_failure_time > reset_timeout:
+            _logger.info(
+                "🔄 Circuit breaker auto-reset (correlation: %s)",
+                self.api_config.correlation_id,
+            )
+            self._circuit_breaker_failures = 0
+            return False
+
+        return True
+
+    def get_retry_stats(self) -> dict[str, Any]:
+        """Get retry handler statistics for monitoring."""
+        stats = {
+            "circuit_breaker_failures": self._circuit_breaker_failures,
+            "circuit_breaker_open": self._is_circuit_breaker_open(),
+            "last_failure_time": self._last_failure_time,
+            "correlation_id": self.api_config.correlation_id,
+        }
+
+        if self.api_config.retry_config is not None:
+            stats.update(
+                {
+                    "max_retries": self.api_config.retry_config.max_retries,
+                    "base_delay": self.api_config.retry_config.base_delay,
+                }
+            )
+
+        return stats
+
+
+def create_home_assistant_retry_handler(
+    base_url: str,
+    token: str,
+    correlation_id: str = "",
+    max_retries: int = 3,
+    base_delay: float = 0.5,
+) -> HomeAssistantRetryHandler:
+    """
+    🏭 Factory Function: Create HomeAssistantRetryHandler with sensible defaults
+
+    Creates a retry handler with backward-compatible parameters while using
+    the new configuration objects internally.
+
+    Args:
+        base_url: Home Assistant base URL
+        token: Home Assistant long-lived access token
+        correlation_id: Request correlation ID for logging
+        max_retries: Maximum number of retry attempts
+        base_delay: Initial delay between retries
+
+    Returns:
+        Configured HomeAssistantRetryHandler instance
+    """
+    api_config = HomeAssistantApiConfig(
+        base_url=base_url,
+        token=token,
+        correlation_id=correlation_id,
+        retry_config=RetryConfig(
+            max_retries=max_retries,
+            base_delay=base_delay,
+            retriable_exceptions=(
+                urllib3.exceptions.TimeoutError,
+                urllib3.exceptions.ConnectionError,
+                urllib3.exceptions.HTTPError,
+            ),
+        ),
+    )
+    return HomeAssistantRetryHandler(api_config=api_config)
 
 
 # === SHARED CONSTANTS ===
@@ -365,6 +964,10 @@ class ConfigurationManager:
                     structured_config = self._map_json_config_to_structure(
                         json_config, config_section
                     )
+                    # Apply environment overrides for additive approach
+                    structured_config = self._apply_environment_overrides(
+                        structured_config, config_section
+                    )
                     _logger.debug("✅ Loaded Gen 2 config from SSM: %s", path)
                     return structured_config
                 except (ClientError, json.JSONDecodeError):
@@ -387,6 +990,10 @@ class ConfigurationManager:
         cache_key = f"{app_config_path}:{config_section}"
         shared_config = self._get_shared_cache(cache_key)
         if shared_config:
+            # Apply environment overrides even when loading from cache
+            shared_config = self._apply_environment_overrides(
+                shared_config, config_section
+            )
             _logger.debug("Configuration loaded from shared cache")
             return shared_config
 
@@ -400,6 +1007,9 @@ class ConfigurationManager:
             response = ssm_client.get_parameter(Name=param_path, WithDecryption=True)
             param_value = response.get("Parameter", {}).get("Value", "")
             config = json.loads(param_value)
+
+            # Apply environment overrides for additive approach
+            config = self._apply_environment_overrides(config, config_section)
 
             # Cache for future requests
             self._set_shared_cache(cache_key, config)
@@ -626,22 +1236,33 @@ class ConfigurationManager:
 _config_manager = ConfigurationManager()
 
 
-def load_multi_generation_configuration(
+def load_configuration(
     config_section: str = "ha_config",
     app_config_path: str | None = None,
     force_generation: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """
-    Public API for multi-generation configuration loading.
+    Load configuration with generation detection and environment overrides.
+
+    This is the primary configuration loading API that supports multi-generation
+    configuration management with automatic generation detection and caching.
+
+    ADDITIVE CONFIGURATION APPROACH:
+    1. **Gen1 (ENV-only)**: Pure environment variables
+    2. **Gen2 (ENV→SSM)**: Environment variables + SSM JSON fallback
+    3. **Gen3 (Modular SSM)**: Structured SSM + ENV overrides + caching
+    4. **ENV overrides**: Environment variables always take highest priority
 
     Args:
-        config_section: Configuration section to load (ha_config, oauth_config, etc.)
+        config_section: Configuration section to load (ha_config,
+            oauth_config, etc.)
         app_config_path: SSM path for Gen 2/3 configurations
         force_generation: Force specific generation for testing
 
     Returns:
         Tuple of (configuration_dict, generation_used)
     """
+    # Delegate to the manager instance for now (will refactor incrementally)
     return _config_manager.load_configuration(
         config_section=config_section,
         app_config_path=app_config_path,
@@ -1899,52 +2520,8 @@ def extract_correlation_id(context: Any) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Unified Configuration Loading API
+# Configuration Caching API
 # ═══════════════════════════════════════════════════════════════════════════
-
-
-def load_configuration(
-    app_config_path: str = "",
-    config_section: str = "",
-    return_format: str = "dict",
-    required_keys: list[str] | None = None,
-) -> dict[str, Any] | configparser.ConfigParser:
-    """
-    Unified Configuration Loader: Load Configuration from SSM/Cache
-
-    This function loads configuration from SSM Parameter Store or cache.
-    If app_config_path is empty, it will attempt to load from environment fallback.
-
-    PERFORMANCE FEATURES:
-    - 3-tier caching: Container (0-1ms) → DynamoDB (20-50ms) → SSM (100-200ms)
-    - Automatic format detection and conversion
-    - Foundation pattern backward compatibility
-    - Fallback to environment variables if no app_config_path
-
-    :param app_config_path: SSM parameter path (from APP_CONFIG_PATH env var)
-    :param config_section: Configuration section (ha_config, oauth_config, etc.)
-    :param return_format: "dict" (default) or "configparser" for legacy compatibility
-    :param required_keys: Optional validation of required configuration keys
-    :return: Configuration as dict or ConfigParser based on return_format
-    """
-    # If no app_config_path provided, cannot load from SSM
-    if not app_config_path:
-        if return_format == "configparser":
-            # Return empty ConfigParser for legacy compatibility
-            config = configparser.ConfigParser()
-            config.add_section("appConfig")
-            return config
-        # Return empty dict for modern usage
-        return {}
-
-    if return_format == "configparser":
-        # Legacy foundation pattern - return ConfigParser
-        return _load_config_as_configparser(app_config_path)
-
-    # Modern dict-based configuration (default)
-    return _load_standardized_configuration(
-        config_section, app_config_path, required_keys
-    )
 
 
 def cache_configuration(
@@ -2107,59 +2684,6 @@ def _get_dynamodb_client() -> Any:  # DynamoDB types not available
     return _dynamodb_client  # pyright: ignore[reportUnknownVariableType]
 
 
-def _load_standardized_configuration(
-    config_section: str,
-    ssm_path: str,
-    _: list[str] | None = None,
-) -> dict[str, Any]:
-    """
-    Speed-Optimized Configuration Loading: <500ms Voice Command Response
-
-    Strategic 3-tier caching for optimal Lambda performance:
-    1. Container Cache: 0-1ms (lambda warm start advantage)
-    2. DynamoDB Shared Cache: 20-50ms (cross-lambda sharing)
-    3. SSM Parameter Store: 100-200ms (authoritative source)
-
-    :param config_section: Configuration section to load (ha_config, oauth_config, etc.)
-    :param ssm_path: Base SSM path for configuration parameters
-    :param required_keys: Optional list of required keys to validate
-    :return: Configuration dictionary with all settings
-    """
-    _logger.info(
-        "Loading configuration for section %s from path %s", config_section, ssm_path
-    )
-
-    # Tier 1: Container Cache (fastest)
-    cached_config = get_container_cached_config(config_section, ssm_path)
-    if cached_config:
-        _logger.debug("Configuration loaded from container cache")
-        return cached_config
-
-    # Tier 2: Shared Cache (DynamoDB)
-    shared_config = _get_shared_cached_config(config_section, ssm_path)
-    if shared_config:
-        _logger.debug("Configuration loaded from shared cache")
-        cache_config_in_container(config_section, ssm_path, shared_config)
-        return shared_config
-
-    # Tier 3: SSM Parameter Store (authoritative source)
-    try:
-        config = _load_from_ssm_parameters(ssm_path, config_section)
-        if config:
-            # Cache for future requests
-            _cache_config_in_shared_cache(config_section, ssm_path, config)
-            cache_config_in_container(config_section, ssm_path, config)
-            _logger.info("Configuration loaded from SSM and cached")
-            return config
-    except (ClientError, NoCredentialsError, ValueError, KeyError) as e:
-        _logger.warning("Failed to load from SSM: %s", str(e))
-
-    # Fallback: Minimal configuration to prevent Lambda failure
-    fallback_config = _get_minimal_fallback_configuration(config_section)
-    _logger.warning("Using fallback configuration for %s", config_section)
-    return fallback_config
-
-
 def get_container_cached_config(
     config_section: str, ssm_path: str
 ) -> dict[str, Any] | None:
@@ -2176,28 +2700,6 @@ def get_container_cached_config(
             return cache_entry["config"]  # type: ignore[no-any-return]
         # Remove expired entry
         del _config_cache[cache_key]
-    return None
-
-
-def _get_shared_cached_config(
-    config_section: str, ssm_path: str
-) -> dict[str, Any] | None:
-    """Get configuration from DynamoDB shared cache."""
-    try:
-        dynamodb = _get_dynamodb_client()
-        cache_key = f"{ssm_path}:{config_section}"
-
-        response = dynamodb.get_item(
-            TableName=SHARED_CACHE_TABLE, Key={"cache_key": {"S": cache_key}}
-        )
-
-        if "Item" in response:
-            ttl = int(response["Item"].get("ttl", {}).get("N", "0"))
-            if time.time() < ttl:
-                config_json = response["Item"]["config"]["S"]
-                return json.loads(config_json)  # type: ignore[no-any-return]
-    except (ClientError, ValueError, KeyError, json.JSONDecodeError) as e:
-        _logger.debug("Shared cache miss: %s", str(e))
     return None
 
 
@@ -2314,55 +2816,6 @@ def _cleanup_expired_cache() -> None:
 
     if expired_keys:
         _logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
-
-
-def _get_minimal_fallback_configuration(config_section: str) -> dict[str, Any]:
-    """Provide minimal fallback configuration to prevent Lambda failure."""
-    fallbacks = {
-        "ha_config": {
-            "base_url": os.environ.get("HA_BASE_URL", "http://localhost:8123"),
-            "token": os.environ.get("HA_TOKEN", "fallback_token"),
-            "verify_ssl": True,
-            "timeout": 30,
-        },
-        "oauth_config": {
-            "client_id": os.environ.get("OAUTH_CLIENT_ID", "fallback_client"),
-            "client_secret": os.environ.get("OAUTH_CLIENT_SECRET", "fallback_secret"),
-            "redirect_uri": os.environ.get("OAUTH_REDIRECT_URI", "http://localhost"),
-            "token_ttl": 3600,
-        },
-        "cloudflare_config": {
-            "client_id": os.environ.get("CF_CLIENT_ID", ""),
-            "client_secret": os.environ.get("CF_CLIENT_SECRET", ""),
-            "enabled": False,
-        },
-        "security_config": {
-            "alexa_secret": os.environ.get("ALEXA_SECRET", "fallback_secret"),
-            "api_key": os.environ.get("API_KEY", ""),
-        },
-        "aws_config": {
-            "region": os.environ.get("AWS_REGION", "us-east-1"),
-            "timeout": 30,
-            "max_retries": 3,
-        },
-    }
-    return fallbacks.get(config_section, {})
-
-
-def _load_from_ssm_parameters(ssm_path: str, config_section: str) -> dict[str, Any]:
-    """Load configuration from SSM parameters with fallback to original format."""
-    # Try original flat JSON format first (foundation pattern compatibility)
-    original_config = _try_original_ssm_format(ssm_path, config_section)
-    if original_config:
-        return original_config
-
-    # Try new structured format
-    structured_config = _try_new_ssm_format(ssm_path, config_section)
-    if structured_config:
-        return structured_config
-
-    # No configuration found
-    raise ValueError(f"No configuration found for {config_section} at {ssm_path}")
 
 
 def _try_original_ssm_format(
@@ -2553,7 +3006,6 @@ def _get_env_fallback_config() -> dict[str, Any]:
         "OAUTH_CLIENT_ID": os.environ.get("OAUTH_CLIENT_ID", "fallback_client"),
         "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET", "fallback_secret"),
     }
-
 
 # === LOGGING CONFIGURATION ===
 _debug = bool(os.environ.get("DEBUG"))
@@ -2853,6 +3305,10 @@ def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]
 
     _logger.info("=== OAUTH LAMBDA START (correlation: %s) ===", correlation_id)
     _logger.debug("Event: %s", event)
+
+    # 🔥 CONTAINER WARMING: Handle warmup requests from configuration manager
+    if handle_warmup_request(event, correlation_id, "oauth_gateway"):
+        return create_warmup_response("oauth_gateway", correlation_id)
 
     # 1. Security validation
     (is_secure, security_error, _) = _validate_oauth_security(event, correlation_id)

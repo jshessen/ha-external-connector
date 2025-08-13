@@ -6,7 +6,18 @@
 This is the **CENTRALIZED CONFIGURATION MANAGEMENT SERVICE** in your Alexa Smart Home
 ecosystem - a background service that ENRICHES other Lambda functions without creating
 dependencies.
-Each Lambda function operates in complete isolation but benefits from centralized
+Each Lambd        {
+            "cache_key": "aws_runtime_config",
+            "ssm_path": "/homeassistant/aws/runtime",
+            "description": "AWS runtime optimization settings",
+            "required_sections": ["aws_config"],
+        },
+        {
+            "cache_key": "security_policies_config",
+            "ssm_path": "/homeassistant/security/policies",
+            "description": "Enhanced security and validation policies",
+            "required_sections": ["security_config"],
+        },perates in complete isolation but benefits from centralized
 configuration optimization and standardized configuration patterns.
 
 🏢 **INDEPENDENT LAMBDA ARCHITECTURE WITH CENTRALIZED OPTIMIZATION**
@@ -135,9 +146,17 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # === SHARED CONFIGURATION IMPORTS ===
-from .shared_configuration import (  # SHARED_CONFIG_IMPORT
+from .shared_configuration import (  # SHARED_CONFIG_IMPORT; SSM Path Constants
+    SSM_ALEXA_CONFIG_PATH,
+    SSM_AWS_RUNTIME_PATH,
+    SSM_BASE_HOME_ASSISTANT,
+    SSM_OAUTH_CONFIG_PATH,
+    SSM_OAUTH_GATEWAY_ARN,
+    SSM_SECURITY_POLICIES_PATH,
+    SSM_SMART_HOME_BRIDGE_ARN,
     RateLimiter,
     SecurityEventLogger,
+    create_structured_logger,
 )
 
 # Type imports for better type hinting
@@ -147,6 +166,9 @@ if TYPE_CHECKING:
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
 
 # ╭─────────────────── FUNCTION_BLOCK_START ───────────────────╮
+
+# Initialize structured logger
+logger = create_structured_logger(__name__)
 
 # === STANDARDIZED CONFIGURATION CONSTANTS ===
 # These values can be overridden by environment variables or SSM parameters
@@ -273,16 +295,18 @@ def lambda_handler(
     professional standards while ensuring the entire office team follows consistent,
     efficient procedures without infrastructure concerns or architectural dependencies.
     """
-    print("=== Configuration Manager Starting ===")
-
-    # 🛡️ BASIC SECURITY: Rate limiting for background service (Phase 2c)
+    # Initialize variables for background service operation
     client_ip = "configuration-manager"  # Background service identifier
-    is_allowed, rate_limit_reason = _rate_limiter.is_allowed(client_ip)
+    warmup_requested = event.get("warmup", False)
+    rate_limiter = _rate_limiter  # Use global rate limiter
 
-    if not is_allowed:
-        SecurityEventLogger.log_rate_limit_violation(client_ip, rate_limit_reason)
-        print(f"⚠️ Rate limit applied: {rate_limit_reason}")
-        # Continue anyway for background service - just log the event
+    logger.info("Configuration Manager Starting")
+
+    # Apply rate limiting for non-warming requests
+    if not warmup_requested:
+        is_allowed, rate_limit_reason = rate_limiter.is_allowed(client_ip)
+        if not is_allowed:
+            logger.warning("Rate limit applied", extra={"reason": rate_limit_reason})
 
     # Log security event for background service execution
     SecurityEventLogger.log_security_event(
@@ -301,35 +325,44 @@ def lambda_handler(
         "request_id": getattr(context, "aws_request_id", "unknown")[:8],
     }
 
-    # Enhanced configuration management - cache warming + container warming
+    # 🔄 GENERATION-AWARE CONFIGURATION MANAGEMENT: Backwards Compatible + Future Ready
+    # Supports Gen1 (ENV only), Gen2 (ENV + legacy SSM), Gen3 (modular SSM)
     configs_to_warm = [
         {
             "cache_key": "homeassistant_config",
-            "ssm_path": "/homeassistant/alexa/config",
+            "ssm_path": SSM_ALEXA_CONFIG_PATH,
             "description": "HomeAssistant Smart Home Bridge configuration",
             "required_sections": ["ha_config", "oauth_config"],
+            "generation": "gen3",  # New modular format
+            "optional": False,  # Required for Smart Home Bridge functionality
         },
         {
             "cache_key": "oauth_gateway_config",
-            "ssm_path": "/homeassistant/oauth/gateway",
+            "ssm_path": SSM_OAUTH_CONFIG_PATH,
             "description": "OAuth Gateway with CloudFlare configuration",
             "required_sections": ["ha_config", "oauth_config", "cloudflare_config"],
+            "generation": "gen3",  # New modular format
+            "optional": False,  # Required for OAuth Gateway functionality
         },
         {
             "cache_key": "aws_runtime_config",
-            "ssm_path": "/homeassistant/aws/runtime",
+            "ssm_path": SSM_AWS_RUNTIME_PATH,
             "description": "AWS runtime optimization settings",
             "required_sections": ["aws_config"],
+            "generation": "gen3",  # Performance optimization feature
+            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
         },
         {
             "cache_key": "security_policies_config",
-            "ssm_path": "/homeassistant/security/policies",
+            "ssm_path": SSM_SECURITY_POLICIES_PATH,
             "description": "Security policies and rate limiting configuration",
             "required_sections": ["security_config"],
+            "generation": "gen3",  # Enhanced security feature
+            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
         },
     ]
 
-    # Process each configuration with simplified workflow
+    # Process each configuration with generation-aware tolerance
     for config in configs_to_warm:
         results["configs_attempted"] += 1
         _process_single_configuration(config, results)
@@ -337,9 +370,34 @@ def lambda_handler(
     # 🔥 CONTAINER WARMING: Keep Lambda functions warm to prevent cold starts
     _warm_lambda_containers(results)
 
-    # Log final results
+    # 📊 GENERATION-AWARE RESULTS: Focus on container warming success
     success_rate = (results["configs_warmed"] / results["configs_attempted"]) * 100
-    print(f"=== Configuration Manager Complete: {success_rate:.1f}% success ===")
+    container_success = results.get("containers_warmed", 0) > 0
+
+    # The critical measure is container warming - config cache warming is optional
+    if container_success:
+        logger.info(
+            "Configuration Manager Success - Container Warming Operational",
+            extra={
+                "container_warming": "✅ SUCCESS",
+                "cache_success_rate": f"{success_rate:.1f}%",
+                "configs_warmed": results["configs_warmed"],
+                "configs_attempted": results["configs_attempted"],
+                "containers_warmed": results.get("containers_warmed", 0),
+                "backward_compatibility": "Gen1/Gen2/Gen3 supported",
+            },
+        )
+    else:
+        logger.warning(
+            "Configuration Manager Partial - Container Warming Issues",
+            extra={
+                "container_warming": "⚠️ ISSUES",
+                "cache_success_rate": f"{success_rate:.1f}%",
+                "configs_warmed": results["configs_warmed"],
+                "configs_attempted": results["configs_attempted"],
+                "containers_warmed": results.get("containers_warmed", 0),
+            },
+        )
 
     return {"statusCode": 200, "body": json.dumps(results)}
 
@@ -348,10 +406,16 @@ def _process_single_configuration(
     config: dict[str, Any], results: dict[str, Any]
 ) -> None:
     """
-    🔧 SINGLE CONFIGURATION PROCESSING
+    🔧 GENERATION-AWARE CONFIGURATION PROCESSING
 
-    Process one configuration entry with warming only,
-    updating results tracking appropriately.
+    Process one configuration entry with backwards compatibility and fault tolerance.
+    Respects the 'optional' flag to distinguish between required configurations
+    (missing = error) and optional configurations (missing = acceptable).
+
+    Supports:
+    - Gen1: Environment variables only
+    - Gen2: Environment variables + legacy SSM (/ha-alexa/appConfig)
+    - Gen3: Modular SSM (/home-assistant/service/config)
     """
     try:
         success = warm_configuration(
@@ -362,20 +426,168 @@ def _process_single_configuration(
 
         if success:
             results["configs_warmed"] += 1
-            print(f"✅ Warmed: {config['description']}")
+            logger.info(
+                "Configuration warmed successfully",
+                extra={
+                    "description": config["description"],
+                    "generation": config.get("generation", "unknown"),
+                },
+            )
         else:
-            error_msg = f"Failed to warm: {config['description']}"
-            results["errors"].append(error_msg)
-            print(f"❌ {error_msg}")
+            # Check if this configuration is optional (Gen3 enhancements)
+            is_optional = config.get("optional", False)
+            generation = config.get("generation", "unknown")
+
+            if is_optional:
+                # Optional configurations: Log as info, don't add to errors
+                logger.info(
+                    "Optional configuration not found (backwards compatible)",
+                    extra={
+                        "description": config["description"],
+                        "generation": generation,
+                        "ssm_path": config["ssm_path"],
+                        "impact": "No impact - system uses Gen1/Gen2 fallbacks",
+                    },
+                )
+            else:
+                # Required configurations: Log as error for troubleshooting
+                error_msg = f"Required configuration missing: {config['description']}"
+                results["errors"].append(error_msg)
+                logger.warning(
+                    "Required configuration not found",
+                    extra={
+                        "description": config["description"],
+                        "generation": generation,
+                        "ssm_path": config["ssm_path"],
+                        "impact": "Function may use Gen1/Gen2 fallbacks",
+                        "error_message": error_msg,
+                    },
+                )
 
     except (KeyError, ValueError, TypeError, OSError) as e:
-        error_msg = f"Error warming {config['description']}: {str(e)}"
-        results["errors"].append(error_msg)
-        print(f"💥 {error_msg}")
+        # Check if this is an optional configuration
+        is_optional = config.get("optional", False)
+        generation = config.get("generation", "unknown")
+
+        if is_optional:
+            # Optional configurations: Log as info, continue gracefully
+            logger.info(
+                "Optional configuration error (backwards compatible)",
+                extra={
+                    "description": config["description"],
+                    "generation": generation,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "impact": "No impact - system operates with Gen1/Gen2 fallbacks",
+                },
+            )
+        else:
+            # Required configurations: Add to errors for troubleshooting
+            error_msg = (
+                f"Error loading required config {config['description']}: {str(e)}"
+            )
+            results["errors"].append(error_msg)
+            logger.error(
+                "Required configuration error",
+                extra={
+                    "description": config["description"],
+                    "generation": generation,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "error_message": error_msg,
+                },
+            )
     except Exception as e:  # pylint: disable=broad-exception-caught
+        # Unexpected errors: Always log regardless of optional status
         error_msg = f"Unexpected error warming {config['description']}: {str(e)}"
         results["errors"].append(error_msg)
-        print(f"💥 {error_msg}")
+        logger.error(
+            "Unexpected error during configuration warming",
+            extra={
+                "description": config["description"],
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+        )
+
+
+def _get_lambda_arn_from_ssm(function_key: str) -> str | None:
+    """
+    Get Lambda function ARN from SSM parameter.
+
+    Args:
+        function_key: Key identifying the function (oauth_gateway, smart_home_bridge)
+
+    Returns:
+        Lambda function ARN or None if not found
+    """
+    ssm_client = (
+        boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+            "ssm"
+        )
+    )
+
+    # Define SSM parameter paths for Lambda ARNs using centralized constants
+    ssm_paths = {
+        "oauth_gateway": SSM_OAUTH_GATEWAY_ARN,
+        "smart_home_bridge": SSM_SMART_HOME_BRIDGE_ARN,
+    }
+
+    ssm_path = ssm_paths.get(function_key)
+    if not ssm_path:
+        logger.warning(
+            "Unknown function key for Lambda ARN lookup",
+            extra={
+                "function_key": function_key,
+                "available_keys": list(ssm_paths.keys()),
+                "service": "ssm",
+                "operation": "lambda_arn_lookup",
+            },
+        )
+        return None
+
+    try:
+        response = ssm_client.get_parameter(Name=ssm_path, WithDecryption=False)
+        arn = response.get("Parameter", {}).get("Value")
+        if arn:
+            logger.info(
+                "Lambda ARN loaded from SSM",
+                extra={
+                    "ssm_path": ssm_path,
+                    "function_key": function_key,
+                    "service": "ssm",
+                    "operation": "lambda_arn_lookup",
+                },
+            )
+            return arn
+        logger.warning(
+            "Empty parameter value in SSM",
+            extra={
+                "ssm_path": ssm_path,
+                "function_key": function_key,
+                "service": "ssm",
+                "operation": "lambda_arn_lookup",
+            },
+        )
+        return None
+
+    except ssm_client.exceptions.ParameterNotFound:
+        logger.info(
+            "SSM parameter not found", extra={"ssm_path": ssm_path, "service": "ssm"}
+        )
+        return None
+
+    except (BotoCoreError, ClientError) as e:
+        logger.error(
+            "Failed to load Lambda ARN from SSM",
+            extra={
+                "ssm_path": ssm_path,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "service": "ssm",
+            },
+        )
+        return None
 
 
 def _warm_lambda_containers(results: dict[str, Any]) -> None:
@@ -399,9 +611,9 @@ def _warm_lambda_containers(results: dict[str, Any]) -> None:
     """
     lambda_functions_to_warm = [
         {
-            "function_name": os.environ.get(
-                "OAUTH_GATEWAY_FUNCTION_NAME", "HomeAssistant-OAuth-Gateway"
-            ),
+            "function_name": os.environ.get("OAUTH_GATEWAY_FUNCTION_ARN")
+            or _get_lambda_arn_from_ssm("oauth_gateway")
+            or "CloudFlare-Wrapper",
             "payload": {
                 "warmup": True,
                 "source": "configuration_manager",
@@ -410,9 +622,9 @@ def _warm_lambda_containers(results: dict[str, Any]) -> None:
             "description": "OAuth Gateway Container",
         },
         {
-            "function_name": os.environ.get(
-                "SMART_HOME_BRIDGE_FUNCTION_NAME", "HomeAssistant-Smart-Home-Bridge"
-            ),
+            "function_name": os.environ.get("SMART_HOME_BRIDGE_FUNCTION_ARN")
+            or _get_lambda_arn_from_ssm("smart_home_bridge")
+            or "HomeAssistant",
             "payload": {
                 "warmup": True,
                 "source": "configuration_manager",
@@ -443,7 +655,15 @@ def _warm_lambda_containers(results: dict[str, Any]) -> None:
                 )
 
                 results["containers_warmed"] += 1
-                print(f"🔥 Container warmed: {function_config['description']}")
+                logger.info(
+                    "Container warmed successfully",
+                    extra={
+                        "description": function_config["description"],
+                        "function_name": function_config["function_name"],
+                        "service": "lambda",
+                        "operation": "container_warming",
+                    },
+                )
 
                 # 🛡️ SECURITY LOGGING: Track container warming for monitoring
                 SecurityEventLogger.log_security_event(
@@ -456,7 +676,17 @@ def _warm_lambda_containers(results: dict[str, Any]) -> None:
             except (ClientError, BotoCoreError) as e:
                 error_msg = f"Failed to warm {function_config['description']}: {str(e)}"
                 results["errors"].append(error_msg)
-                print(f"❌ {error_msg}")
+                logger.error(
+                    "Container warming failed",
+                    extra={
+                        "description": function_config["description"],
+                        "function_name": function_config["function_name"],
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "service": "lambda",
+                        "operation": "container_warming",
+                    },
+                )
 
                 # 🛡️ SECURITY LOGGING: Track warming failures
                 SecurityEventLogger.log_security_event(
@@ -470,7 +700,15 @@ def _warm_lambda_containers(results: dict[str, Any]) -> None:
     except (ClientError, BotoCoreError, KeyError, ValueError) as e:
         error_msg = f"Lambda client initialization failed: {str(e)}"
         results["errors"].append(error_msg)
-        print(f"💥 {error_msg}")
+        logger.error(
+            "Lambda client initialization failed",
+            extra={
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "service": "lambda",
+                "operation": "client_initialization",
+            },
+        )
 
         # Set zero results if client initialization failed
         results["containers_warmed"] = 0
@@ -520,11 +758,14 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
             return False
 
         # Validate SSM path format (basic security against path injection)
-        if not ssm_path.startswith("/homeassistant/"):
+        # Accept Gen2 (/ha-alexa/) and Gen3 (/home-assistant/) path formats
+        valid_prefixes = ["/ha-alexa/", SSM_BASE_HOME_ASSISTANT + "/"]
+        if not any(ssm_path.startswith(prefix) for prefix in valid_prefixes):
             SecurityEventLogger.log_validation_failure(
                 "configuration-manager",
                 "ssm_path_validation",
-                f"Invalid SSM path format: {ssm_path}",
+                f"Invalid SSM path format: {ssm_path}. "
+                f"Must start with /ha-alexa/ or {SSM_BASE_HOME_ASSISTANT}/",
             )
             return False
         # Initialize DynamoDB client
@@ -543,20 +784,52 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
 
         # Check if cache is already warm and valid
         if is_cache_warm(dynamodb, table_name, cache_key):
-            print(f"Cache already warm for: {description}")
+            logger.info(
+                "Configuration cache already warm",
+                extra={
+                    "description": description,
+                    "cache_key": cache_key,
+                    "service": "dynamodb",
+                    "operation": "cache_check",
+                },
+            )
             return True
 
         # Load configuration from SSM
-        print(f"Loading fresh config from SSM: {ssm_path}")
+        logger.info(
+            "Loading fresh configuration from SSM",
+            extra={
+                "ssm_path": ssm_path,
+                "description": description,
+                "service": "ssm",
+                "operation": "parameter_loading",
+            },
+        )
         config_data = load_from_ssm(ssm, ssm_path)
 
         if not config_data:
-            print(f"No configuration found at: {ssm_path}")
+            logger.warning(
+                "No configuration found in SSM",
+                extra={
+                    "ssm_path": ssm_path,
+                    "description": description,
+                    "service": "ssm",
+                    "operation": "parameter_loading",
+                },
+            )
             return False
 
         # Store in shared cache
         store_in_cache(dynamodb, table_name, cache_key, config_data)
-        print(f"Cached configuration for: {description}")
+        logger.info(
+            "Configuration cached successfully",
+            extra={
+                "description": description,
+                "cache_key": cache_key,
+                "service": "dynamodb",
+                "operation": "cache_storage",
+            },
+        )
 
         # 🛡️ SECURITY LOGGING (Phase 2c): Log successful configuration management
         SecurityEventLogger.log_security_event(
@@ -569,8 +842,15 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
         return True
 
     except (ClientError, BotoCoreError, KeyError, ValueError, TypeError, OSError) as e:
-        error_msg = f"Failed to warm {description}: {str(e)}"
-        print(error_msg)
+        logger.error(
+            "Configuration warming failed",
+            extra={
+                "description": description,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "operation": "configuration_warming",
+            },
+        )
 
         # 🛡️ SECURITY LOGGING (Phase 2c): Log configuration failures for monitoring
         SecurityEventLogger.log_security_event(
@@ -594,9 +874,23 @@ def ensure_cache_table_exists(dynamodb: Any, table_name: str) -> None:
     """
     try:
         dynamodb.describe_table(TableName=table_name)
-        print(f"Cache table exists: {table_name}")
+        logger.info(
+            "Cache table already exists",
+            extra={
+                "table_name": table_name,
+                "service": "dynamodb",
+                "operation": "table_check",
+            },
+        )
     except Exception:  # pylint: disable=broad-exception-caught # AWS service check
-        print(f"Creating cache table: {table_name}")
+        logger.info(
+            "Creating cache table",
+            extra={
+                "table_name": table_name,
+                "service": "dynamodb",
+                "operation": "table_creation",
+            },
+        )
         dynamodb.create_table(
             TableName=table_name,
             KeySchema=[{"AttributeName": "cache_key", "KeyType": "HASH"}],
@@ -611,9 +905,24 @@ def ensure_cache_table_exists(dynamodb: Any, table_name: str) -> None:
                 TableName=table_name,
                 TimeToLiveSpecification={"AttributeName": "ttl", "Enabled": True},
             )
-            print(f"Enabled TTL for: {table_name}")
+            logger.info(
+                "TTL enabled for cache table",
+                extra={
+                    "table_name": table_name,
+                    "service": "dynamodb",
+                    "operation": "ttl_configuration",
+                },
+            )
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"TTL setup warning: {str(e)}")
+            logger.warning(
+                "TTL setup encountered warning",
+                extra={
+                    "table_name": table_name,
+                    "error": str(e),
+                    "service": "dynamodb",
+                    "operation": "ttl_configuration",
+                },
+            )
 
 
 def is_cache_warm(dynamodb: Any, table_name: str, cache_key: str) -> bool:
@@ -672,7 +981,16 @@ def load_from_ssm(ssm: Any, ssm_path: str) -> dict[str, Any] | None:
 
         return config_data if config_data else None
     except (ClientError, BotoCoreError) as e:
-        print(f"SSM load error: {str(e)}")
+        logger.error(
+            "SSM parameter loading failed",
+            extra={
+                "ssm_path": ssm_path,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "service": "ssm",
+                "operation": "parameter_loading",
+            },
+        )
         return None
 
 
@@ -727,4 +1045,6 @@ if __name__ == "__main__":
         aws_request_id = "test-request-123"
 
     result = lambda_handler({}, MockContext())
-    print(json.dumps(result, indent=2))
+    logger.info(
+        "Local test completed", extra={"result": result, "operation": "local_testing"}
+    )

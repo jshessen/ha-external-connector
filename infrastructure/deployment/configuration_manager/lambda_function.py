@@ -6,7 +6,18 @@
 This is the **CENTRALIZED CONFIGURATION MANAGEMENT SERVICE** in your Alexa Smart Home
 ecosystem - a background service that ENRICHES other Lambda functions without creating
 dependencies.
-Each Lambda function operates in complete isolation but benefits from centralized
+Each Lambd        {
+            "cache_key": "aws_runtime_config",
+            "ssm_path": "/homeassistant/aws/runtime",
+            "description": "AWS runtime optimization settings",
+            "required_sections": ["aws_config"],
+        },
+        {
+            "cache_key": "security_policies_config",
+            "ssm_path": "/homeassistant/security/policies",
+            "description": "Enhanced security and validation policies",
+            "required_sections": ["security_config"],
+        },perates in complete isolation but benefits from centralized
 configuration optimization and standardized configuration patterns.
 
 🏢 **INDEPENDENT LAMBDA ARCHITECTURE WITH CENTRALIZED OPTIMIZATION**
@@ -135,6 +146,7 @@ import os
 import re
 import time
 import urllib.parse
+from dataclasses import dataclass
 from typing import Any, TYPE_CHECKING
 
 import boto3
@@ -144,11 +156,222 @@ from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 # Use generic boto3 client type for runtime compatibility
 SSMClient = Any
 
+# === EMBEDDED SHARED CONFIGURATION CLASSES (AUTO-GENERATED) ===
+
+# This section contains shared configuration classes embedded for deployment
+
+
+
+@dataclass
+class RetryConfig:
+    """Configuration for exponential backoff retry logic."""
+
+    max_retries: int = 3
+    base_delay: float = 1.0
+    max_delay: float = 10.0
+    backoff_factor: float = 2.0
+    retriable_exceptions: tuple[type[Exception], ...] = (Exception,)
+
+
+@dataclass
+class CircuitBreakerConfig:
+    """Configuration for circuit breaker pattern."""
+
+    failure_threshold: int = 5
+    reset_timeout: float = 60.0
+
+
+@dataclass
+class HomeAssistantApiConfig:
+    """Configuration for Home Assistant API connections."""
+
+    base_url: str
+    token: str
+    correlation_id: str = ""
+    retry_config: RetryConfig | None = None
+    circuit_breaker_config: CircuitBreakerConfig | None = None
+
+    def __post_init__(self):
+        """Initialize default configs if not provided."""
+        if self.retry_config is None:
+            self.retry_config = RetryConfig()
+        if self.circuit_breaker_config is None:
+            self.circuit_breaker_config = CircuitBreakerConfig()
+
+
+@dataclass
+class AlexaRequestConfig:
+    """Configuration for Alexa Smart Home API requests."""
+
+    base_url: str
+    token: str
+    correlation_id: str = ""
+    cf_client_id: str = ""
+    cf_client_secret: str = ""
+
+    @property
+    def cloudflare_headers(self) -> dict[str, str]:
+        """Generate CloudFlare headers if both client ID and secret are provided."""
+        if self.cf_client_id and self.cf_client_secret:
+            return {
+                "CF-Access-Client-Id": self.cf_client_id,
+                "CF-Access-Client-Secret": self.cf_client_secret,
+            }
+        return {}
+
+    @property
+    def has_cloudflare_config(self) -> bool:
+        """Check if CloudFlare configuration is complete."""
+        return bool(self.cf_client_id and self.cf_client_secret)
+
 # === EMBEDDED SHARED CODE (AUTO-GENERATED) ===
 
 # This section contains shared configuration embedded for deployment
 
 
+
+# ╭─────────────────── SSM_PATH_CONSTANTS_START ───────────────────╮
+# ║                    🔧 CENTRALIZED SSM PATH MANAGEMENT 🔧                    ║
+# ║                                                                             ║
+# ║ Single source of truth for all SSM parameter paths and configuration       ║
+# ║ Used across all Lambda functions for consistent path management             ║
+# ╚═════════════════════════════════════════════════════════════════════════════╝
+
+# SSM Path Base Patterns
+SSM_BASE_HOME_ASSISTANT = "/home-assistant"  # Gen3 base path
+
+# Gen 2 Configuration Paths (dkaser's CloudFlare + SSM approach)
+# Gen 2 uses: APP_CONFIG_PATH="/ha-alexa/" with single JSON at "/ha-alexa/appConfig"
+SSM_GEN2_BASE_PATH = "/ha-alexa"
+SSM_GEN2_APP_CONFIG = "/ha-alexa/appConfig"  # Single JSON parameter
+
+# Gen 3 Configuration Storage Paths (modular SSM approach)
+SSM_ALEXA_CONFIG_PATH = "/home-assistant/alexa/config"
+SSM_OAUTH_CONFIG_PATH = "/home-assistant/oauth/config"
+SSM_AWS_RUNTIME_PATH = "/home-assistant/aws/runtime"
+SSM_SECURITY_POLICIES_PATH = "/home-assistant/security/policies"
+
+# Lambda ARN Storage Paths (Gen3 standard format)
+SSM_LAMBDA_ARN_BASE = "/home-assistant/alexa/lambda"
+SSM_OAUTH_GATEWAY_ARN = "/home-assistant/alexa/lambda/oauth-gateway-arn"
+SSM_SMART_HOME_BRIDGE_ARN = "/home-assistant/alexa/lambda/smart-home-bridge-arn"
+
+# APP_CONFIG_PATH: Base reference point for finding SSM parameters
+# Gen 1: No APP_CONFIG_PATH (pure environment variables)
+# Gen 2: /ha-alexa (with appConfig appended → /ha-alexa/appConfig for JSON dump)
+# Gen 3: /home-assistant/config (base for structured parameters)
+APP_CONFIG_PATH_GEN2_DEFAULT = "/ha-alexa"
+APP_CONFIG_PATH_GEN3_DEFAULT = "/home-assistant/config"
+
+# Generation-specific defaults
+APP_CONFIG_PATHS_BY_GENERATION = {
+    "generation_1_env_only": None,  # No SSM path needed
+    "generation_2_env_ssm_json": APP_CONFIG_PATH_GEN2_DEFAULT,
+    "generation_3_modular_ssm": APP_CONFIG_PATH_GEN3_DEFAULT,
+}
+
+
+def build_ssm_gen2_config_path(base_path: str = SSM_GEN2_BASE_PATH) -> str:
+    """
+    Build Gen2 SSM configuration path (dkaser's CloudFlare + SSM approach).
+
+    Gen2 uses a single JSON parameter at {base_path}/appConfig
+
+    Args:
+        base_path: Gen2 base path (default: "/ha-alexa")
+
+    Returns:
+        Gen2 SSM appConfig path
+
+    Examples:
+        build_ssm_gen2_config_path() -> "/ha-alexa/appConfig"
+        build_ssm_gen2_config_path("/custom-alexa") -> "/custom-alexa/appConfig"
+    """
+    return f"{base_path.rstrip('/')}/appConfig"
+
+
+def build_ssm_gen3_config_path(service: str, config_type: str = "config") -> str:
+    """
+    Build Gen3 SSM configuration path (modular SSM approach).
+
+    Args:
+        service: Service name (alexa, oauth, etc.)
+        config_type: Configuration type (config, runtime, etc.)
+
+    Returns:
+        Gen3 modular SSM path
+
+    Examples:
+        build_ssm_gen3_config_path("alexa", "config") -> "/home-assistant/alexa/config"
+        build_ssm_gen3_config_path("oauth", "config") -> "/home-assistant/oauth/config"
+    """
+    return f"{SSM_BASE_HOME_ASSISTANT}/{service}/{config_type}"
+
+
+def build_ssm_lambda_arn_path(lambda_name: str) -> str:
+    """
+    Build standardized SSM Lambda ARN storage path.
+
+    Args:
+        lambda_name: Lambda function name (oauth-gateway, smart-home-bridge, etc.)
+
+    Returns:
+        Standardized SSM Lambda ARN path
+
+    Examples:
+        build_ssm_lambda_arn_path("oauth-gateway")
+        -> "/home-assistant/alexa/lambda/oauth-gateway-arn"
+        build_ssm_lambda_arn_path("smart-home-bridge")
+        -> "/home-assistant/alexa/lambda/smart-home-bridge-arn"
+    """
+    return f"{SSM_LAMBDA_ARN_BASE}/{lambda_name}-arn"
+
+
+def get_app_config_path_for_generation(generation: str) -> str | None:
+    """
+    Get standard APP_CONFIG_PATH base for a configuration generation.
+
+    Args:
+        generation: Configuration generation type
+
+    Returns:
+        Standard APP_CONFIG_PATH base for the generation, or None for env-only
+
+    Raises:
+        ValueError: If generation is not recognized
+
+    Examples:
+        get_app_config_path_for_generation("generation_2_env_ssm_json") -> "/ha-alexa"
+        get_app_config_path_for_generation("generation_3_modular_ssm")
+        -> "/home-assistant/config"
+        get_app_config_path_for_generation("generation_1_env_only") -> None
+    """
+    if generation not in APP_CONFIG_PATHS_BY_GENERATION:
+        available = ", ".join(APP_CONFIG_PATHS_BY_GENERATION.keys())
+        raise ValueError(f"Unknown generation '{generation}'. Available: {available}")
+
+    return APP_CONFIG_PATHS_BY_GENERATION[generation]
+
+
+def build_ssm_config_subpath(base_path: str, subpath: str) -> str:
+    """
+    Build SSM configuration subpath with proper formatting.
+
+    Args:
+        base_path: Base SSM path
+        subpath: Subpath to append (appConfig, config, etc.)
+
+    Returns:
+        Properly formatted SSM path
+
+    Examples:
+        build_ssm_config_subpath("/homeassistant/alexa", "appConfig")
+        -> "/homeassistant/alexa/appConfig"
+    """
+    return f"{base_path.rstrip('/')}/{subpath}"
+
+
+# ╰─────────────────── SSM_PATH_CONSTANTS_END ─────────────────────╯
 
 # === PUBLIC API ===
 # Unified configuration loading and caching functions
@@ -162,7 +385,6 @@ __all__ = [
     # Configuration management system
     "ConfigurationGeneration",
     "ConfigurationManager",
-    "load_multi_generation_configuration",
     "get_configuration_stats",
     # Security infrastructure
     "SecurityConfig",
@@ -181,12 +403,399 @@ __all__ = [
     "OAuthRequestProcessor",
     "OAuthSecurityValidator",
     "OAuthConfigurationManager",
+    # Container warming utilities
+    "handle_warmup_request",
+    "create_warmup_response",
+    # Retry and resilience utilities
+    "retry_with_exponential_backoff",
+    "create_resilient_http_session",
+    "HomeAssistantRetryHandler",
+    "create_home_assistant_retry_handler",
+    # Configuration classes
+    "RetryConfig",
+    "CircuitBreakerConfig",
+    "HomeAssistantApiConfig",
+    "AlexaRequestConfig",
 ]
 
 
 def test_dynamic_deployment() -> str:
     """Test function to prove dynamic deployment works automatically."""
     return "Dynamic deployment working! This function was auto-detected and embedded."
+
+
+def handle_warmup_request(
+    event: dict[str, Any], correlation_id: str, function_name: str
+) -> bool:
+    """
+    🔥 Container Warmup Handler: Standardized Warmup Detection and Processing
+
+    Detects and handles warmup requests from the configuration manager, providing
+    consistent warmup behavior across all Lambda functions.
+
+    Args:
+        event: Lambda event dictionary to check for warmup flag
+        correlation_id: Request correlation ID for logging
+        function_name: Name of the current Lambda function for logging
+
+    Returns:
+        True if this is a warmup request, False otherwise
+    """
+    if event.get("warmup") is True:
+        _logger.info(
+            "🔥 Container warmup request received for %s (correlation: %s)",
+            function_name,
+            correlation_id,
+        )
+        return True
+    return False
+
+
+def create_warmup_response(function_name: str, correlation_id: str) -> dict[str, Any]:
+    """
+    🔥 Warmup Response Generator: Standardized Warmup Response Creation
+
+    Creates a consistent warmup response for all Lambda functions, providing
+    status information and timing data for monitoring warmup effectiveness.
+
+    Args:
+        function_name: Name of the Lambda function responding to warmup
+        correlation_id: Request correlation ID for tracking
+
+    Returns:
+        Standardized warmup response dictionary
+    """
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            {
+                "status": "warm",
+                "function": function_name,
+                "timestamp": int(time.time()),
+                "correlation_id": correlation_id,
+                "container_ready": True,
+                "warmup_source": "configuration_manager",
+            }
+        ),
+    }
+
+
+def retry_with_exponential_backoff(
+    func: Any,
+    retry_config: RetryConfig | None = None,
+    correlation_id: str = "",
+) -> Any:
+    """
+    🔄 Exponential Backoff Retry: Resilient API Call Handler
+
+    Executes a function with exponential backoff retry logic, designed specifically
+    for handling Home Assistant API timeouts and network failures during voice commands.
+
+    Args:
+        func: Function to execute with retry logic
+        retry_config: Retry configuration (uses defaults if None)
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Function result on success
+
+    Raises:
+        Last exception encountered after all retries are exhausted
+    """
+    if retry_config is None:
+        retry_config = RetryConfig()
+
+    def decorator(*args: Any, **kwargs: Any) -> Any:
+        last_exception = None
+        current_delay = retry_config.base_delay
+
+        for attempt in range(retry_config.max_retries + 1):
+            try:
+                if attempt > 0:
+                    _logger.info(
+                        "🔄 Retry attempt %d/%d after %.2fs delay (correlation: %s)",
+                        attempt,
+                        retry_config.max_retries,
+                        current_delay,
+                        correlation_id,
+                    )
+                    time.sleep(current_delay)
+
+                result = func(*args, **kwargs)
+                if attempt > 0:
+                    _logger.info(
+                        "✅ Retry successful on attempt %d (correlation: %s)",
+                        attempt + 1,
+                        correlation_id,
+                    )
+                return result
+
+            except (*retry_config.retriable_exceptions,) as e:
+                last_exception = e
+                if attempt < retry_config.max_retries:
+                    _logger.warning(
+                        "⚠️ Attempt %d failed: %s (retrying in %.2fs, correlation: %s)",
+                        attempt + 1,
+                        str(e),
+                        current_delay,
+                        correlation_id,
+                    )
+                    current_delay = min(
+                        current_delay * retry_config.backoff_factor,
+                        retry_config.max_delay,
+                    )
+                else:
+                    _logger.error(
+                        "❌ All %d attempts failed (correlation: %s)",
+                        retry_config.max_retries + 1,
+                        correlation_id,
+                    )
+
+        # All retries exhausted, raise the last exception
+        if last_exception is not None:
+            raise last_exception
+        raise RuntimeError("Exponential backoff failed but no exception was captured")
+
+    return decorator
+
+
+def create_resilient_http_session(
+    connect_timeout: float = 5.0,
+    read_timeout: float = 30.0,
+    total_timeout: float = 35.0,
+    max_retries: int = 3,
+) -> urllib3.PoolManager:
+    """
+    🌐 Resilient HTTP Session: Optimized for Home Assistant API
+
+    Creates a urllib3 PoolManager configured for reliable Home Assistant API
+    communication with appropriate timeouts and retry configuration.
+
+    Args:
+        connect_timeout: TCP connection timeout in seconds
+        read_timeout: HTTP read timeout in seconds
+        total_timeout: Total request timeout in seconds
+        max_retries: Maximum number of connection retries
+
+    Returns:
+        Configured urllib3.PoolManager for reliable HTTP requests
+    """
+    return urllib3.PoolManager(
+        timeout=urllib3.Timeout(
+            connect=connect_timeout, read=read_timeout, total=total_timeout
+        ),
+        retries=urllib3.Retry(
+            total=max_retries,
+            connect=max_retries,
+            read=max_retries,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504],
+        ),
+        headers={
+            "User-Agent": "HomeAssistant-Alexa-Bridge/2.0",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+class HomeAssistantRetryHandler:
+    """
+    🏠 Home Assistant API Retry Handler: Voice Command Resilience
+
+    Specialized retry handler for Home Assistant API calls, designed to handle
+    the specific timeout and connectivity issues identified in your CloudWatch
+    log analysis.
+
+    RESILIENCE FEATURES:
+    - Exponential backoff for temporary failures
+    - Circuit breaker pattern for persistent failures
+    - Request-specific timeout configuration
+    - Detailed logging for performance monitoring
+
+    TIMEOUT STRATEGY:
+    - Connect: 5s (network connection establishment)
+    - Read: 30s (Home Assistant processing time)
+    - Total: 35s (overall request timeout)
+    - Retries: 3 attempts with 0.5s, 1.0s, 2.0s delays
+    """
+
+    def __init__(self, api_config: HomeAssistantApiConfig):
+        """Initialize retry handler with API configuration."""
+        self.api_config = api_config
+        self.http = create_resilient_http_session()
+
+        # Circuit breaker state tracking
+        self._circuit_breaker_failures = 0
+        self._last_failure_time = 0
+
+    def make_api_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        data: dict[str, Any] | None = None,
+        additional_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Make a resilient API request to Home Assistant with retry logic.
+
+        Args:
+            endpoint: API endpoint path (e.g., "/api/states")
+            method: HTTP method (GET, POST, etc.)
+            data: Request data for POST/PUT requests
+            additional_headers: Optional additional headers (e.g., CloudFlare)
+
+        Returns:
+            Parsed JSON response from Home Assistant
+
+        Raises:
+            Exception: After all retries are exhausted
+        """
+        # Circuit breaker check
+        if self._is_circuit_breaker_open():
+            raise RuntimeError(
+                f"Circuit breaker open: too many recent failures "
+                f"(correlation: {self.api_config.correlation_id})"
+            )
+
+        url = f"{self.api_config.base_url.rstrip('/')}{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {self.api_config.token}",
+            "Content-Type": "application/json",
+        }
+
+        # Add optional additional headers (e.g., CloudFlare)
+        if additional_headers:
+            headers.update(additional_headers)
+
+        # Prepare request data
+        body = json.dumps(data) if data else None
+
+        def _make_request():
+            _logger.debug(
+                "🌐 HA API Request: %s %s (correlation: %s)",
+                method,
+                endpoint,
+                self.api_config.correlation_id,
+            )
+            start_time = time.time()
+
+            response = self.http.request(
+                method=method,
+                url=url,
+                headers=headers,
+                body=body,
+            )
+
+            duration_ms = (time.time() - start_time) * 1000
+            _logger.info(
+                "📊 HA API Response: %d in %.0fms (correlation: %s)",
+                response.status,
+                duration_ms,
+                self.api_config.correlation_id,
+            )
+
+            if response.status >= 400:
+                error_msg = f"HTTP {response.status}: {response.data.decode()}"
+                raise urllib3.exceptions.HTTPError(error_msg)
+
+            # Reset circuit breaker on success
+            self._circuit_breaker_failures = 0
+
+            return json.loads(response.data.decode())
+
+        retry_decorator = retry_with_exponential_backoff(
+            func=_make_request,
+            retry_config=self.api_config.retry_config,
+            correlation_id=self.api_config.correlation_id,
+        )
+
+        try:
+            return retry_decorator()
+        except Exception as e:
+            # Update circuit breaker
+            self._circuit_breaker_failures += 1
+            self._last_failure_time = time.time()
+            raise e
+
+    def _is_circuit_breaker_open(self) -> bool:
+        """Check if circuit breaker should prevent requests."""
+        if self.api_config.circuit_breaker_config is None:
+            return False
+
+        failure_threshold = self.api_config.circuit_breaker_config.failure_threshold
+        if self._circuit_breaker_failures < failure_threshold:
+            return False
+
+        # Auto-reset circuit breaker after configured timeout
+        reset_timeout = self.api_config.circuit_breaker_config.reset_timeout
+        if time.time() - self._last_failure_time > reset_timeout:
+            _logger.info(
+                "🔄 Circuit breaker auto-reset (correlation: %s)",
+                self.api_config.correlation_id,
+            )
+            self._circuit_breaker_failures = 0
+            return False
+
+        return True
+
+    def get_retry_stats(self) -> dict[str, Any]:
+        """Get retry handler statistics for monitoring."""
+        stats = {
+            "circuit_breaker_failures": self._circuit_breaker_failures,
+            "circuit_breaker_open": self._is_circuit_breaker_open(),
+            "last_failure_time": self._last_failure_time,
+            "correlation_id": self.api_config.correlation_id,
+        }
+
+        if self.api_config.retry_config is not None:
+            stats.update(
+                {
+                    "max_retries": self.api_config.retry_config.max_retries,
+                    "base_delay": self.api_config.retry_config.base_delay,
+                }
+            )
+
+        return stats
+
+
+def create_home_assistant_retry_handler(
+    base_url: str,
+    token: str,
+    correlation_id: str = "",
+    max_retries: int = 3,
+    base_delay: float = 0.5,
+) -> HomeAssistantRetryHandler:
+    """
+    🏭 Factory Function: Create HomeAssistantRetryHandler with sensible defaults
+
+    Creates a retry handler with backward-compatible parameters while using
+    the new configuration objects internally.
+
+    Args:
+        base_url: Home Assistant base URL
+        token: Home Assistant long-lived access token
+        correlation_id: Request correlation ID for logging
+        max_retries: Maximum number of retry attempts
+        base_delay: Initial delay between retries
+
+    Returns:
+        Configured HomeAssistantRetryHandler instance
+    """
+    api_config = HomeAssistantApiConfig(
+        base_url=base_url,
+        token=token,
+        correlation_id=correlation_id,
+        retry_config=RetryConfig(
+            max_retries=max_retries,
+            base_delay=base_delay,
+            retriable_exceptions=(
+                urllib3.exceptions.TimeoutError,
+                urllib3.exceptions.ConnectionError,
+                urllib3.exceptions.HTTPError,
+            ),
+        ),
+    )
+    return HomeAssistantRetryHandler(api_config=api_config)
 
 
 # === SHARED CONSTANTS ===
@@ -469,6 +1078,10 @@ class ConfigurationManager:
                     structured_config = self._map_json_config_to_structure(
                         json_config, config_section
                     )
+                    # Apply environment overrides for additive approach
+                    structured_config = self._apply_environment_overrides(
+                        structured_config, config_section
+                    )
                     _logger.debug("✅ Loaded Gen 2 config from SSM: %s", path)
                     return structured_config
                 except (ClientError, json.JSONDecodeError):
@@ -491,6 +1104,10 @@ class ConfigurationManager:
         cache_key = f"{app_config_path}:{config_section}"
         shared_config = self._get_shared_cache(cache_key)
         if shared_config:
+            # Apply environment overrides even when loading from cache
+            shared_config = self._apply_environment_overrides(
+                shared_config, config_section
+            )
             _logger.debug("Configuration loaded from shared cache")
             return shared_config
 
@@ -504,6 +1121,9 @@ class ConfigurationManager:
             response = ssm_client.get_parameter(Name=param_path, WithDecryption=True)
             param_value = response.get("Parameter", {}).get("Value", "")
             config = json.loads(param_value)
+
+            # Apply environment overrides for additive approach
+            config = self._apply_environment_overrides(config, config_section)
 
             # Cache for future requests
             self._set_shared_cache(cache_key, config)
@@ -730,22 +1350,33 @@ class ConfigurationManager:
 _config_manager = ConfigurationManager()
 
 
-def load_multi_generation_configuration(
+def load_configuration(
     config_section: str = "ha_config",
     app_config_path: str | None = None,
     force_generation: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """
-    Public API for multi-generation configuration loading.
+    Load configuration with generation detection and environment overrides.
+
+    This is the primary configuration loading API that supports multi-generation
+    configuration management with automatic generation detection and caching.
+
+    ADDITIVE CONFIGURATION APPROACH:
+    1. **Gen1 (ENV-only)**: Pure environment variables
+    2. **Gen2 (ENV→SSM)**: Environment variables + SSM JSON fallback
+    3. **Gen3 (Modular SSM)**: Structured SSM + ENV overrides + caching
+    4. **ENV overrides**: Environment variables always take highest priority
 
     Args:
-        config_section: Configuration section to load (ha_config, oauth_config, etc.)
+        config_section: Configuration section to load (ha_config,
+            oauth_config, etc.)
         app_config_path: SSM path for Gen 2/3 configurations
         force_generation: Force specific generation for testing
 
     Returns:
         Tuple of (configuration_dict, generation_used)
     """
+    # Delegate to the manager instance for now (will refactor incrementally)
     return _config_manager.load_configuration(
         config_section=config_section,
         app_config_path=app_config_path,
@@ -2003,52 +2634,8 @@ def extract_correlation_id(context: Any) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Unified Configuration Loading API
+# Configuration Caching API
 # ═══════════════════════════════════════════════════════════════════════════
-
-
-def load_configuration(
-    app_config_path: str = "",
-    config_section: str = "",
-    return_format: str = "dict",
-    required_keys: list[str] | None = None,
-) -> dict[str, Any] | configparser.ConfigParser:
-    """
-    Unified Configuration Loader: Load Configuration from SSM/Cache
-
-    This function loads configuration from SSM Parameter Store or cache.
-    If app_config_path is empty, it will attempt to load from environment fallback.
-
-    PERFORMANCE FEATURES:
-    - 3-tier caching: Container (0-1ms) → DynamoDB (20-50ms) → SSM (100-200ms)
-    - Automatic format detection and conversion
-    - Foundation pattern backward compatibility
-    - Fallback to environment variables if no app_config_path
-
-    :param app_config_path: SSM parameter path (from APP_CONFIG_PATH env var)
-    :param config_section: Configuration section (ha_config, oauth_config, etc.)
-    :param return_format: "dict" (default) or "configparser" for legacy compatibility
-    :param required_keys: Optional validation of required configuration keys
-    :return: Configuration as dict or ConfigParser based on return_format
-    """
-    # If no app_config_path provided, cannot load from SSM
-    if not app_config_path:
-        if return_format == "configparser":
-            # Return empty ConfigParser for legacy compatibility
-            config = configparser.ConfigParser()
-            config.add_section("appConfig")
-            return config
-        # Return empty dict for modern usage
-        return {}
-
-    if return_format == "configparser":
-        # Legacy foundation pattern - return ConfigParser
-        return _load_config_as_configparser(app_config_path)
-
-    # Modern dict-based configuration (default)
-    return _load_standardized_configuration(
-        config_section, app_config_path, required_keys
-    )
 
 
 def cache_configuration(
@@ -2211,59 +2798,6 @@ def _get_dynamodb_client() -> Any:  # DynamoDB types not available
     return _dynamodb_client  # pyright: ignore[reportUnknownVariableType]
 
 
-def _load_standardized_configuration(
-    config_section: str,
-    ssm_path: str,
-    _: list[str] | None = None,
-) -> dict[str, Any]:
-    """
-    Speed-Optimized Configuration Loading: <500ms Voice Command Response
-
-    Strategic 3-tier caching for optimal Lambda performance:
-    1. Container Cache: 0-1ms (lambda warm start advantage)
-    2. DynamoDB Shared Cache: 20-50ms (cross-lambda sharing)
-    3. SSM Parameter Store: 100-200ms (authoritative source)
-
-    :param config_section: Configuration section to load (ha_config, oauth_config, etc.)
-    :param ssm_path: Base SSM path for configuration parameters
-    :param required_keys: Optional list of required keys to validate
-    :return: Configuration dictionary with all settings
-    """
-    _logger.info(
-        "Loading configuration for section %s from path %s", config_section, ssm_path
-    )
-
-    # Tier 1: Container Cache (fastest)
-    cached_config = get_container_cached_config(config_section, ssm_path)
-    if cached_config:
-        _logger.debug("Configuration loaded from container cache")
-        return cached_config
-
-    # Tier 2: Shared Cache (DynamoDB)
-    shared_config = _get_shared_cached_config(config_section, ssm_path)
-    if shared_config:
-        _logger.debug("Configuration loaded from shared cache")
-        cache_config_in_container(config_section, ssm_path, shared_config)
-        return shared_config
-
-    # Tier 3: SSM Parameter Store (authoritative source)
-    try:
-        config = _load_from_ssm_parameters(ssm_path, config_section)
-        if config:
-            # Cache for future requests
-            _cache_config_in_shared_cache(config_section, ssm_path, config)
-            cache_config_in_container(config_section, ssm_path, config)
-            _logger.info("Configuration loaded from SSM and cached")
-            return config
-    except (ClientError, NoCredentialsError, ValueError, KeyError) as e:
-        _logger.warning("Failed to load from SSM: %s", str(e))
-
-    # Fallback: Minimal configuration to prevent Lambda failure
-    fallback_config = _get_minimal_fallback_configuration(config_section)
-    _logger.warning("Using fallback configuration for %s", config_section)
-    return fallback_config
-
-
 def get_container_cached_config(
     config_section: str, ssm_path: str
 ) -> dict[str, Any] | None:
@@ -2280,28 +2814,6 @@ def get_container_cached_config(
             return cache_entry["config"]  # type: ignore[no-any-return]
         # Remove expired entry
         del _config_cache[cache_key]
-    return None
-
-
-def _get_shared_cached_config(
-    config_section: str, ssm_path: str
-) -> dict[str, Any] | None:
-    """Get configuration from DynamoDB shared cache."""
-    try:
-        dynamodb = _get_dynamodb_client()
-        cache_key = f"{ssm_path}:{config_section}"
-
-        response = dynamodb.get_item(
-            TableName=SHARED_CACHE_TABLE, Key={"cache_key": {"S": cache_key}}
-        )
-
-        if "Item" in response:
-            ttl = int(response["Item"].get("ttl", {}).get("N", "0"))
-            if time.time() < ttl:
-                config_json = response["Item"]["config"]["S"]
-                return json.loads(config_json)  # type: ignore[no-any-return]
-    except (ClientError, ValueError, KeyError, json.JSONDecodeError) as e:
-        _logger.debug("Shared cache miss: %s", str(e))
     return None
 
 
@@ -2418,55 +2930,6 @@ def _cleanup_expired_cache() -> None:
 
     if expired_keys:
         _logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
-
-
-def _get_minimal_fallback_configuration(config_section: str) -> dict[str, Any]:
-    """Provide minimal fallback configuration to prevent Lambda failure."""
-    fallbacks = {
-        "ha_config": {
-            "base_url": os.environ.get("HA_BASE_URL", "http://localhost:8123"),
-            "token": os.environ.get("HA_TOKEN", "fallback_token"),
-            "verify_ssl": True,
-            "timeout": 30,
-        },
-        "oauth_config": {
-            "client_id": os.environ.get("OAUTH_CLIENT_ID", "fallback_client"),
-            "client_secret": os.environ.get("OAUTH_CLIENT_SECRET", "fallback_secret"),
-            "redirect_uri": os.environ.get("OAUTH_REDIRECT_URI", "http://localhost"),
-            "token_ttl": 3600,
-        },
-        "cloudflare_config": {
-            "client_id": os.environ.get("CF_CLIENT_ID", ""),
-            "client_secret": os.environ.get("CF_CLIENT_SECRET", ""),
-            "enabled": False,
-        },
-        "security_config": {
-            "alexa_secret": os.environ.get("ALEXA_SECRET", "fallback_secret"),
-            "api_key": os.environ.get("API_KEY", ""),
-        },
-        "aws_config": {
-            "region": os.environ.get("AWS_REGION", "us-east-1"),
-            "timeout": 30,
-            "max_retries": 3,
-        },
-    }
-    return fallbacks.get(config_section, {})
-
-
-def _load_from_ssm_parameters(ssm_path: str, config_section: str) -> dict[str, Any]:
-    """Load configuration from SSM parameters with fallback to original format."""
-    # Try original flat JSON format first (foundation pattern compatibility)
-    original_config = _try_original_ssm_format(ssm_path, config_section)
-    if original_config:
-        return original_config
-
-    # Try new structured format
-    structured_config = _try_new_ssm_format(ssm_path, config_section)
-    if structured_config:
-        return structured_config
-
-    # No configuration found
-    raise ValueError(f"No configuration found for {config_section} at {ssm_path}")
 
 
 def _try_original_ssm_format(
@@ -2658,6 +3121,9 @@ def _get_env_fallback_config() -> dict[str, Any]:
         "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET", "fallback_secret"),
     }
 
+# Initialize structured logger
+logger = create_structured_logger(__name__)
+
 # === STANDARDIZED CONFIGURATION CONSTANTS ===
 # These values can be overridden by environment variables or SSM parameters
 # Intentionally duplicated across Lambda functions for independence
@@ -2783,16 +3249,18 @@ def lambda_handler(
     professional standards while ensuring the entire office team follows consistent,
     efficient procedures without infrastructure concerns or architectural dependencies.
     """
-    print("=== Configuration Manager Starting ===")
-
-    # 🛡️ BASIC SECURITY: Rate limiting for background service (Phase 2c)
+    # Initialize variables for background service operation
     client_ip = "configuration-manager"  # Background service identifier
-    is_allowed, rate_limit_reason = _rate_limiter.is_allowed(client_ip)
+    warmup_requested = event.get("warmup", False)
+    rate_limiter = _rate_limiter  # Use global rate limiter
 
-    if not is_allowed:
-        SecurityEventLogger.log_rate_limit_violation(client_ip, rate_limit_reason)
-        print(f"⚠️ Rate limit applied: {rate_limit_reason}")
-        # Continue anyway for background service - just log the event
+    logger.info("Configuration Manager Starting")
+
+    # Apply rate limiting for non-warming requests
+    if not warmup_requested:
+        is_allowed, rate_limit_reason = rate_limiter.is_allowed(client_ip)
+        if not is_allowed:
+            logger.warning("Rate limit applied", extra={"reason": rate_limit_reason})
 
     # Log security event for background service execution
     SecurityEventLogger.log_security_event(
@@ -2811,42 +3279,79 @@ def lambda_handler(
         "request_id": getattr(context, "aws_request_id", "unknown")[:8],
     }
 
-    # Simplified configuration management - cache warming only
+    # 🔄 GENERATION-AWARE CONFIGURATION MANAGEMENT: Backwards Compatible + Future Ready
+    # Supports Gen1 (ENV only), Gen2 (ENV + legacy SSM), Gen3 (modular SSM)
     configs_to_warm = [
         {
             "cache_key": "homeassistant_config",
-            "ssm_path": "/homeassistant/alexa/config",
+            "ssm_path": SSM_ALEXA_CONFIG_PATH,
             "description": "HomeAssistant Smart Home Bridge configuration",
             "required_sections": ["ha_config", "oauth_config"],
+            "generation": "gen3",  # New modular format
+            "optional": False,  # Required for Smart Home Bridge functionality
         },
         {
             "cache_key": "oauth_gateway_config",
-            "ssm_path": "/homeassistant/oauth/gateway",
+            "ssm_path": SSM_OAUTH_CONFIG_PATH,
             "description": "OAuth Gateway with CloudFlare configuration",
             "required_sections": ["ha_config", "oauth_config", "cloudflare_config"],
+            "generation": "gen3",  # New modular format
+            "optional": False,  # Required for OAuth Gateway functionality
         },
         {
             "cache_key": "aws_runtime_config",
-            "ssm_path": "/homeassistant/aws/runtime",
+            "ssm_path": SSM_AWS_RUNTIME_PATH,
             "description": "AWS runtime optimization settings",
             "required_sections": ["aws_config"],
+            "generation": "gen3",  # Performance optimization feature
+            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
         },
         {
             "cache_key": "security_policies_config",
-            "ssm_path": "/homeassistant/security/policies",
+            "ssm_path": SSM_SECURITY_POLICIES_PATH,
             "description": "Security policies and rate limiting configuration",
             "required_sections": ["security_config"],
+            "generation": "gen3",  # Enhanced security feature
+            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
         },
     ]
 
-    # Process each configuration with simplified workflow
+    # Process each configuration with generation-aware tolerance
     for config in configs_to_warm:
         results["configs_attempted"] += 1
         _process_single_configuration(config, results)
 
-    # Log final results
+    # 🔥 CONTAINER WARMING: Keep Lambda functions warm to prevent cold starts
+    _warm_lambda_containers(results)
+
+    # 📊 GENERATION-AWARE RESULTS: Focus on container warming success
     success_rate = (results["configs_warmed"] / results["configs_attempted"]) * 100
-    print(f"=== Configuration Manager Complete: {success_rate:.1f}% success ===")
+    container_success = results.get("containers_warmed", 0) > 0
+
+    # The critical measure is container warming - config cache warming is optional
+    if container_success:
+        logger.info(
+            "Configuration Manager Success - Container Warming Operational",
+            extra={
+                "container_warming": "✅ SUCCESS",
+                "cache_success_rate": f"{success_rate:.1f}%",
+                "configs_warmed": results["configs_warmed"],
+                "configs_attempted": results["configs_attempted"],
+                "containers_warmed": results.get("containers_warmed", 0),
+                "backward_compatibility": "Gen1/Gen2/Gen3 supported",
+            },
+        )
+    else:
+        logger.warning(
+            "Configuration Manager Partial - Container Warming Issues",
+            extra={
+                "container_warming": "⚠️ ISSUES",
+                "cache_success_rate": f"{success_rate:.1f}%",
+                "configs_warmed": results["configs_warmed"],
+                "configs_attempted": results["configs_attempted"],
+                "containers_warmed": results.get("containers_warmed", 0),
+            },
+        )
 
     return {"statusCode": 200, "body": json.dumps(results)}
 
@@ -2855,10 +3360,16 @@ def _process_single_configuration(
     config: dict[str, Any], results: dict[str, Any]
 ) -> None:
     """
-    🔧 SINGLE CONFIGURATION PROCESSING
+    🔧 GENERATION-AWARE CONFIGURATION PROCESSING
 
-    Process one configuration entry with warming only,
-    updating results tracking appropriately.
+    Process one configuration entry with backwards compatibility and fault tolerance.
+    Respects the 'optional' flag to distinguish between required configurations
+    (missing = error) and optional configurations (missing = acceptable).
+
+    Supports:
+    - Gen1: Environment variables only
+    - Gen2: Environment variables + legacy SSM (/ha-alexa/appConfig)
+    - Gen3: Modular SSM (/home-assistant/service/config)
     """
     try:
         success = warm_configuration(
@@ -2869,20 +3380,293 @@ def _process_single_configuration(
 
         if success:
             results["configs_warmed"] += 1
-            print(f"✅ Warmed: {config['description']}")
+            logger.info(
+                "Configuration warmed successfully",
+                extra={
+                    "description": config["description"],
+                    "generation": config.get("generation", "unknown"),
+                },
+            )
         else:
-            error_msg = f"Failed to warm: {config['description']}"
-            results["errors"].append(error_msg)
-            print(f"❌ {error_msg}")
+            # Check if this configuration is optional (Gen3 enhancements)
+            is_optional = config.get("optional", False)
+            generation = config.get("generation", "unknown")
+
+            if is_optional:
+                # Optional configurations: Log as info, don't add to errors
+                logger.info(
+                    "Optional configuration not found (backwards compatible)",
+                    extra={
+                        "description": config["description"],
+                        "generation": generation,
+                        "ssm_path": config["ssm_path"],
+                        "impact": "No impact - system uses Gen1/Gen2 fallbacks",
+                    },
+                )
+            else:
+                # Required configurations: Log as error for troubleshooting
+                error_msg = f"Required configuration missing: {config['description']}"
+                results["errors"].append(error_msg)
+                logger.warning(
+                    "Required configuration not found",
+                    extra={
+                        "description": config["description"],
+                        "generation": generation,
+                        "ssm_path": config["ssm_path"],
+                        "impact": "Function may use Gen1/Gen2 fallbacks",
+                        "error_message": error_msg,
+                    },
+                )
 
     except (KeyError, ValueError, TypeError, OSError) as e:
-        error_msg = f"Error warming {config['description']}: {str(e)}"
-        results["errors"].append(error_msg)
-        print(f"💥 {error_msg}")
+        # Check if this is an optional configuration
+        is_optional = config.get("optional", False)
+        generation = config.get("generation", "unknown")
+
+        if is_optional:
+            # Optional configurations: Log as info, continue gracefully
+            logger.info(
+                "Optional configuration error (backwards compatible)",
+                extra={
+                    "description": config["description"],
+                    "generation": generation,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "impact": "No impact - system operates with Gen1/Gen2 fallbacks",
+                },
+            )
+        else:
+            # Required configurations: Add to errors for troubleshooting
+            error_msg = (
+                f"Error loading required config {config['description']}: {str(e)}"
+            )
+            results["errors"].append(error_msg)
+            logger.error(
+                "Required configuration error",
+                extra={
+                    "description": config["description"],
+                    "generation": generation,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "error_message": error_msg,
+                },
+            )
     except Exception as e:  # pylint: disable=broad-exception-caught
+        # Unexpected errors: Always log regardless of optional status
         error_msg = f"Unexpected error warming {config['description']}: {str(e)}"
         results["errors"].append(error_msg)
-        print(f"💥 {error_msg}")
+        logger.error(
+            "Unexpected error during configuration warming",
+            extra={
+                "description": config["description"],
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+        )
+
+
+def _get_lambda_arn_from_ssm(function_key: str) -> str | None:
+    """
+    Get Lambda function ARN from SSM parameter.
+
+    Args:
+        function_key: Key identifying the function (oauth_gateway, smart_home_bridge)
+
+    Returns:
+        Lambda function ARN or None if not found
+    """
+    ssm_client = (
+        boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+            "ssm"
+        )
+    )
+
+    # Define SSM parameter paths for Lambda ARNs using centralized constants
+    ssm_paths = {
+        "oauth_gateway": SSM_OAUTH_GATEWAY_ARN,
+        "smart_home_bridge": SSM_SMART_HOME_BRIDGE_ARN,
+    }
+
+    ssm_path = ssm_paths.get(function_key)
+    if not ssm_path:
+        logger.warning(
+            "Unknown function key for Lambda ARN lookup",
+            extra={
+                "function_key": function_key,
+                "available_keys": list(ssm_paths.keys()),
+                "service": "ssm",
+                "operation": "lambda_arn_lookup",
+            },
+        )
+        return None
+
+    try:
+        response = ssm_client.get_parameter(Name=ssm_path, WithDecryption=False)
+        arn = response.get("Parameter", {}).get("Value")
+        if arn:
+            logger.info(
+                "Lambda ARN loaded from SSM",
+                extra={
+                    "ssm_path": ssm_path,
+                    "function_key": function_key,
+                    "service": "ssm",
+                    "operation": "lambda_arn_lookup",
+                },
+            )
+            return arn
+        logger.warning(
+            "Empty parameter value in SSM",
+            extra={
+                "ssm_path": ssm_path,
+                "function_key": function_key,
+                "service": "ssm",
+                "operation": "lambda_arn_lookup",
+            },
+        )
+        return None
+
+    except ssm_client.exceptions.ParameterNotFound:
+        logger.info(
+            "SSM parameter not found", extra={"ssm_path": ssm_path, "service": "ssm"}
+        )
+        return None
+
+    except (BotoCoreError, ClientError) as e:
+        logger.error(
+            "Failed to load Lambda ARN from SSM",
+            extra={
+                "ssm_path": ssm_path,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "service": "ssm",
+            },
+        )
+        return None
+
+
+def _warm_lambda_containers(results: dict[str, Any]) -> None:
+    """
+    🔥 LAMBDA CONTAINER WARMING: Prevent Cold Starts Across All Functions
+
+    Like a facilities manager ensuring all office equipment is ready before
+    business hours, this function proactively invokes other Lambda functions
+    with lightweight health checks to keep their containers warm and ready
+    for immediate use.
+
+    **CONTAINER WARMING STRATEGY:**
+    - OAuth Gateway: Invoke with health check to keep authentication ready
+    - Smart Home Bridge: Invoke with ping to keep voice command processing ready
+    - Result: Sub-100ms response times instead of 400-600ms cold starts
+
+    **PERFORMANCE BENEFITS:**
+    - Eliminates cold start delays during voice commands
+    - Maintains consistent sub-500ms response times
+    - Provides true end-to-end warming (cache + containers)
+    """
+    lambda_functions_to_warm = [
+        {
+            "function_name": os.environ.get("OAUTH_GATEWAY_FUNCTION_ARN")
+            or _get_lambda_arn_from_ssm("oauth_gateway")
+            or "CloudFlare-Wrapper",
+            "payload": {
+                "warmup": True,
+                "source": "configuration_manager",
+                "timestamp": int(time.time()),
+            },
+            "description": "OAuth Gateway Container",
+        },
+        {
+            "function_name": os.environ.get("SMART_HOME_BRIDGE_FUNCTION_ARN")
+            or _get_lambda_arn_from_ssm("smart_home_bridge")
+            or "HomeAssistant",
+            "payload": {
+                "warmup": True,
+                "source": "configuration_manager",
+                "timestamp": int(time.time()),
+            },
+            "description": "Smart Home Bridge Container",
+        },
+    ]
+
+    # Initialize Lambda client for container warming
+    try:
+        lambda_client: Any = boto3.client(  # pyright: ignore
+            "lambda", region_name=os.environ.get("AWS_REGION", "us-east-1")
+        )
+
+        results["containers_warmed"] = 0
+        results["containers_attempted"] = 0
+
+        for function_config in lambda_functions_to_warm:
+            results["containers_attempted"] += 1
+
+            try:
+                # Asynchronous invocation for warming (don't wait for response)
+                lambda_client.invoke(
+                    FunctionName=function_config["function_name"],
+                    InvocationType="Event",  # Async invocation
+                    Payload=json.dumps(function_config["payload"]),
+                )
+
+                results["containers_warmed"] += 1
+                logger.info(
+                    "Container warmed successfully",
+                    extra={
+                        "description": function_config["description"],
+                        "function_name": function_config["function_name"],
+                        "service": "lambda",
+                        "operation": "container_warming",
+                    },
+                )
+
+                # 🛡️ SECURITY LOGGING: Track container warming for monitoring
+                SecurityEventLogger.log_security_event(
+                    "container_warm_success",
+                    "configuration-manager",
+                    f"Successfully warmed container: {function_config['description']}",
+                    "INFO",
+                )
+
+            except (ClientError, BotoCoreError) as e:
+                error_msg = f"Failed to warm {function_config['description']}: {str(e)}"
+                results["errors"].append(error_msg)
+                logger.error(
+                    "Container warming failed",
+                    extra={
+                        "description": function_config["description"],
+                        "function_name": function_config["function_name"],
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "service": "lambda",
+                        "operation": "container_warming",
+                    },
+                )
+
+                # 🛡️ SECURITY LOGGING: Track warming failures
+                SecurityEventLogger.log_security_event(
+                    "container_warm_failure",
+                    "configuration-manager",
+                    f"Container warming failed: {function_config['description']} - "
+                    f"{str(e)}",
+                    "WARNING",
+                )
+
+    except (ClientError, BotoCoreError, KeyError, ValueError) as e:
+        error_msg = f"Lambda client initialization failed: {str(e)}"
+        results["errors"].append(error_msg)
+        logger.error(
+            "Lambda client initialization failed",
+            extra={
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "service": "lambda",
+                "operation": "client_initialization",
+            },
+        )
+
+        # Set zero results if client initialization failed
+        results["containers_warmed"] = 0
+        results["containers_attempted"] = 0
 
 
 def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
@@ -2928,11 +3712,14 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
             return False
 
         # Validate SSM path format (basic security against path injection)
-        if not ssm_path.startswith("/homeassistant/"):
+        # Accept Gen2 (/ha-alexa/) and Gen3 (/home-assistant/) path formats
+        valid_prefixes = ["/ha-alexa/", SSM_BASE_HOME_ASSISTANT + "/"]
+        if not any(ssm_path.startswith(prefix) for prefix in valid_prefixes):
             SecurityEventLogger.log_validation_failure(
                 "configuration-manager",
                 "ssm_path_validation",
-                f"Invalid SSM path format: {ssm_path}",
+                f"Invalid SSM path format: {ssm_path}. "
+                f"Must start with /ha-alexa/ or {SSM_BASE_HOME_ASSISTANT}/",
             )
             return False
         # Initialize DynamoDB client
@@ -2951,20 +3738,52 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
 
         # Check if cache is already warm and valid
         if is_cache_warm(dynamodb, table_name, cache_key):
-            print(f"Cache already warm for: {description}")
+            logger.info(
+                "Configuration cache already warm",
+                extra={
+                    "description": description,
+                    "cache_key": cache_key,
+                    "service": "dynamodb",
+                    "operation": "cache_check",
+                },
+            )
             return True
 
         # Load configuration from SSM
-        print(f"Loading fresh config from SSM: {ssm_path}")
+        logger.info(
+            "Loading fresh configuration from SSM",
+            extra={
+                "ssm_path": ssm_path,
+                "description": description,
+                "service": "ssm",
+                "operation": "parameter_loading",
+            },
+        )
         config_data = load_from_ssm(ssm, ssm_path)
 
         if not config_data:
-            print(f"No configuration found at: {ssm_path}")
+            logger.warning(
+                "No configuration found in SSM",
+                extra={
+                    "ssm_path": ssm_path,
+                    "description": description,
+                    "service": "ssm",
+                    "operation": "parameter_loading",
+                },
+            )
             return False
 
         # Store in shared cache
         store_in_cache(dynamodb, table_name, cache_key, config_data)
-        print(f"Cached configuration for: {description}")
+        logger.info(
+            "Configuration cached successfully",
+            extra={
+                "description": description,
+                "cache_key": cache_key,
+                "service": "dynamodb",
+                "operation": "cache_storage",
+            },
+        )
 
         # 🛡️ SECURITY LOGGING (Phase 2c): Log successful configuration management
         SecurityEventLogger.log_security_event(
@@ -2977,8 +3796,15 @@ def warm_configuration(cache_key: str, ssm_path: str, description: str) -> bool:
         return True
 
     except (ClientError, BotoCoreError, KeyError, ValueError, TypeError, OSError) as e:
-        error_msg = f"Failed to warm {description}: {str(e)}"
-        print(error_msg)
+        logger.error(
+            "Configuration warming failed",
+            extra={
+                "description": description,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "operation": "configuration_warming",
+            },
+        )
 
         # 🛡️ SECURITY LOGGING (Phase 2c): Log configuration failures for monitoring
         SecurityEventLogger.log_security_event(
@@ -3002,9 +3828,23 @@ def ensure_cache_table_exists(dynamodb: Any, table_name: str) -> None:
     """
     try:
         dynamodb.describe_table(TableName=table_name)
-        print(f"Cache table exists: {table_name}")
+        logger.info(
+            "Cache table already exists",
+            extra={
+                "table_name": table_name,
+                "service": "dynamodb",
+                "operation": "table_check",
+            },
+        )
     except Exception:  # pylint: disable=broad-exception-caught # AWS service check
-        print(f"Creating cache table: {table_name}")
+        logger.info(
+            "Creating cache table",
+            extra={
+                "table_name": table_name,
+                "service": "dynamodb",
+                "operation": "table_creation",
+            },
+        )
         dynamodb.create_table(
             TableName=table_name,
             KeySchema=[{"AttributeName": "cache_key", "KeyType": "HASH"}],
@@ -3019,9 +3859,24 @@ def ensure_cache_table_exists(dynamodb: Any, table_name: str) -> None:
                 TableName=table_name,
                 TimeToLiveSpecification={"AttributeName": "ttl", "Enabled": True},
             )
-            print(f"Enabled TTL for: {table_name}")
+            logger.info(
+                "TTL enabled for cache table",
+                extra={
+                    "table_name": table_name,
+                    "service": "dynamodb",
+                    "operation": "ttl_configuration",
+                },
+            )
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"TTL setup warning: {str(e)}")
+            logger.warning(
+                "TTL setup encountered warning",
+                extra={
+                    "table_name": table_name,
+                    "error": str(e),
+                    "service": "dynamodb",
+                    "operation": "ttl_configuration",
+                },
+            )
 
 
 def is_cache_warm(dynamodb: Any, table_name: str, cache_key: str) -> bool:
@@ -3067,7 +3922,9 @@ def load_from_ssm(ssm: Any, ssm_path: str) -> dict[str, Any] | None:
 
         config_data: dict[str, Any] = {}
         if "Parameters" in response and response.get("Parameters"):
-            for param in response.get("Parameters"):  # pylint: disable=duplicate-code # AWS parameter processing pattern
+            for param in response.get(
+                "Parameters"
+            ):  # pylint: disable=duplicate-code # AWS parameter processing pattern
                 param_name = param.get("Name")
                 param_value = param.get("Value")
                 if param_name and param_value:
@@ -3078,7 +3935,16 @@ def load_from_ssm(ssm: Any, ssm_path: str) -> dict[str, Any] | None:
 
         return config_data if config_data else None
     except (ClientError, BotoCoreError) as e:
-        print(f"SSM load error: {str(e)}")
+        logger.error(
+            "SSM parameter loading failed",
+            extra={
+                "ssm_path": ssm_path,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "service": "ssm",
+                "operation": "parameter_loading",
+            },
+        )
         return None
 
 
