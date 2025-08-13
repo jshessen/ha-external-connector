@@ -36,8 +36,120 @@ class ExtractedContent(NamedTuple):
 
     header: str
     imports: str
+    configuration_classes: str
     functions: str
     shared_imports: list[str]
+
+
+class _ContentExtractor:
+    """Helper class to extract content from file lines using markers."""
+
+    # pylint: disable=too-many-instance-attributes  # Data holder class needs multiple attributes
+
+    def __init__(self):
+        """Initialize content extractor with empty sections."""
+        self.header_lines: list[str] = []
+        self.import_lines: list[str] = []
+        self.configuration_lines: list[str] = []
+        self.function_lines: list[str] = []
+        self.shared_imports: list[str] = []
+
+        self.current_section = "header"
+        self.in_import_block = False
+        self.in_configuration_block = False
+        self.in_function_block = False
+        self.in_shared_imports_section = False
+
+    def process_line(self, line: str) -> None:
+        """Process a single line and categorize it into appropriate section."""
+        stripped = line.strip()
+
+        # Check for marker transitions
+        if self._handle_marker_transitions(stripped):
+            return
+
+        # Check for shared import handling
+        if self._handle_shared_imports(line, stripped):
+            return
+
+        # Categorize content into appropriate section
+        self._categorize_content_line(line)
+
+    def _handle_marker_transitions(self, stripped: str) -> bool:
+        """Handle marker transitions and return True if line was a marker."""
+        # pylint: disable=too-many-return-statements  # Early returns improve readability
+        if "IMPORT_BLOCK_START" in stripped:
+            self.in_import_block = True
+            self.current_section = "imports"
+            return True
+        if "IMPORT_BLOCK_END" in stripped:
+            self.in_import_block = False
+            self.in_shared_imports_section = False
+            return True
+        if "CONFIGURATION_CLASSES_START" in stripped:
+            self.in_configuration_block = True
+            self.current_section = "configuration_classes"
+            return True
+        if "CONFIGURATION_CLASSES_END" in stripped:
+            self.in_configuration_block = False
+            return True
+        if "FUNCTION_BLOCK_START" in stripped:
+            self.in_function_block = True
+            self.current_section = "functions"
+            return True
+        if "FUNCTION_BLOCK_END" in stripped:
+            self.in_function_block = False
+            return True
+        return False
+
+    def _handle_shared_imports(self, line: str, stripped: str) -> bool:
+        """Handle shared import detection and return True if line was processed."""
+        # Check for shared configuration imports marker
+        if "=== SHARED CONFIGURATION IMPORTS ===" in stripped:
+            self.in_shared_imports_section = True
+            return True
+
+        # Check for shared configuration imports (individual lines)
+        if self._is_shared_import_line(stripped):
+            self.shared_imports.append(line)
+            return True
+
+        # If we're in the shared imports section, treat everything as shared imports
+        if self.in_shared_imports_section and self.in_import_block:
+            self.shared_imports.append(line)
+            return True
+
+        return False
+
+    def _categorize_content_line(self, line: str) -> None:
+        """Categorize a content line into the appropriate section."""
+        if self.in_import_block:
+            self.import_lines.append(line)
+        elif self.in_configuration_block:
+            self.configuration_lines.append(line)
+        elif self.in_function_block:
+            self.function_lines.append(line)
+        elif self.current_section == "header":
+            self.header_lines.append(line)
+
+    def _is_shared_import_line(self, line: str) -> bool:
+        """Check if a line is a shared configuration import."""
+        patterns = [
+            r"from \.shared_configuration import",
+            r"import shared_configuration",
+            r"from shared_configuration import",
+        ]
+        return any(re.search(pattern, line) for pattern in patterns)
+
+    def build_extracted_content(self) -> ExtractedContent:
+        """Build and return the final ExtractedContent object."""
+        return ExtractedContent(
+            header="\n".join(self.header_lines),
+            imports="\n".join(self.import_lines),
+            configuration_classes="\n".join(self.configuration_lines),
+            functions="\n".join(self.function_lines),
+            shared_imports=self.shared_imports,
+        )
 
 
 class DeploymentMarkerSystem:
@@ -50,6 +162,12 @@ class DeploymentMarkerSystem:
         ),
         "IMPORT_BLOCK_END": (
             "# ╰─────────────────── IMPORT_BLOCK_END ─────────────────────╯"
+        ),
+        "CONFIGURATION_CLASSES_START": (
+            "# ╭─────────────────── CONFIGURATION_CLASSES_START ───────────────────╮"
+        ),
+        "CONFIGURATION_CLASSES_END": (
+            "# ╰─────────────────── CONFIGURATION_CLASSES_END ─────────────────────╯"
         ),
         "FUNCTION_BLOCK_START": (
             "# ╭─────────────────── FUNCTION_BLOCK_START ───────────────────╮"
@@ -101,8 +219,13 @@ class DeploymentMarkerSystem:
         ]
 
         if file_path.name == "shared_configuration.py":
-            # Shared config only needs function markers
-            required_markers = ["FUNCTION_BLOCK_START", "FUNCTION_BLOCK_END"]
+            # Shared config needs configuration class and function markers
+            required_markers = [
+                "CONFIGURATION_CLASSES_START",
+                "CONFIGURATION_CLASSES_END",
+                "FUNCTION_BLOCK_START",
+                "FUNCTION_BLOCK_END",
+            ]
 
         # Validate marker presence and count
         for marker in required_markers:
@@ -145,70 +268,19 @@ class DeploymentMarkerSystem:
             content = file_path.read_text(encoding="utf-8")
         except OSError as e:
             self._logger.error("Failed to read file %s: %s", file_path, e)
-            return ExtractedContent("", "", "", [])
+            return ExtractedContent("", "", "", "", [])
 
         lines = content.split("\n")
+        return self._process_content_lines(lines)
 
-        # Extract sections
-        header_lines: list[str] = []
-        import_lines: list[str] = []
-        function_lines: list[str] = []
-        shared_imports: list[str] = []
-
-        current_section = "header"
-        in_import_block = False
-        in_function_block = False
-        in_shared_imports_section = False
+    def _process_content_lines(self, lines: list[str]) -> ExtractedContent:
+        """Process file lines and extract content by sections."""
+        extractor = _ContentExtractor()
 
         for line in lines:
-            stripped = line.strip()
+            extractor.process_line(line)
 
-            # Check for section markers
-            if "IMPORT_BLOCK_START" in stripped:
-                in_import_block = True
-                current_section = "imports"
-                continue
-            if "IMPORT_BLOCK_END" in stripped:
-                in_import_block = False
-                in_shared_imports_section = False
-                continue
-            if "FUNCTION_BLOCK_START" in stripped:
-                in_function_block = True
-                current_section = "functions"
-                continue
-            if "FUNCTION_BLOCK_END" in stripped:
-                in_function_block = False
-                continue
-
-            # Check for shared configuration imports marker
-            if self.SHARED_IMPORT_MARKER in stripped:
-                in_shared_imports_section = True
-                continue
-
-            # Check for shared configuration imports (individual lines)
-            if self._is_shared_import_line(stripped):
-                shared_imports.append(line)
-                continue
-
-            # If we're in the shared imports section, treat everything as shared imports
-            if in_shared_imports_section and in_import_block:
-                shared_imports.append(line)
-                continue
-
-            # Categorize content
-            if in_import_block:
-                import_lines.append(line)
-            elif in_function_block:
-                function_lines.append(line)
-            elif current_section == "header":
-                header_lines.append(line)
-
-        return ExtractedContent(
-            header="\n".join(header_lines),
-            imports="\n".join(import_lines),
-            functions="\n".join(function_lines),
-            shared_imports=shared_imports,
-        )
+        return extractor.build_extracted_content()
 
     def _validate_marker_formatting(self, lines: list[str], issues: list[str]) -> None:
         """Validate visual consistency of marker formatting."""

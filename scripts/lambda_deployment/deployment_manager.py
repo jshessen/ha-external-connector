@@ -25,14 +25,30 @@ Usage:
 
 import logging
 import shutil
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from aws_deployment_handler import AWSDeploymentHandler
-from cli import main as cli_main
-from import_manager import ImportManager
-from marker_system import DeploymentMarkerSystem, ExtractedContent
-from validation_system import DeploymentValidationSystem
+# Add current directory to path for proper imports when run from different contexts
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
+try:
+    from aws_deployment_handler import AWSDeploymentHandler
+    from cli import main as cli_main
+    from import_manager import ImportManager
+    from marker_system import DeploymentMarkerSystem, ExtractedContent
+    from validation_system import DeploymentValidationSystem
+except ImportError as e:
+    # If running from VS Code or different context, provide helpful error
+    print(f"Import error: {e}")
+    print(f"Current directory: {Path.cwd()}")
+    print(f"Script directory: {current_dir}")
+    print("Note: This script should be run from the workspace root directory.")
+    print("Example: python scripts/lambda_deployment/deployment_manager.py --build")
+    # Re-raise for proper error handling
+    raise
 
 
 @dataclass
@@ -309,6 +325,18 @@ class DeploymentManager:
         if merged_imports:
             sections.append(merged_imports)
 
+        # Add embedded shared configuration classes
+        if shared_content.configuration_classes:
+            sections.extend(
+                [
+                    "# === EMBEDDED SHARED CONFIGURATION CLASSES (AUTO-GENERATED) ===",
+                    "# This section contains shared configuration classes "
+                    "embedded for deployment",
+                    "",
+                    shared_content.configuration_classes.strip(),
+                ]
+            )
+
         # Add embedded shared code marker and functions
         if shared_content.functions:
             sections.extend(
@@ -318,6 +346,16 @@ class DeploymentManager:
                     "embedded for deployment",
                     "",
                     shared_content.functions.strip(),
+                ]
+            )
+
+        # Add Lambda-specific configuration classes (if any)
+        if lambda_content.configuration_classes:
+            sections.extend(
+                [
+                    "# === LAMBDA-SPECIFIC CONFIGURATION CLASSES ===",
+                    "",
+                    lambda_content.configuration_classes.strip(),
                 ]
             )
 

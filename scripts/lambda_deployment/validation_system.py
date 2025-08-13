@@ -22,10 +22,24 @@ Validation Layers:
 
 import ast
 import logging
+import sys
 from pathlib import Path
 from typing import NamedTuple
 
-from marker_system import DeploymentMarkerSystem
+# Add current directory to path for proper imports when run from different contexts
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
+try:
+    from marker_system import DeploymentMarkerSystem
+except ImportError as e:
+    print(f"Import error: {e}")
+    print(f"Current directory: {Path.cwd()}")
+    print(f"Script directory: {current_dir}")
+    print("Note: This script should be run from the workspace root directory.")
+    # Re-raise for proper error handling
+    raise
 
 
 class ValidationResult(NamedTuple):

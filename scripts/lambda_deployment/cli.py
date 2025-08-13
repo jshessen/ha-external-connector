@@ -17,10 +17,27 @@ import argparse
 import json
 import logging
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+# Add current directory to path for proper imports when run from different contexts
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
 
 if TYPE_CHECKING:
     from deployment_manager import DeploymentManager
+
+# Import deployment manager module at top level
+try:
+    import deployment_manager
+except ImportError as e:
+    print(f"Import error: {e}")
+    print(f"Current directory: {Path.cwd()}")
+    print(f"Script directory: {current_dir}")
+    print("Note: This script should be run from the workspace root directory.")
+    # Re-raise for proper error handling
+    raise
 
 
 def _validate_and_extract_string_dict(obj: Any) -> dict[str, str]:
@@ -58,18 +75,16 @@ class CLIHandler:
             sys.exit(1)
 
         # Set up logging
-        self._setup_logging(args.verbose)
-        logger = logging.getLogger()
-
-        # Import at runtime to avoid circular imports
-        # pylint: disable-next=import-outside-toplevel
-        from deployment_manager import DeploymentManager
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger("lambda_deployment.cli")
 
         # Parse custom function names
         custom_names = self._parse_custom_function_names(args)
 
         # Create deployment manager with custom names
-        manager = DeploymentManager(args.workspace, logger, custom_names)
+        manager = deployment_manager.DeploymentManager(
+            args.workspace, logger, custom_names
+        )
 
         # Execute requested operation
         try:
@@ -100,13 +115,19 @@ class CLIHandler:
             epilog="""
 Examples:
   %(prog)s --build                                    Build deployment files
-  %(prog)s --package --function smart_home_bridge     Package function for deployment
+  %(prog)s --package                                  Package all functions
+  %(prog)s --package --function smart_home_bridge     Package specific function
+  %(prog)s --deploy                                   Deploy all functions
   %(prog)s --deploy --function oauth_gateway          Deploy single function
-  %(prog)s --deploy --function all                    Deploy all functions
-  %(prog)s --deploy --function all --dry-run          Test deployment without changes
+  %(prog)s --deploy --dry-run                         Test deployment of all functions
   %(prog)s --test --function smart_home_bridge        Test deployed function
   %(prog)s --validate                                 Validate deployment files
   %(prog)s --clean                                    Reset to development mode
+
+Notes:
+  - --function defaults to 'all' for --package and --deploy operations
+  - --function is required for --test operations (cannot test all at once)
+  - Use --dry-run to validate deployments without making AWS changes
             """,
         )
 
@@ -120,12 +141,12 @@ Examples:
         group.add_argument(
             "--package",
             action="store_true",
-            help="Package Lambda function into deployment-ready ZIP file",
+            help="Package Lambda functions into ZIP files (defaults to all)",
         )
         group.add_argument(
             "--deploy",
             action="store_true",
-            help="Deploy Lambda function to AWS",
+            help="Deploy Lambda functions to AWS (defaults to all)",
         )
         group.add_argument(
             "--test",
@@ -147,8 +168,10 @@ Examples:
         parser.add_argument(
             "--function",
             help=(
-                "Specify which function to operate on "
-                "(smart_home_bridge, oauth_gateway, configuration_manager, or all)"
+                "Specify which function to operate on. "
+                "Required for --test. Optional for --package and --deploy "
+                "(defaults to 'all'). Available: smart_home_bridge, oauth_gateway, "
+                "configuration_manager, all"
             ),
         )
         parser.add_argument(
@@ -201,12 +224,15 @@ Examples:
 
     def _validate_arguments(self, args: argparse.Namespace) -> bool:
         """Validate parsed arguments."""
+        # Set default function to "all" for package and deploy operations
+        if (args.package or args.deploy) and not args.function:
+            args.function = "all"
+            print("🎯 No function specified, defaulting to --function all")
+
         # Validate function argument for operations that require it
         if args.package or args.deploy or args.test:
             if not args.function:
-                self.parser.error(
-                    "--function is required with --package, --deploy, or --test"
-                )
+                self.parser.error("--function is required with --test")
 
             # Validate function name
             available_functions = [

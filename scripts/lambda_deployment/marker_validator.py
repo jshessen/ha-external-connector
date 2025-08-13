@@ -184,38 +184,67 @@ class MarkerValidator:
         """Display preview of extracted content."""
         self._logger.info("📋 Extracted Content Preview:")
 
-        if content.header:
-            lines = content.header.split("\n")
-            preview_lines = lines[:3]
-            self._logger.info("  Header: %d lines", len(lines))
-            for line in preview_lines:
+        self._preview_header_section(content.header)
+        self._preview_imports_section(content.imports)
+        self._preview_configuration_section(content.configuration_classes)
+        self._preview_functions_section(content.functions)
+
+    def _preview_header_section(self, header: str) -> None:
+        """Display preview of header section."""
+        if not header:
+            return
+
+        lines = header.split("\n")
+        preview_lines = lines[:3]
+        self._logger.info("  Header: %d lines", len(lines))
+        for line in preview_lines:
+            self._logger.info("    %s", line.strip()[:60])
+        if len(lines) > 3:
+            self._logger.info("    ... (+%d more lines)", len(lines) - 3)
+
+    def _preview_imports_section(self, imports: str) -> None:
+        """Display preview of imports section."""
+        if not imports:
+            return
+
+        import_lines = [
+            line.strip()
+            for line in imports.split("\n")
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        self._logger.info("  Imports: %d statements", len(import_lines))
+        for imp in import_lines[:3]:
+            self._logger.info("    %s", imp)
+        if len(import_lines) > 3:
+            self._logger.info("    ... (+%d more imports)", len(import_lines) - 3)
+
+    def _preview_configuration_section(self, configuration_classes: str) -> None:
+        """Display preview of configuration classes section."""
+        if not configuration_classes:
+            return
+
+        config_lines = configuration_classes.split("\n")
+        self._logger.info("  Configuration Classes: %d lines", len(config_lines))
+        self._display_section_preview(config_lines, 10)
+
+    def _preview_functions_section(self, functions: str) -> None:
+        """Display preview of functions section."""
+        if not functions:
+            return
+
+        func_lines = functions.split("\n")
+        self._logger.info("  Functions: %d lines", len(func_lines))
+        self._display_section_preview(func_lines, 10)
+
+    def _display_section_preview(self, lines: list[str], threshold: int) -> None:
+        """Display preview of lines with a threshold for showing '...' message."""
+        preview_count = 0
+        for line in lines:
+            if line.strip() and preview_count < 3:
                 self._logger.info("    %s", line.strip()[:60])
-            if len(lines) > 3:
-                self._logger.info("    ... (+%d more lines)", len(lines) - 3)
-
-        if content.imports:
-            import_lines = [
-                line.strip()
-                for line in content.imports.split("\n")
-                if line.strip() and not line.strip().startswith("#")
-            ]
-            self._logger.info("  Imports: %d statements", len(import_lines))
-            for imp in import_lines[:3]:
-                self._logger.info("    %s", imp)
-            if len(import_lines) > 3:
-                self._logger.info("    ... (+%d more imports)", len(import_lines) - 3)
-
-        if content.functions:
-            func_lines = content.functions.split("\n")
-            self._logger.info("  Functions: %d lines", len(func_lines))
-            # Show first few non-empty lines
-            preview_count = 0
-            for line in func_lines:
-                if line.strip() and preview_count < 3:
-                    self._logger.info("    %s", line.strip()[:60])
-                    preview_count += 1
-            if len(func_lines) > 10:
-                self._logger.info("    ... (+%d more lines)", len(func_lines) - 10)
+                preview_count += 1
+        if len(lines) > threshold:
+            self._logger.info("    ... (+%d more lines)", len(lines) - threshold)
 
     def _setup_logger(self) -> logging.Logger:
         """Set up logging configuration."""

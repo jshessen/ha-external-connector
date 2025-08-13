@@ -2,27 +2,71 @@
 
 🚀 **Modular Lambda deployment automation for HA External Connector**
 
-This directory contains the new modular Lambda deployment system that replaces the previous monolithic deployment scripts.
+This directory contains the modular Lambda deployment system that provides comprehensive deployment automation for AWS Lambda functions with embedded shared code and validation.
 
 ## Core Components
 
 ### 📁 System Files
 
+- **`cli.py`** - Command-line interface for all deployment operations
 - **`deployment_manager.py`** - Main orchestrator for deployment operations
 - **`marker_system.py`** - Core marker processing and content extraction
 - **`validation_system.py`** - Comprehensive validation framework
 - **`marker_validator.py`** - Standalone validation tool
 
-### 🔧 Utility Scripts
+### 🔧 Key Features
 
-- **`deployment_manager.py`** - Main orchestrator for deployment operations
-- **`marker_system.py`** - Core marker processing and content extraction
-- **`validation_system.py`** - Comprehensive validation framework
-- **`marker_validator.py`** - Standalone validation tool
+- **Unified CLI Interface** - Single entry point for all deployment operations
+- **Marker-based Code Extraction** - Visual markers for shared code sections
+- **Comprehensive Validation** - Multi-layer validation with detailed error reporting
+- **AWS Integration** - Direct deployment and testing capabilities
+- **Quality Assurance** - Pylint 10.00/10, Ruff clean, full type safety
 
 ## Quick Start
 
-### 1. Validate Lambda Markers
+### 1. CLI Operations (Recommended)
+
+```bash
+# Build deployment files with embedded shared code
+python scripts/lambda_deployment/cli.py --build
+
+# Package all Lambda functions
+python scripts/lambda_deployment/cli.py --package
+
+# Package specific function
+python scripts/lambda_deployment/cli.py --package --function smart_home_bridge
+
+# Deploy all functions to AWS
+python scripts/lambda_deployment/cli.py --deploy
+
+# Deploy single function with dry-run validation
+python scripts/lambda_deployment/cli.py --deploy --function oauth_gateway --dry-run
+
+# Test deployed function
+python scripts/lambda_deployment/cli.py --test --function smart_home_bridge
+
+# Validate deployment files
+python scripts/lambda_deployment/cli.py --validate
+
+# Clean deployment files (reset to development mode)
+python scripts/lambda_deployment/cli.py --clean
+```
+
+### 2. Custom Function Names
+
+```bash
+# Deploy with custom AWS function names
+python scripts/lambda_deployment/cli.py --deploy \
+  --function-names '{"oauth_gateway": "MyCustomOAuth", "smart_home_bridge": "MyBridge"}'
+
+# Or use individual name arguments
+python scripts/lambda_deployment/cli.py --deploy \
+  --oauth-name "CloudFlare-Wrapper" \
+  --bridge-name "HomeAssistant" \
+  --config-name "ConfigurationManager"
+```
+
+### 3. Advanced Validation
 
 ```bash
 # Validate all Lambda function files
@@ -35,28 +79,50 @@ python scripts/lambda_deployment/marker_validator.py --file oauth_gateway.py
 python scripts/lambda_deployment/marker_validator.py --complete
 ```
 
-### 2. Build Deployment Files
+### 4. Legacy Direct Access
 
 ```bash
-# Build deployment files with embedded shared code
+# Direct deployment manager access (legacy)
 python scripts/lambda_deployment/deployment_manager.py --build
-
-# Validate existing deployment
 python scripts/lambda_deployment/deployment_manager.py --validate
-
-# Clean deployment files (reset to development mode)
-python scripts/lambda_deployment/deployment_manager.py --clean
 ```
 
-### 3. System Validation
+## Available Lambda Functions
 
-```bash
-# Validate the complete system
-python scripts/lambda_deployment/deployment_manager.py --validate
+- **`smart_home_bridge`** - Core Home Assistant integration (AWS: "HomeAssistant")
+- **`oauth_gateway`** - CloudFlare OAuth wrapper (AWS: "CloudFlare-Wrapper")  
+- **`configuration_manager`** - Centralized configuration management (AWS: "ConfigurationManager")
 
-# Check system integration
-python scripts/lambda_deployment/marker_validator.py --complete
-```
+## CLI Command Reference
+
+### Build Operations
+
+- `--build` - Build deployment files with embedded shared code
+- `--validate` - Validate deployment files and synchronization
+- `--clean` - Reset to development mode (remove deployment files)
+
+### Deployment Operations
+
+- `--package` - Package Lambda functions into ZIP files
+- `--deploy` - Deploy Lambda functions to AWS
+- `--test` - Test deployed Lambda function (requires `--function`)
+- `--dry-run` - Validate deployment without making AWS changes
+
+### Function Selection
+
+- `--function all` - Operate on all functions (default for package/deploy)
+- `--function smart_home_bridge` - Target specific function
+- `--function oauth_gateway` - Target OAuth gateway
+- `--function configuration_manager` - Target configuration manager
+
+### Customization
+
+- `--function-names` - JSON string with custom AWS names
+- `--oauth-name` - Custom name for OAuth gateway
+- `--bridge-name` - Custom name for smart home bridge
+- `--config-name` - Custom name for configuration manager
+- `--verbose` - Enable detailed logging
+- `--workspace` - Specify workspace directory (default: current)
 
 ## Architecture Overview
 
@@ -89,6 +155,7 @@ def lambda_handler(event, context):
 
 ```text
 scripts/lambda_deployment/
+├── cli.py                    # 🎯 Unified command-line interface
 ├── deployment_manager.py      # Main deployment orchestrator
 ├── marker_system.py          # Core marker processing
 ├── validation_system.py      # Validation framework
@@ -97,6 +164,13 @@ scripts/lambda_deployment/
 ```
 
 ## Key Features
+
+### ✅ Unified CLI Experience
+
+- **Single Entry Point** - All operations through `cli.py`
+- **Comprehensive Help** - Built-in help for all commands and options
+- **Error Handling** - Graceful error handling with detailed feedback
+- **Argument Validation** - Smart defaults and validation for all parameters
 
 ### ✅ Modular Architecture
 
