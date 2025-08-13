@@ -47,9 +47,35 @@ class DeploymentConfig:
     lambda_function_names: dict[str, str]  # deployment_dir -> AWS function name
 
     @classmethod
-    def create(cls, workspace_root: str) -> "DeploymentConfig":
-        """Create deployment configuration from workspace root."""
+    def create(
+        cls, workspace_root: str, custom_names: dict[str, str] | None = None
+    ) -> "DeploymentConfig":
+        """
+        Create deployment configuration from workspace root.
+
+        Args:
+            workspace_root: Path to the workspace root directory
+            custom_names: Optional custom AWS function names to override defaults
+                         Format: {"oauth_gateway": "CustomName1",
+                                  "smart_home_bridge": "CustomName2"}
+
+        Returns:
+            DeploymentConfig instance with default or custom function names
+        """
         root = Path(workspace_root)
+
+        # Default AWS function names
+        default_function_names = {
+            "oauth_gateway": "CloudFlare-Wrapper",
+            "smart_home_bridge": "HomeAssistant",
+            "configuration_manager": "ConfigurationManager",
+        }
+
+        # Merge custom names with defaults (custom names take precedence)
+        function_names = default_function_names.copy()
+        if custom_names:
+            function_names.update(custom_names)
+
         return cls(
             workspace_root=root,
             source_dir=root / "src/ha_connector/integrations/alexa/lambda_functions",
@@ -60,11 +86,7 @@ class DeploymentConfig:
                 ("smart_home_bridge.py", "smart_home_bridge"),
                 ("configuration_manager.py", "configuration_manager"),
             ],
-            lambda_function_names={
-                "oauth_gateway": "CloudFlare-Wrapper",
-                "smart_home_bridge": "HomeAssistant",
-                "configuration_manager": "ConfigurationManager",
-            },
+            lambda_function_names=function_names,
         )
 
 
@@ -75,8 +97,9 @@ class DeploymentManager:
         self,
         workspace_root: str,
         logger: logging.Logger | None = None,
+        custom_function_names: dict[str, str] | None = None,
     ):
-        self.config = DeploymentConfig.create(workspace_root)
+        self.config = DeploymentConfig.create(workspace_root, custom_function_names)
         self._logger = logger or self._setup_logger()
 
         # Initialize core systems

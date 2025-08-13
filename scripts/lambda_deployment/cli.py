@@ -14,12 +14,32 @@ Key Features:
 """
 
 import argparse
+import json
 import logging
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from deployment_manager import DeploymentManager
+
+
+def _validate_and_extract_string_dict(obj: Any) -> dict[str, str]:
+    """Validate and extract a dictionary with string keys and values."""
+    if not isinstance(obj, dict):
+        raise ValueError("Object must be a dictionary")
+
+    result: dict[str, str] = {}
+
+    try:
+        # Iterate over dictionary items with type ignore to satisfy Pylance
+        for key, value in obj.items():  # type: ignore[misc]
+            if not isinstance(key, str) or not isinstance(value, str):
+                raise ValueError("All keys and values must be strings")
+            result[key] = value
+
+        return result
+    except (TypeError, AttributeError) as e:
+        raise ValueError(f"Failed to validate dictionary: {e}") from e
 
 
 class CLIHandler:
@@ -45,8 +65,11 @@ class CLIHandler:
         # pylint: disable-next=import-outside-toplevel
         from deployment_manager import DeploymentManager
 
-        # Create deployment manager
-        manager = DeploymentManager(args.workspace, logger)
+        # Parse custom function names
+        custom_names = self._parse_custom_function_names(args)
+
+        # Create deployment manager with custom names
+        manager = DeploymentManager(args.workspace, logger, custom_names)
 
         # Execute requested operation
         try:
@@ -126,6 +149,35 @@ Examples:
             help=(
                 "Specify which function to operate on "
                 "(smart_home_bridge, oauth_gateway, configuration_manager, or all)"
+            ),
+        )
+        parser.add_argument(
+            "--function-names",
+            help=(
+                "Custom AWS Lambda function names as JSON string. "
+                'Example: \'{"oauth_gateway": "MyCustomName", '
+                '"smart_home_bridge": "MyBridge"}\''
+            ),
+        )
+        parser.add_argument(
+            "--oauth-name",
+            help=(
+                "Custom AWS function name for oauth_gateway "
+                "(overrides default 'CloudFlare-Wrapper')"
+            ),
+        )
+        parser.add_argument(
+            "--bridge-name",
+            help=(
+                "Custom AWS function name for smart_home_bridge "
+                "(overrides default 'HomeAssistant')"
+            ),
+        )
+        parser.add_argument(
+            "--config-name",
+            help=(
+                "Custom AWS function name for configuration_manager "
+                "(overrides default 'ConfigurationManager')"
             ),
         )
         parser.add_argument(
@@ -214,6 +266,66 @@ Examples:
                 return operation_func()
 
         return False
+
+    def _parse_custom_function_names(
+        self, args: argparse.Namespace
+    ) -> dict[str, str] | None:
+        """
+        Parse custom function names from CLI arguments.
+
+        Args:
+            args: Parsed command line arguments
+
+        Returns:
+            Dictionary of custom function names or None if no custom names provided
+
+        Raises:
+            ValueError: If JSON parsing fails or function names are invalid
+        """
+        custom_names: dict[str, str] = {}
+
+        # Parse JSON format names first (takes precedence)
+        if args.function_names:
+            try:
+                json_data: Any = json.loads(args.function_names)
+                if not isinstance(json_data, dict):
+                    raise ValueError("--function-names must be a JSON object")
+
+                # Validate and extract string dictionary
+                validated_names = _validate_and_extract_string_dict(json_data)
+                custom_names.update(validated_names)
+
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in --function-names: {e}") from e
+
+        # Parse individual name arguments (lower precedence)
+        if args.oauth_name:
+            custom_names["oauth_gateway"] = args.oauth_name
+        if args.bridge_name:
+            custom_names["smart_home_bridge"] = args.bridge_name
+        if args.config_name:
+            custom_names["configuration_manager"] = args.config_name
+
+        # Validate function name keys
+        valid_keys = {"oauth_gateway", "smart_home_bridge", "configuration_manager"}
+        invalid_keys = set(custom_names.keys()) - valid_keys
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid function keys: {invalid_keys}. " f"Valid keys: {valid_keys}"
+            )
+
+        # Validate function name values (basic AWS Lambda naming rules)
+        for function_key, function_name in custom_names.items():
+            if not function_name:
+                raise ValueError(
+                    f"Function name for {function_key} must be a non-empty string"
+                )
+            if len(function_name) > 64:
+                raise ValueError(
+                    f"Function name '{function_name}' too long (max 64 characters)"
+                )
+
+        return custom_names if custom_names else None
 
 
 def main() -> None:

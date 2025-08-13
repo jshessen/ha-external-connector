@@ -23,27 +23,30 @@ limitations under the License.
 # pylint: disable=too-many-lines,too-many-branches
 
 # ╭─────────────────── IMPORT_BLOCK_START ───────────────────╮
-import base64
 import configparser
 import json
 import logging
 import os
-import urllib.parse
 from typing import Any
 
 import boto3
-import urllib3
 from botocore.exceptions import ClientError
 
 # === SHARED CONFIGURATION IMPORTS ===
 # SHARED_CONFIG_IMPORT: Development-only imports replaced in deployment
 from .shared_configuration import (
-    PerformanceOptimizer,
+    OAuthConfigurationManager,
+    OAuthRequestProcessor,
+    OAuthSecurityValidator,
+    PerformanceMonitor,
     RateLimiter,
     SecurityEventLogger,
     SecurityValidator,
-    create_lambda_logger,
+    create_structured_logger,
+    create_warmup_response,
     extract_correlation_id,
+    handle_warmup_request,
+    load_configuration,
 )
 
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
@@ -54,12 +57,12 @@ from .shared_configuration import (
 _debug = bool(os.environ.get("DEBUG"))
 
 # Use shared configuration logger instead of local setup
-_logger = create_lambda_logger("OAuthGateway")
+_logger = create_structured_logger("OAuthGateway")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
 
 # Initialize boto3 client at global scope for connection reuse
 client = boto3.client("ssm")  # pyright: ignore[reportUnknownMemberType]
-app_config_path = os.environ.get("APP_CONFIG_PATH", "/alexa/auth/")
+_default_app_config_path = os.environ.get("APP_CONFIG_PATH", "/alexa/auth/")
 
 # ⚡ PHASE 2 SECURITY: Initialize security components at global scope
 _rate_limiter = RateLimiter()
@@ -67,7 +70,7 @@ _security_validator = SecurityValidator()
 _security_logger = SecurityEventLogger()
 
 # ⚡ PHASE 1B PERFORMANCE: Initialize performance optimizer at global scope
-_performance_optimizer = PerformanceOptimizer()
+_performance_optimizer = PerformanceMonitor()
 
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.WARNING)
@@ -137,60 +140,211 @@ def get_app_config() -> HAConfig:
     :return: HAConfig instance with loaded configuration
     """
     start_time = _performance_optimizer.start_timing("config_load")
-
     try:
-        # ╭─────────────────── TRANSFER BLOCK START ───────────────────╮
-        # ║                           🚀 TRANSFER-READY CODE 🚀                       ║
-        # ║ 📋 BLOCK PURPOSE: Strategic 3-tier caching for <500ms OAuth responses    ║
-        # ║ 🔄 TRANSFER STATUS: Ready for duplication across Lambda functions        ║
-        # ║ ⚡ PERFORMANCE: Container 0-1ms | Shared 20-50ms | SSM 100-200ms         ║
-        # ║                                                                           ║
-        # ║ 🎯 USAGE PATTERN:                                                         ║
-        # ║   1. Copy entire block between "BLOCK_START" and "BLOCK_END" markers     ║
-        # ║   2. Update function prefixes as needed (e.g., _oauth_ → _bridge_)        ║
-        # ║   3. Adjust cache keys and table names for target service                ║
-        # ║   4. Maintain identical core functionality across Lambda functions       ║
-        # ╚═══════════════════════════════════════════════════════════════════════════╝
+        config = load_configuration(
+            app_config_path=_default_app_config_path,
+            config_section="appConfig",
+            return_format="configparser",
+        )
 
-        # Use enhanced configuration loading (fallback to legacy if needed)
-        try:
-            from .shared_configuration import load_configuration
+        if isinstance(config, configparser.ConfigParser):
+            _performance_optimizer.record_cache_hit()
+            duration = _performance_optimizer.end_timing("config_load", start_time)
+            _logger.info("Configuration loaded (%.1fms)", duration * 1000)
+            return HAConfig(config)
 
-            config = load_configuration(
-                app_config_path=app_config_path,
-                config_section="appConfig",
-                return_format="configparser",
-            )
-
-            if isinstance(config, configparser.ConfigParser):
-                _performance_optimizer.record_cache_hit()
-                duration = _performance_optimizer.end_timing("config_load", start_time)
-                _logger.info(
-                    "✅ Enhanced configuration loaded (%.1fms)", duration * 1000
-                )
-                return HAConfig(config)
-
-        except (ImportError, ValueError, RuntimeError) as e:
-            _performance_optimizer.record_cache_miss()
-            _logger.warning("Enhanced config loading failed, using fallback: %s", e)
-
-        # ╭─────────────────── TRANSFER BLOCK END ───────────────────╮
-
-        # Fallback to legacy configuration loading
-        config = load_config(app_config_path)
+        # Fallback to legacy loading if needed
+        config = load_config(_default_app_config_path)
         duration = _performance_optimizer.end_timing("config_load", start_time)
-        _logger.warning("⚠️ Fallback configuration loaded (%.1fms)", duration * 1000)
+        _logger.info("Legacy configuration loaded (%.1fms)", duration * 1000)
         return HAConfig(config)
 
     except Exception as e:
         duration = _performance_optimizer.end_timing("config_load", start_time)
-        _logger.error(
-            "❌ Configuration loading failed (%.1fms): %s", duration * 1000, e
-        )
+        _logger.error("Configuration loading failed (%.1fms): %s", duration * 1000, e)
         raise
 
 
+def _validate_oauth_security(
+    event: dict[str, Any], correlation_id: str
+) -> tuple[bool, dict[str, Any] | None, str]:
+    """
+    Validate OAuth request security including rate limiting and size checks.
+
+    Args:
+        event: Lambda event dictionary
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Tuple of (is_valid, error_response_if_any, client_ip)
+    """
+    oauth_validator = OAuthSecurityValidator(
+        _rate_limiter, _security_validator, _security_logger
+    )
+    is_valid, error_message, client_ip = oauth_validator.validate_oauth_request(
+        event, correlation_id
+    )
+
+    if not is_valid:
+        if error_message and "rate limit" in error_message.lower():
+            return (
+                False,
+                {
+                    "statusCode": 429,
+                    "body": json.dumps(
+                        {"error": "rate_limit_exceeded", "message": error_message}
+                    ),
+                },
+                client_ip,
+            )
+
+        error_msg = error_message or "Request too large"
+        return (
+            False,
+            {
+                "statusCode": 413,
+                "body": json.dumps(
+                    {"error": "request_too_large", "message": error_msg}
+                ),
+            },
+            client_ip,
+        )
+
+    return True, None, client_ip
+
+
+def _load_and_validate_oauth_configuration(
+    correlation_id: str,
+) -> tuple[dict[str, str] | None, dict[str, Any] | None]:
+    """
+    Load and validate OAuth configuration parameters.
+
+    Args:
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Tuple of (oauth_config_if_valid, error_response_if_any)
+    """
+    app = get_app_config()
+    app_config = app.get_config()["appConfig"]
+
+    (oauth_config, validation_errors) = (
+        OAuthConfigurationManager.load_and_validate_oauth_config(
+            dict(app_config), correlation_id
+        )
+    )
+
+    if validation_errors:
+        errors_str = ", ".join(validation_errors)
+        error_message = f"Configuration validation failed: {errors_str}"
+        return None, {
+            "event": {
+                "payload": {
+                    "type": "INVALID_CONFIGURATION",
+                    "message": error_message,
+                }
+            }
+        }
+
+    return oauth_config, None
+
+
+def _process_oauth_request_body(
+    event: dict[str, Any], wrapper_secret: str, correlation_id: str
+) -> tuple[bytes | None, dict[str, Any] | None]:
+    """
+    Extract and validate OAuth request body including client secret validation.
+
+    Args:
+        event: Lambda event dictionary
+        wrapper_secret: Expected wrapper secret for validation
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Tuple of (request_body_if_valid, error_response_if_any)
+    """
+    req_body, extract_error = OAuthRequestProcessor.extract_and_validate_request_body(
+        event, correlation_id
+    )
+
+    if extract_error:
+        return None, {
+            "event": {
+                "payload": {
+                    "type": "INVALID_REQUEST",
+                    "message": extract_error,
+                }
+            }
+        }
+
+    # req_body is guaranteed to be non-None here due to error check above
+    if req_body is None:
+        return None, {
+            "event": {
+                "payload": {
+                    "type": "INVALID_REQUEST",
+                    "message": "Request body extraction failed",
+                }
+            }
+        }
+
+    is_valid, validation_error = OAuthRequestProcessor.validate_oauth_parameters(
+        req_body, wrapper_secret, correlation_id
+    )
+
+    if not is_valid:
+        return None, {
+            "event": {
+                "payload": {
+                    "type": "INVALID_AUTHORIZATION_CREDENTIAL",
+                    "message": validation_error,
+                }
+            }
+        }
+
+    return req_body, None
+
+
+def _execute_oauth_token_exchange(
+    oauth_config: dict[str, str], req_body: bytes, correlation_id: str
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """
+    Execute OAuth token exchange with Home Assistant.
+
+    Args:
+        oauth_config: Validated OAuth configuration
+        req_body: Validated request body
+        correlation_id: Request correlation ID for logging
+
+    Returns:
+        Tuple of (success_response, error_response)
+    """
+    return OAuthRequestProcessor.execute_oauth_request(
+        oauth_config["destination_url"],
+        oauth_config["cf_client_id"],
+        oauth_config["cf_client_secret"],
+        req_body,
+        correlation_id,
+    )
+
+
 def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]:
+    """
+    ⚡ PERFORMANCE-OPTIMIZED: OAuth Gateway Lambda Handler
+
+    Streamlined OAuth token exchange handler with performance monitoring
+    and comprehensive security validation. Refactored for maintainability
+    and reduced complexity.
+
+    PROCESSING FLOW:
+    1. Security validation (rate limiting, request size)
+    2. Configuration loading and validation
+    3. Request body processing and OAuth parameter validation
+    4. OAuth token exchange execution
+    5. Response processing and performance logging
+
+    TARGET: <200ms OAuth token exchange time
+    """
     # Initialize request context and performance tracking
     correlation_id = extract_correlation_id(context)
     request_start = _performance_optimizer.start_timing("total_request")
@@ -198,153 +352,55 @@ def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]
     _logger.info("=== OAUTH LAMBDA START (correlation: %s) ===", correlation_id)
     _logger.debug("Event: %s", event)
 
-    # 🛡️ PHASE 2 SECURITY: Rate limiting and security validation
-    client_ip = event.get("headers", {}).get("X-Forwarded-For", "alexa-service")
-    client_ip = client_ip.split(",")[0] if client_ip else "alexa-service"
+    # 🔥 CONTAINER WARMING: Handle warmup requests from configuration manager
+    if handle_warmup_request(event, correlation_id, "oauth_gateway"):
+        return create_warmup_response("oauth_gateway", correlation_id)
 
-    # Check rate limiting
-    is_allowed, rate_limit_reason = _rate_limiter.is_allowed(client_ip)
-    if not is_allowed:
-        _logger.warning(
-            "Rate limit exceeded for IP %s: %s (correlation: %s)",
-            client_ip,
-            rate_limit_reason,
-            correlation_id,
-        )
-        _security_logger.log_security_event(
-            "rate_limit_exceeded", client_ip, rate_limit_reason
-        )
-        return {
-            "statusCode": 429,
-            "body": json.dumps(
-                {"error": "rate_limit_exceeded", "message": rate_limit_reason}
-            ),
-        }
+    # 1. Security validation
+    (is_secure, security_error, _) = _validate_oauth_security(event, correlation_id)
+    if not is_secure:
+        _performance_optimizer.end_timing("total_request", request_start)
+        return security_error  # type: ignore[return-value]  # Guaranteed non-None when is_secure is False
 
-    # Basic request validation
-    request_size = len(json.dumps(event).encode("utf-8"))
-    if not _security_validator.validate_request_size(request_size):
-        _logger.warning(
-            "Request size validation failed (correlation: %s)", correlation_id
-        )
-        _security_logger.log_security_event(
-            "request_too_large", client_ip, "Request exceeds maximum size"
-        )
-        return {
-            "statusCode": 413,
-            "body": json.dumps(
-                {"error": "request_too_large", "message": "Request too large"}
-            ),
-        }
+    # 2. Configuration loading and validation
+    oauth_config, config_error = _load_and_validate_oauth_configuration(correlation_id)
+    if config_error or oauth_config is None:
+        _performance_optimizer.end_timing("total_request", request_start)
+        return config_error or {"error": "Configuration loading failed"}
 
-    # Log security event for successful validation
-    _security_logger.log_security_event(
-        "request_validated",
-        client_ip,
-        f"OAuth request validated (correlation: {correlation_id})",
+    # 3. Request body processing and OAuth parameter validation
+    req_body, body_error = _process_oauth_request_body(
+        event, oauth_config["wrapper_secret"], correlation_id
+    )
+    if body_error or req_body is None:
+        _performance_optimizer.end_timing("total_request", request_start)
+        return body_error or {"error": "Request body processing failed"}
+
+    # 4. OAuth token exchange execution
+    success_response, oauth_error = _execute_oauth_token_exchange(
+        oauth_config, req_body, correlation_id
     )
 
-    print("Loading config and creating persistence object...")
-    app = get_app_config()
+    # 5. Response processing and performance logging
+    total_duration = _performance_optimizer.end_timing("total_request", request_start)
 
-    app_config = app.get_config()["appConfig"]
-
-    destination_url = app_config.get("HA_BASE_URL")
-    cf_client_id = app_config.get("CF_CLIENT_ID")
-    cf_client_secret = app_config.get("CF_CLIENT_SECRET")
-    wrapper_secret = app_config.get("WRAPPER_SECRET")
-
-    if not destination_url:
-        raise ValueError("Please set BASE_URL parameter")
-    destination_url = destination_url.strip("/")
-
-    http = urllib3.PoolManager(
-        cert_reqs="CERT_REQUIRED", timeout=urllib3.Timeout(connect=2.0, read=10.0)
-    )
-
-    # Get request body with proper validation
-    event_body = event.get("body")
-    if event_body is None:
-        raise ValueError("Request body is missing")
-
-    req_body = (
-        base64.b64decode(event_body) if event.get("isBase64Encoded") else event_body
-    )
-
-    _logger.debug(req_body)
-
-    req_dict = urllib.parse.parse_qs(req_body)
-    client_secret = req_dict[b"client_secret"][0].decode("utf-8")
-
-    # Validate wrapper secret
-    if not wrapper_secret:
-        _logger.error("WRAPPER_SECRET missing (correlation: %s)", correlation_id)
-        raise ValueError("WRAPPER_SECRET is missing from configuration")
-
-    if client_secret != wrapper_secret:
-        _logger.error("Client secret mismatch (correlation: %s)", correlation_id)
-        raise ValueError("Client secret mismatch")
-
-    # Validate all required config values
-    if not cf_client_id:
-        _logger.error("CF_CLIENT_ID missing (correlation: %s)", correlation_id)
-        raise ValueError("CF_CLIENT_ID is missing from configuration")
-    if not cf_client_secret:
-        _logger.error("CF_CLIENT_SECRET missing (correlation: %s)", correlation_id)
-        raise ValueError("CF_CLIENT_SECRET is missing from configuration")
-
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "CF-Access-Client-Id": str(cf_client_id),
-        "CF-Access-Client-Secret": str(cf_client_secret),
-    }
-
-    response = http.request(
-        "POST", f"{destination_url}/auth/token", headers=headers, body=req_body
-    )
-
-    if response.status >= 400:
-        _logger.debug(
-            "ERROR %s %s (correlation: %s)",
-            response.status,
-            response.data.decode("utf-8"),
-            correlation_id,
-        )
-        # ⚡ PERFORMANCE: Log error response time
-        total_duration = _performance_optimizer.end_timing(
-            "total_request", request_start
-        )
+    if oauth_error:
         _logger.warning(
             "⚠️ OAuth failed in %.1fms (correlation: %s)",
             total_duration * 1000,
             correlation_id,
         )
-        return {
-            "event": {
-                "payload": {
-                    "type": (
-                        "INVALID_AUTHORIZATION_CREDENTIAL"
-                        if response.status in (401, 403)
-                        else f"INTERNAL_ERROR {response.status}"
-                    ),
-                    "message": response.data.decode("utf-8"),
-                }
-            }
-        }
+        return oauth_error
 
-    # ⚡ PERFORMANCE: Log successful response time
-    total_duration = _performance_optimizer.end_timing("total_request", request_start)
     _logger.info(
         "✅ OAuth completed in %.1fms (correlation: %s)",
         total_duration * 1000,
         correlation_id,
     )
-
-    _logger.debug(
-        "Response: %s (correlation: %s)", response.data.decode("utf-8"), correlation_id
-    )
+    _logger.debug("Response: %s (correlation: %s)", success_response, correlation_id)
     _logger.info("=== OAUTH LAMBDA END (correlation: %s) ===", correlation_id)
-    return json.loads(response.data.decode("utf-8"))
+
+    return success_response or {"error": "Unknown OAuth processing error"}
 
 
 # ╰─────────────────── FUNCTION_BLOCK_END ───────────────────╯

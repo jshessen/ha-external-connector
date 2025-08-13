@@ -1,8 +1,0 @@
-{
-  "event": {
-    "payload": {
-      "type": "INTERNAL_ERROR 400",
-      "message": "{\"error\":\"invalid_request\",\"error_description\":\"Invalid code\"}"
-    }
-  }
-}

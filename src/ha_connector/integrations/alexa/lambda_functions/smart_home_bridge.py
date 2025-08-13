@@ -30,35 +30,24 @@ import os
 from typing import Any
 
 import boto3
-import urllib3
 
 # === SHARED CONFIGURATION IMPORTS ===
-# SHARED_CONFIG_IMPORT: Development-only imports replaced in deployment
-try:
-    from .shared_configuration import (
-        AlexaValidator,
-        ConnectionPoolManager,
-        PerformanceOptimizer,
-        RateLimiter,
-        ResponseCache,
-        SecurityEventLogger,
-        create_lambda_logger,
-        extract_correlation_id,
-        load_configuration,
-    )
-except ImportError:
-    # Fallback for deployment context
-    from shared_configuration import (
-        AlexaValidator,
-        ConnectionPoolManager,
-        PerformanceOptimizer,
-        RateLimiter,
-        ResponseCache,
-        SecurityEventLogger,
-        create_lambda_logger,
-        extract_correlation_id,
-        load_configuration,
-    )
+from .shared_configuration import (
+    AlexaRequestConfig,
+    AlexaValidator,
+    ConnectionPoolManager,
+    PerformanceMonitor,
+    RateLimiter,
+    ResponseCache,
+    SecurityEventLogger,
+    create_home_assistant_retry_handler,
+    create_structured_logger,
+    create_warmup_response,
+    extract_correlation_id,
+    handle_warmup_request,
+    load_configuration,
+)
+
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
 
 # ╭─────────────────── FUNCTION_BLOCK_START ───────────────────╮
@@ -67,15 +56,15 @@ except ImportError:
 _debug = bool(os.environ.get("DEBUG"))
 
 # Use shared configuration logger instead of local setup
-_logger = create_lambda_logger("SmartHomeBridge")
+_logger = create_structured_logger("SmartHomeBridge")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
 
 # Initialize boto3 client at global scope for connection reuse
 client = boto3.client("ssm")  # type: ignore[assignment]
-app_config_path = os.environ.get("APP_CONFIG_PATH", "/alexa/auth/")
+_default_app_config_path = os.environ.get("APP_CONFIG_PATH", "/alexa/auth/")
 
 # ⚡ PHASE 4 PERFORMANCE OPTIMIZATION: Initialize performance monitoring at global scope
-_performance_optimizer = PerformanceOptimizer()
+_performance_optimizer = PerformanceMonitor()
 _response_cache = ResponseCache()
 _connection_pool = ConnectionPoolManager()
 
@@ -97,69 +86,93 @@ class HAConfig:
 
 def _execute_alexa_request(
     event: dict[str, Any],
-    base_url: str,
-    token: str,
-    cf_client_id: str,
-    cf_client_secret: str,
+    request_config: AlexaRequestConfig,
 ) -> dict[str, Any]:
     """
-    Execute HTTP request to Home Assistant Alexa API.
+    Execute HTTP request to Home Assistant Alexa API with retry logic.
 
     Args:
         event: Lambda event dictionary to forward
-        base_url: Home Assistant base URL
-        token: Bearer token for authentication
-        cf_client_id: CloudFlare client ID for access
-        cf_client_secret: CloudFlare client secret for access
+        request_config: Alexa request configuration with optional CloudFlare
 
     Returns:
         Response dictionary from Home Assistant API
 
     Raises:
-        ValueError: If HTTP request fails with client/server error
+        ValueError: If HTTP request fails with client/server error after retries
     """
-    verify_ssl = not bool(os.environ.get("NOT_VERIFY_SSL"))
-    base_url = base_url.strip("/")
-    _logger.debug("Base url: %s", base_url)
-
-    http = urllib3.PoolManager(
-        cert_reqs="CERT_REQUIRED" if verify_ssl else "CERT_NONE",
-        timeout=urllib3.Timeout(connect=2.0, read=10.0),
+    _logger.info(
+        "🌐 Executing HA request with retry logic (correlation: %s)",
+        request_config.correlation_id,
     )
 
-    api_path = f"{base_url}/api/alexa/smart_home"
+    # Log CloudFlare status for debugging
+    if request_config.has_cloudflare_config:
+        _logger.debug(
+            "🔒 CloudFlare Access enabled (correlation: %s)",
+            request_config.correlation_id,
+        )
+    else:
+        _logger.debug(
+            "🌐 Direct Home Assistant access (no CloudFlare, correlation: %s)",
+            request_config.correlation_id,
+        )
 
-    response = http.request(
-        "POST",
-        api_path,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "CF-Access-Client-Id": cf_client_id,
-            "CF-Access-Client-Secret": cf_client_secret,
-        },
-        body=json.dumps(event).encode("utf-8"),
+    # Create retry handler for this request
+    retry_handler = create_home_assistant_retry_handler(
+        base_url=request_config.base_url,
+        token=request_config.token,
+        correlation_id=request_config.correlation_id,
+        max_retries=3,
+        base_delay=0.5,
     )
-    if response.status >= 400:
+
+    try:
+        # Prepare request data for the smart home API
+        request_data = {
+            "directive": event.get("directive"),
+            "context": event.get("context", {}),
+        }
+
+        # Make the API request with retry logic and optional CloudFlare headers
+        response = retry_handler.make_api_request(
+            endpoint="/api/alexa/smart_home",
+            method="POST",
+            data=request_data,
+            additional_headers=request_config.cloudflare_headers,
+        )
+
+        _logger.info(
+            "✅ HA request successful (correlation: %s)", request_config.correlation_id
+        )
+        return response
+
+    except Exception as e:
+        _logger.error(
+            "❌ HA request failed after retries (correlation: %s): %s",
+            request_config.correlation_id,
+            e,
+        )
+
+        # Return Alexa-compatible error response
         error_type = (
             "INVALID_AUTHORIZATION_CREDENTIAL"
-            if response.status in (401, 403)
-            else f"INTERNAL_ERROR {response.status}"
+            if "401" in str(e) or "403" in str(e)
+            else "INTERNAL_ERROR"
         )
+
         raise ValueError(
             json.dumps(
                 {
                     "event": {
                         "payload": {
                             "type": error_type,
-                            "message": response.data.decode("utf-8"),
+                            "message": str(e),
                         }
                     }
                 }
             )
-        )
-    _logger.debug("Response: %s", response.data.decode("utf-8"))
-    return json.loads(response.data.decode("utf-8"))
+        ) from e
 
 
 def _extract_and_validate_directive(
@@ -288,7 +301,7 @@ def _setup_configuration() -> configparser.ConfigParser:
 
         # Use shared configuration loading which handles all caching internally
         config = load_configuration(
-            app_config_path=app_config_path,
+            app_config_path=_default_app_config_path,
             config_section="appConfig",
             return_format="configparser",
         )
@@ -310,7 +323,7 @@ def _setup_configuration() -> configparser.ConfigParser:
 
         # Fallback to basic shared configuration loading
         config = load_configuration(
-            app_config_path=app_config_path,
+            app_config_path=_default_app_config_path,
             config_section="appConfig",
             return_format="configparser",
         )
@@ -518,7 +531,11 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     correlation_id = extract_correlation_id(context)
     _logger.info("🎯 Processing request %s", correlation_id)
 
-    # 🚀 PHASE 4: Check response cache for identical requests
+    # 🔥 CONTAINER WARMING: Handle warmup requests from configuration manager
+    if handle_warmup_request(event, correlation_id, "smart_home_bridge"):
+        return create_warmup_response("smart_home_bridge", correlation_id)
+
+    # �🚀 PHASE 4: Check response cache for identical requests
     request_hash = str(hash(str(event)))
     cached_response = _check_response_cache(request_hash, request_start)
     if cached_response is not None:
@@ -555,14 +572,20 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     _logger.debug("Event: %s", event)
 
     try:
+        # Create safe request configuration with optional CloudFlare parameters
+        request_config = AlexaRequestConfig(
+            base_url=app_config["HA_BASE_URL"],
+            token=token,
+            correlation_id=correlation_id,
+            cf_client_id=app_config.get("CF_CLIENT_ID", ""),
+            cf_client_secret=app_config.get("CF_CLIENT_SECRET", ""),
+        )
+
         # Execute request to Home Assistant API
         ha_request_start = _performance_optimizer.start_timing("ha_api_request")
         response = _execute_alexa_request(
             event,
-            app_config["HA_BASE_URL"],
-            token,
-            app_config["CF_CLIENT_ID"],
-            app_config["CF_CLIENT_SECRET"],
+            request_config,
         )
         _performance_optimizer.end_timing("ha_api_request", ha_request_start)
 

@@ -73,8 +73,8 @@ def load_config(ssm_parameter_path):
     except BaseException as err:
         print("Encountered an error loading config from SSM.")
         print(str(err))
-    finally:
-        return configuration
+
+    return configuration
 
 
 def lambda_handler(event, context):

@@ -61,10 +61,12 @@ class ImportManager:
     def _initialize_import_groups(self) -> dict[str, Any]:
         """Initialize containers for different import types."""
         return {
+            "future": set(),  # __future__ imports (must be first)
             "standard": set(),
             "third_party": set(),
             "standard_from": {},
             "third_party_from": {},
+            "type_aliases": set(),  # Type aliases like SSMClient = Any
         }
 
     def _get_standard_library_modules(self) -> set[str]:
@@ -219,11 +221,49 @@ class ImportManager:
         return filtered_lines
 
     def _process_import_line(self, line: str, import_groups: dict[str, Any]) -> None:
-        """Process a single import line and add it to appropriate groups."""
-        if line.startswith("import "):
-            self._process_standard_import(line, import_groups)
-        elif line.startswith("from "):
-            self._process_from_import(line, import_groups)
+        """Process a single import line and add it to appropriate group."""
+        line = line.strip()
+        if not line or line.startswith("#"):
+            return
+
+        try:
+            # Handle __future__ imports specially (must be first)
+            if line.startswith("from __future__ import"):
+                import_groups["future"].add(line)
+                return
+
+            # Handle type aliases (e.g., SSMClient = Any)
+            if (
+                "=" in line
+                and not line.startswith(("import ", "from "))
+                and re.match(r"^[A-Za-z_][A-Za-z0-9_]*\s*=\s*.+", line)
+            ):
+                import_groups["type_aliases"].add(line)
+                return
+
+            if line.startswith("from "):
+                # Parse from import
+                module, imported_items = self._parse_from_import(line)
+
+                if self._is_standard_library_module(module):
+                    self._add_to_from_imports(
+                        import_groups["standard_from"], module, imported_items
+                    )
+                else:
+                    self._add_to_from_imports(
+                        import_groups["third_party_from"], module, imported_items
+                    )
+            elif line.startswith("import "):
+                # Parse import statement
+                module = line[7:].strip()  # Remove "import "
+                if self._is_standard_library_module(module):
+                    import_groups["standard"].add(module)
+                else:
+                    import_groups["third_party"].add(module)
+
+        except (IndexError, ValueError):
+            # Malformed import, treat as third-party
+            import_groups["third_party"].add(line)
 
     def _process_standard_import(
         self, line: str, import_groups: dict[str, Any]
@@ -295,35 +335,57 @@ class ImportManager:
         return False
 
     def _format_consolidated_imports(self, import_groups: dict[str, Any]) -> str:
-        """Format consolidated imports with proper grouping and sorting."""
+        """Format consolidated imports following isort standards."""
         lines: list[str] = []
 
-        # Group 1: Standard library imports (import statements)
+        # Group 0: __future__ imports (must be first)
+        if import_groups["future"]:
+            lines.extend(sorted(import_groups["future"]))
+            lines.append("")  # Empty line after __future__ imports
+
+        # Group 1: Standard library imports (both import and from statements together)
+        standard_imports: list[str] = []
+
+        # Add standard library import statements
         if import_groups["standard"]:
-            lines.extend(sorted(f"import {imp}" for imp in import_groups["standard"]))
+            sorted_imports = sorted(import_groups["standard"])
+            import_lines = [f"import {imp}" for imp in sorted_imports]
+            standard_imports.extend(import_lines)
 
-        # Group 2: Standard library from imports
+        # Add standard library from imports
         if import_groups["standard_from"]:
-            if lines:
-                lines.append("")  # Empty line between groups
             for module, items in sorted(import_groups["standard_from"].items()):
-                lines.append(f"from {module} import {', '.join(sorted(items))}")
+                import_list = ", ".join(sorted(items))
+                standard_imports.append(f"from {module} import {import_list}")
 
-        # Group 3: Third party imports (import statements)
+        if standard_imports:
+            lines.extend(standard_imports)
+            lines.append("")  # Empty line after standard library imports
+
+        # Group 2: Third-party imports (both import and from statements together)
+        third_party_imports: list[str] = []
+
+        # Add third-party import statements
         if import_groups["third_party"]:
-            if lines:
-                lines.append("")  # Empty line between groups
-            third_party_import_lines = [
-                f"import {imp}" for imp in import_groups["third_party"]
-            ]
-            lines.extend(sorted(third_party_import_lines))
+            sorted_imports = sorted(import_groups["third_party"])
+            import_lines = [f"import {imp}" for imp in sorted_imports]
+            third_party_imports.extend(import_lines)
 
-        # Group 4: Third party from imports
+        # Add third-party from imports
         if import_groups["third_party_from"]:
-            if lines:
-                lines.append("")  # Empty line between groups
             for module, items in sorted(import_groups["third_party_from"].items()):
-                lines.append(f"from {module} import {', '.join(sorted(items))}")
+                import_list = ", ".join(sorted(items))
+                third_party_imports.append(f"from {module} import {import_list}")
+
+        if third_party_imports:
+            lines.extend(third_party_imports)
+
+        # Group 3: Type aliases (after all imports, with comment)
+        if import_groups["type_aliases"]:
+            if lines:
+                lines.append("")  # Empty line before type aliases
+            lines.append("# Use generic boto3 client type for runtime compatibility")
+            lines.extend(sorted(import_groups["type_aliases"]))
 
         return "\n".join(lines)
 

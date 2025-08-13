@@ -13,7 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import os, json, logging, urllib3, configparser, boto3, traceback
+import configparser
+import json
+import logging
+import os
+
+import boto3
+import urllib3
 
 _debug = bool(os.environ.get('DEBUG'))
 
@@ -64,35 +70,35 @@ def load_config(ssm_parameter_path):
     except BaseException as err:
         print("Encountered an error loading config from SSM.")
         print(str(err))
-    finally:
-        return configuration
+
+    return configuration
 
 def lambda_handler(event, context):
     global app
-    
+
     # Initialize app if it doesn't yet exist
     if app is None:
         print("Loading config and creating persistence object...")
         config = load_config(app_config_path)
         app = HA_Config(config)
-    
+
     appConfig = app.get_config()['appConfig']
-    
+
     base_url = appConfig['HA_BASE_URL']
     cf_client_id = appConfig['CF_CLIENT_ID']
     cf_client_secret = appConfig['CF_CLIENT_SECRET']
-    
+
     directive = event.get('directive')
     assert directive is not None, 'Malformatted request - missing directive'
     assert directive.get('header', {}).get('payloadVersion') == '3', \
         'Only support payloadVersion == 3'
-    
+
     scope = directive.get('endpoint', {}).get('scope')
     if scope is None:
-        # token is in grantee for Linking directive 
+        # token is in grantee for Linking directive
         scope = directive.get('payload', {}).get('grantee')
     if scope is None:
-        # token is in payload for Discovery directive 
+        # token is in payload for Discovery directive
         scope = directive.get('payload', {}).get('scope')
     assert scope is not None, 'Malformatted request - missing endpoint.scope'
     assert scope.get('type') == 'BearerToken', 'Only support BearerToken'
@@ -100,34 +106,34 @@ def lambda_handler(event, context):
     token = scope.get('token')
     if token is None and _debug:
         token = appConfig['HA_TOKEN']  # only for debug purpose
-    
+
     verify_ssl = not bool(os.environ.get('NOT_VERIFY_SSL'))
-    
+
     """Handle incoming Alexa directive."""
     _logger.debug('Event: %s', event)
-    
+
     assert base_url is not None, 'Please set BASE_URL environment variable'
     base_url = base_url.strip("/")
-    
-    _logger.debug("Base url: {}".format(base_url))
-    
+
+    _logger.debug(f"Base url: {base_url}")
+
     directive = event.get('directive')
     assert directive is not None, 'Malformatted request - missing directive'
     assert directive.get('header', {}).get('payloadVersion') == '3', \
         'Only support payloadVersion == 3'
-    
+
     http = urllib3.PoolManager(
         cert_reqs='CERT_REQUIRED' if verify_ssl else 'CERT_NONE',
         timeout=urllib3.Timeout(connect=2.0, read=10.0)
     )
-    
-    api_path = '{}/api/alexa/smart_home'.format(base_url)
-    
+
+    api_path = f'{base_url}/api/alexa/smart_home'
+
     response = http.request(
-        'POST', 
+        'POST',
         api_path,
         headers={
-            'Authorization': 'Bearer {}'.format(token),
+            'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
             'CF-Access-Client-Id': cf_client_id,
             'CF-Access-Client-Secret': cf_client_secret,
@@ -138,8 +144,9 @@ def lambda_handler(event, context):
         return {
             'event': {
                 'payload': {
-                    'type': 'INVALID_AUTHORIZATION_CREDENTIAL' 
-                            if response.status in (401, 403) else "INTERNAL_ERROR {}".format(response.status),
+                    'type': 'INVALID_AUTHORIZATION_CREDENTIAL'
+                            if response.status in (401, 403)
+                            else f"INTERNAL_ERROR {response.status}",
                     'message': response.data.decode("utf-8"),
                 }
             }
