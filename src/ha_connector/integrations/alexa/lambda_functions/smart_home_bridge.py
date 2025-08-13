@@ -45,7 +45,7 @@ from .shared_configuration import (
     create_warmup_response,
     extract_correlation_id,
     handle_warmup_request,
-    load_configuration,
+    load_configuration_as_configparser,
 )
 
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
@@ -300,40 +300,32 @@ def _setup_configuration() -> configparser.ConfigParser:
         # ╚═══════════════════════════════════════════════════════════════════════════╝
 
         # Use shared configuration loading which handles all caching internally
-        config = load_configuration(
-            app_config_path=_default_app_config_path,
-            config_section="appConfig",
-            return_format="configparser",
+        config = load_configuration_as_configparser(
+            app_config_path=_default_app_config_path
         )
 
-        # Ensure config is a ConfigParser instance
-        if isinstance(config, configparser.ConfigParser):
-            _performance_optimizer.record_cache_hit()
-            duration = _performance_optimizer.end_timing("config_load", start_time)
-            _logger.info("✅ Configuration loaded (%.1fms)", duration * 1000)
-            return config
+        # Config is always a ConfigParser instance
+        _performance_optimizer.record_cache_hit()
+        duration = _performance_optimizer.end_timing("config_load", start_time)
+        _logger.info("✅ Configuration loaded (%.1fms)", duration * 1000)
+        return config
 
         # ╭─────────────────── TRANSFER BLOCK END ───────────────────╮
-
-        raise ValueError("Configuration must be a ConfigParser instance")
 
     except (ValueError, RuntimeError, KeyError, ImportError) as e:
         _performance_optimizer.record_cache_miss()
         _logger.warning("Enhanced config loading failed, using fallback: %s", e)
 
         # Fallback to basic shared configuration loading
-        config = load_configuration(
-            app_config_path=_default_app_config_path,
-            config_section="appConfig",
-            return_format="configparser",
+        config = load_configuration_as_configparser(
+            app_config_path=_default_app_config_path
         )
 
         duration = _performance_optimizer.end_timing("config_load", start_time)
         _logger.warning("⚠️ Fallback configuration loaded (%.1fms)", duration * 1000)
 
-        if isinstance(config, configparser.ConfigParser):
-            return config
-        raise RuntimeError("Failed to load configuration as ConfigParser") from e
+        # Config is always a ConfigParser instance
+        return config
 
 
 def _handle_response_caching_and_performance(

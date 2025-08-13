@@ -90,7 +90,7 @@ python scripts/lambda_deployment/deployment_manager.py --validate
 ## Available Lambda Functions
 
 - **`smart_home_bridge`** - Core Home Assistant integration (AWS: "HomeAssistant")
-- **`oauth_gateway`** - CloudFlare OAuth wrapper (AWS: "CloudFlare-Wrapper")  
+- **`oauth_gateway`** - CloudFlare OAuth wrapper (AWS: "CloudFlare-Wrapper")
 - **`configuration_manager`** - Centralized configuration management (AWS: "ConfigurationManager")
 
 ## CLI Command Reference

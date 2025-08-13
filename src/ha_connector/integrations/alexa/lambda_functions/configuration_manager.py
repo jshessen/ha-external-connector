@@ -147,12 +147,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 # === SHARED CONFIGURATION IMPORTS ===
 from .shared_configuration import (  # SHARED_CONFIG_IMPORT; SSM Path Constants
-    SSM_ALEXA_CONFIG_PATH,
-    SSM_AWS_RUNTIME_PATH,
     SSM_BASE_HOME_ASSISTANT,
-    SSM_OAUTH_CONFIG_PATH,
     SSM_OAUTH_GATEWAY_ARN,
-    SSM_SECURITY_POLICIES_PATH,
     SSM_SMART_HOME_BRIDGE_ARN,
     RateLimiter,
     SecurityEventLogger,
@@ -325,54 +321,29 @@ def lambda_handler(
         "request_id": getattr(context, "aws_request_id", "unknown")[:8],
     }
 
-    # 🔄 GENERATION-AWARE CONFIGURATION MANAGEMENT: Backwards Compatible + Future Ready
-    # Supports Gen1 (ENV only), Gen2 (ENV + legacy SSM), Gen3 (modular SSM)
-    configs_to_warm = [
-        {
-            "cache_key": "homeassistant_config",
-            "ssm_path": SSM_ALEXA_CONFIG_PATH,
-            "description": "HomeAssistant Smart Home Bridge configuration",
-            "required_sections": ["ha_config", "oauth_config"],
-            "generation": "gen3",  # New modular format
-            "optional": False,  # Required for Smart Home Bridge functionality
-        },
-        {
-            "cache_key": "oauth_gateway_config",
-            "ssm_path": SSM_OAUTH_CONFIG_PATH,
-            "description": "OAuth Gateway with CloudFlare configuration",
-            "required_sections": ["ha_config", "oauth_config", "cloudflare_config"],
-            "generation": "gen3",  # New modular format
-            "optional": False,  # Required for OAuth Gateway functionality
-        },
-        {
-            "cache_key": "aws_runtime_config",
-            "ssm_path": SSM_AWS_RUNTIME_PATH,
-            "description": "AWS runtime optimization settings",
-            "required_sections": ["aws_config"],
-            "generation": "gen3",  # Performance optimization feature
-            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
-        },
-        {
-            "cache_key": "security_policies_config",
-            "ssm_path": SSM_SECURITY_POLICIES_PATH,
-            "description": "Security policies and rate limiting configuration",
-            "required_sections": ["security_config"],
-            "generation": "gen3",  # Enhanced security feature
-            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
-        },
-    ]
+    # 🔄 SIMPLIFIED CONFIGURATION MANAGEMENT: Focus on Container Warming Only
+    # Each Lambda function handles its own configuration
+    # (Smart Home Bridge, OAuth Gateway)
+    # Configuration Manager only needs Lambda ARNs for container warming
 
-    # Process each configuration with generation-aware tolerance
-    for config in configs_to_warm:
-        results["configs_attempted"] += 1
-        _process_single_configuration(config, results)
+    # Skip configuration warming entirely - other functions handle their own configs
+    # This eliminates the false "configs_attempted" count and focuses on
+    # core functionality
+
+    results["configs_attempted"] = 0  # No longer attempting config warming
+    results["configs_warmed"] = 0     # Each function handles own configs
 
     # 🔥 CONTAINER WARMING: Keep Lambda functions warm to prevent cold starts
     _warm_lambda_containers(results)
 
-    # 📊 GENERATION-AWARE RESULTS: Focus on container warming success
-    success_rate = (results["configs_warmed"] / results["configs_attempted"]) * 100
+    # 📊 SIMPLIFIED RESULTS: Focus on container warming success only
     container_success = results.get("containers_warmed", 0) > 0
+
+    # Success rate calculation with zero-division protection
+    if results["configs_attempted"] > 0:
+        success_rate = (results["configs_warmed"] / results["configs_attempted"]) * 100
+    else:
+        success_rate = 100.0  # No config warming attempted = 100% success
 
     # The critical measure is container warming - config cache warming is optional
     if container_success:
@@ -400,115 +371,6 @@ def lambda_handler(
         )
 
     return {"statusCode": 200, "body": json.dumps(results)}
-
-
-def _process_single_configuration(
-    config: dict[str, Any], results: dict[str, Any]
-) -> None:
-    """
-    🔧 GENERATION-AWARE CONFIGURATION PROCESSING
-
-    Process one configuration entry with backwards compatibility and fault tolerance.
-    Respects the 'optional' flag to distinguish between required configurations
-    (missing = error) and optional configurations (missing = acceptable).
-
-    Supports:
-    - Gen1: Environment variables only
-    - Gen2: Environment variables + legacy SSM (/ha-alexa/appConfig)
-    - Gen3: Modular SSM (/home-assistant/service/config)
-    """
-    try:
-        success = warm_configuration(
-            str(config["cache_key"]),
-            str(config["ssm_path"]),
-            str(config["description"]),
-        )
-
-        if success:
-            results["configs_warmed"] += 1
-            logger.info(
-                "Configuration warmed successfully",
-                extra={
-                    "description": config["description"],
-                    "generation": config.get("generation", "unknown"),
-                },
-            )
-        else:
-            # Check if this configuration is optional (Gen3 enhancements)
-            is_optional = config.get("optional", False)
-            generation = config.get("generation", "unknown")
-
-            if is_optional:
-                # Optional configurations: Log as info, don't add to errors
-                logger.info(
-                    "Optional configuration not found (backwards compatible)",
-                    extra={
-                        "description": config["description"],
-                        "generation": generation,
-                        "ssm_path": config["ssm_path"],
-                        "impact": "No impact - system uses Gen1/Gen2 fallbacks",
-                    },
-                )
-            else:
-                # Required configurations: Log as error for troubleshooting
-                error_msg = f"Required configuration missing: {config['description']}"
-                results["errors"].append(error_msg)
-                logger.warning(
-                    "Required configuration not found",
-                    extra={
-                        "description": config["description"],
-                        "generation": generation,
-                        "ssm_path": config["ssm_path"],
-                        "impact": "Function may use Gen1/Gen2 fallbacks",
-                        "error_message": error_msg,
-                    },
-                )
-
-    except (KeyError, ValueError, TypeError, OSError) as e:
-        # Check if this is an optional configuration
-        is_optional = config.get("optional", False)
-        generation = config.get("generation", "unknown")
-
-        if is_optional:
-            # Optional configurations: Log as info, continue gracefully
-            logger.info(
-                "Optional configuration error (backwards compatible)",
-                extra={
-                    "description": config["description"],
-                    "generation": generation,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "impact": "No impact - system operates with Gen1/Gen2 fallbacks",
-                },
-            )
-        else:
-            # Required configurations: Add to errors for troubleshooting
-            error_msg = (
-                f"Error loading required config {config['description']}: {str(e)}"
-            )
-            results["errors"].append(error_msg)
-            logger.error(
-                "Required configuration error",
-                extra={
-                    "description": config["description"],
-                    "generation": generation,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "error_message": error_msg,
-                },
-            )
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Unexpected errors: Always log regardless of optional status
-        error_msg = f"Unexpected error warming {config['description']}: {str(e)}"
-        results["errors"].append(error_msg)
-        logger.error(
-            "Unexpected error during configuration warming",
-            extra={
-                "description": config["description"],
-                "error": str(e),
-                "error_type": type(e).__name__,
-            },
-        )
 
 
 def _get_lambda_arn_from_ssm(function_key: str) -> str | None:

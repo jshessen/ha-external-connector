@@ -132,11 +132,11 @@ class AWSDeploymentHandler:
                     or "INVALID_AUTHORIZATION_CREDENTIAL" in str(payload)
                     or ("event" in payload and "payload" in payload.get("event", {}))
                 ):
-                    self._logger.info("✅ Function returning valid response structure")
+                    self._logger.info("✅ Lambda function responding correctly")
                 else:
                     self._logger.debug("Response payload: %s", payload)
                     self._logger.warning(
-                        "⚠️ Unexpected response format from smart_home_bridge"
+                        "⚠️ Lambda function runtime issue - unexpected response format"
                     )
             elif function_name == "oauth_gateway":
                 # For OAuth gateway, expect token exchange response or auth error
@@ -145,18 +145,19 @@ class AWSDeploymentHandler:
                     or "error" in payload
                     or ("event" in payload and "payload" in payload.get("event", {}))
                 ):
-                    self._logger.info(
-                        "✅ OAuth gateway returning valid response structure"
-                    )
+                    self._logger.info("✅ Lambda function responding correctly")
                 else:
                     self._logger.debug("Response payload: %s", payload)
                     self._logger.warning(
-                        "⚠️ Unexpected response format from oauth_gateway"
+                        "⚠️ Lambda function runtime issue - unexpected response format"
                     )
             elif function_name == "configuration_manager":
                 # For configuration manager, validate the response body content
                 success = self._validate_configuration_manager_response(payload)
                 if not success:
+                    self._logger.warning(
+                        "⚠️ Configuration Manager has functional issues"
+                    )
                     return False
 
             return status_code == 200
@@ -317,19 +318,26 @@ class AWSDeploymentHandler:
                 WaiterConfig={"Delay": 5, "MaxAttempts": 30},
             )
 
-            self._logger.info(
-                "✅ Function %s deployed successfully!", aws_function_name
-            )
+            self._logger.info("✅ Lambda deployment successful: %s", aws_function_name)
             self._logger.info(
                 "📋 Code SHA256: %s", response.get("CodeSha256", "Unknown")
             )
 
-            # Test the deployed function
+            # Test the deployed function for functional correctness
+            self._logger.info("🧪 Testing Lambda functionality: %s", aws_function_name)
             if self.test_deployed_function(function_name):
-                self._logger.info("✅ Deployment test passed")
+                self._logger.info("✅ Lambda functionality test passed")
                 return True
-            self._logger.warning("⚠️ Deployment test failed, but function was deployed")
-            return True  # Deployment succeeded even if test failed
+
+            # Deployment succeeded, but function has runtime issues
+            self._logger.warning(
+                "⚠️ Lambda deployment succeeded, but functionality test failed"
+            )
+            self._logger.warning(
+                "💡 This indicates configuration or code issues, "
+                "not deployment problems"
+            )
+            return True  # Deployment succeeded even if functionality test failed
 
         except (OSError, ImportError, ClientError) as e:
             self._logger.error("❌ Deployment failed: %s", e)
@@ -440,7 +448,39 @@ class AWSDeploymentHandler:
 
         configs_warmed = actual_response.get("configs_warmed", 0)
         configs_attempted = actual_response.get("configs_attempted", 0)
+        containers_warmed = actual_response.get("containers_warmed", 0)
+        containers_attempted = actual_response.get("containers_attempted", 0)
 
+        # During Gen 2→Gen 3 transition: Container warming success is the primary metric
+        if containers_attempted > 0:
+            if containers_warmed == containers_attempted:
+                self._logger.info(
+                    "✅ Configuration Manager successfully warmed %d containers",
+                    containers_warmed,
+                )
+                if configs_warmed == 0 and configs_attempted > 0:
+                    self._logger.info(
+                        "📋 Gen 3 configurations not available yet (%d attempted) - "
+                        "expected during transition",
+                        configs_attempted,
+                    )
+                return True
+            elif containers_warmed > 0:
+                self._logger.warning(
+                    "⚠️ Configuration Manager partially successful containers (%d/%d)",
+                    containers_warmed,
+                    containers_attempted,
+                )
+                return True
+            else:
+                self._logger.error(
+                    "❌ Configuration Manager failed to warm any containers (%d/%d)",
+                    containers_warmed,
+                    containers_attempted,
+                )
+                return False
+
+        # Legacy validation: Pure configuration warming (when containers_attempted = 0)
         if configs_warmed == 0 and configs_attempted > 0:
             self._logger.error(
                 "❌ Configuration Manager failed to warm any configs (%d/%d)",

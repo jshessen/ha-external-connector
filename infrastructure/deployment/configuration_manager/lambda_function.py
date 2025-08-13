@@ -1018,16 +1018,12 @@ class ConfigurationManager:
                 "verify_ssl": os.environ.get("HA_VERIFY_SSL", "true").lower() == "true",
                 "timeout": int(os.environ.get("HA_TIMEOUT", "30")),
             }
-        if config_section == "oauth_config":
-            return {
-                "client_id": os.environ.get("OAUTH_CLIENT_ID", ""),
-                "client_secret": os.environ.get("OAUTH_CLIENT_SECRET", ""),
-                "redirect_uri": os.environ.get("OAUTH_REDIRECT_URI", ""),
-            }
         if config_section == "cloudflare_config":
+            # CloudFlare config IS the OAuth config (oauth_gateway = CloudFlare-Wrapper)
             return {
                 "client_id": os.environ.get("CF_CLIENT_ID", ""),
                 "client_secret": os.environ.get("CF_CLIENT_SECRET", ""),
+                "wrapper_secret": os.environ.get("WRAPPER_SECRET", ""),
                 "enabled": bool(os.environ.get("CF_CLIENT_ID")),
             }
         if config_section == "security_config":
@@ -1041,6 +1037,14 @@ class ConfigurationManager:
                 "region": os.environ.get("AWS_REGION", "us-east-1"),
                 "timeout": int(os.environ.get("AWS_TIMEOUT", "30")),
                 "max_retries": int(os.environ.get("AWS_MAX_RETRIES", "3")),
+            }
+        if config_section == "lambda_config":
+            return {
+                "configuration_manager_arn": os.environ.get(
+                    "CONFIGURATION_MANAGER_ARN", ""
+                ),
+                "cloudflare_wrapper_arn": os.environ.get("CLOUDFLARE_WRAPPER_ARN", ""),
+                "smart_home_bridge_arn": os.environ.get("SMART_HOME_BRIDGE_ARN", ""),
             }
         _logger.warning("⚠️ Unknown config section for Gen 1: %s", config_section)
         return {}
@@ -1152,14 +1156,10 @@ class ConfigurationManager:
                 "HA_VERIFY_SSL": ("verify_ssl", bool),
                 "HA_TIMEOUT": ("timeout", int),
             },
-            "oauth_config": {
-                "OAUTH_CLIENT_ID": "client_id",
-                "OAUTH_CLIENT_SECRET": "client_secret",
-                "OAUTH_REDIRECT_URI": "redirect_uri",
-            },
             "cloudflare_config": {
                 "CF_CLIENT_ID": "client_id",
                 "CF_CLIENT_SECRET": "client_secret",
+                "WRAPPER_SECRET": "wrapper_secret",
                 "CF_ENABLED": ("enabled", bool),
             },
             "security_config": {
@@ -1212,10 +1212,10 @@ class ConfigurationManager:
         """Check if configuration has required fields populated."""
         required_fields = {
             "ha_config": ["base_url"],
-            "oauth_config": ["client_id"],
-            "cloudflare_config": [],  # All optional
+            "cloudflare_config": ["client_id"],  # CloudFlare IS the OAuth config
             "security_config": [],  # All optional
             "aws_config": ["region"],
+            "lambda_config": [],  # All optional
         }
 
         section_required = required_fields.get(config_section, [])
@@ -1232,16 +1232,12 @@ class ConfigurationManager:
                 "verify_ssl": json_config.get("HA_VERIFY_SSL", True),
                 "timeout": json_config.get("HA_TIMEOUT", 30),
             }
-        if config_section == "oauth_config":
-            return {
-                "client_id": json_config.get("OAUTH_CLIENT_ID", ""),
-                "client_secret": json_config.get("OAUTH_CLIENT_SECRET", ""),
-                "redirect_uri": json_config.get("OAUTH_REDIRECT_URI", ""),
-            }
         if config_section == "cloudflare_config":
+            # CloudFlare config IS the OAuth config in Gen 2 JSON format
             return {
                 "client_id": json_config.get("CF_CLIENT_ID", ""),
                 "client_secret": json_config.get("CF_CLIENT_SECRET", ""),
+                "wrapper_secret": json_config.get("WRAPPER_SECRET", ""),
                 "enabled": bool(json_config.get("CF_CLIENT_ID")),
             }
         if config_section == "security_config":
@@ -1382,6 +1378,269 @@ def load_configuration(
         app_config_path=app_config_path,
         force_generation=force_generation,
     )
+
+
+def load_comprehensive_configuration(
+    app_config_path: str | None = None,
+    force_generation: str | None = None,
+) -> tuple[dict[str, dict[str, Any]], str, dict[str, bool]]:
+    """
+    Load comprehensive configuration for all sections with feature availability
+    detection.
+
+    This function implements the incremental configuration approach where:
+    - Core features work with minimal config (Gen 1)
+    - Optional features activate when config is available (Gen 2+)
+    - Configuration is additive across generations
+
+    FEATURE DETECTION:
+    - core_available: Basic HA connectivity (ha_config)
+    - cloudflare_available: CloudFlare OAuth gateway (cloudflare_config = OAuth config)
+    - caching_available: Response/config caching (aws_config + DynamoDB)
+    - lambda_coordination_available: Cross-Lambda warming (lambda_config)
+
+    Args:
+        app_config_path: SSM path for Gen 2/3 configurations
+        force_generation: Force specific generation for testing
+
+    Returns:
+        Tuple of (configurations_dict, generation_used, features_available)
+
+    Example:
+        configs, gen, features = load_comprehensive_configuration()
+        if features['core_available']:
+            # smart_home_bridge.py can work
+        if features['core_available'] and features['cloudflare_available']:
+            # oauth_gateway.py can work (CloudFlare IS the OAuth gateway)
+        if features['lambda_coordination_available']:
+            # configuration_manager.py can work with warming
+    """
+    _logger.info("Loading comprehensive configuration with feature detection")
+
+    configurations: dict[str, dict[str, Any]] = {}
+    features_available: dict[str, bool] = {
+        "core_available": False,
+        "cloudflare_available": False,  # CloudFlare IS the OAuth gateway
+        "caching_available": False,
+        "lambda_coordination_available": False,
+    }
+
+    # Define configuration sections to attempt loading
+    config_sections = [
+        "ha_config",  # Core HA connectivity
+        "cloudflare_config",  # CloudFlare integration (includes OAuth functionality)
+        "security_config",  # Security settings (secrets)
+        "aws_config",  # AWS/DynamoDB for caching
+        "lambda_config",  # Cross-Lambda coordination
+    ]
+
+    generation_used = "generation_1_env_only"  # Default fallback
+
+    # Load each configuration section
+    for section in config_sections:
+        try:
+            config, generation = _config_manager.load_configuration(
+                config_section=section,
+                app_config_path=app_config_path,
+                force_generation=force_generation,
+            )
+
+            configurations[section] = config
+            generation_used = generation  # Track the latest generation detected
+
+            _logger.debug(
+                "Loaded %s configuration: %s keys", section, len(config.keys())
+            )
+
+        except (ClientError, ValueError, KeyError, ImportError) as e:
+            _logger.debug("Failed to load %s configuration: %s", section, e)
+            configurations[section] = {}
+
+    # Determine feature availability based on loaded configurations
+    features_available["core_available"] = _is_core_config_complete(
+        configurations.get("ha_config", {})
+    )
+
+    features_available["cloudflare_available"] = _is_cloudflare_config_complete(
+        configurations.get("cloudflare_config", {})
+    )
+
+    features_available["caching_available"] = _is_caching_config_complete(
+        configurations.get("aws_config", {})
+    )
+
+    features_available["lambda_coordination_available"] = _is_lambda_config_complete(
+        configurations.get("lambda_config", {})
+    )
+
+    # Log feature availability for debugging
+    available_features = [k for k, v in features_available.items() if v]
+    _logger.info("Available features: %s", available_features)
+
+    return configurations, generation_used, features_available
+
+
+def _is_core_config_complete(ha_config: dict[str, Any]) -> bool:
+    """Check if core HA configuration is complete for basic functionality."""
+    required_fields = ["base_url"]
+    return all(
+        ha_config.get(field) and str(ha_config.get(field)).strip()
+        for field in required_fields
+    )
+
+
+def _is_cloudflare_config_complete(cf_config: dict[str, Any]) -> bool:
+    """
+    Check if CloudFlare configuration is complete for OAuth gateway functionality.
+
+    CloudFlare config IS the OAuth config - oauth_gateway.py IS the CloudFlare-Wrapper.
+    """
+    required_fields = ["client_id", "client_secret", "wrapper_secret"]
+    return all(
+        cf_config.get(field) and str(cf_config.get(field)).strip()
+        for field in required_fields
+    )
+
+
+def _is_caching_config_complete(aws_config: dict[str, Any]) -> bool:
+    """Check if caching configuration is complete for response/config caching."""
+    required_fields = ["region"]
+    has_aws_config = all(
+        aws_config.get(field) and str(aws_config.get(field)).strip()
+        for field in required_fields
+    )
+
+    # Also check for DynamoDB table environment variables
+    has_cache_table = bool(os.environ.get("SHARED_CACHE_TABLE"))
+
+    return has_aws_config or has_cache_table
+
+
+def _is_lambda_config_complete(lambda_config: dict[str, Any]) -> bool:
+    """
+    Check if Lambda coordination configuration is complete for cross-Lambda
+    features.
+    """
+    # Check for either configuration manager ARN or other Lambda ARNs
+    coordination_fields = [
+        "configuration_manager_arn",
+        "oauth_gateway_arn",
+        "smart_home_bridge_arn",
+    ]
+
+    return any(
+        lambda_config.get(field) and str(lambda_config.get(field)).strip()
+        for field in coordination_fields
+    )
+
+
+def load_configuration_as_configparser(
+    app_config_path: str | None = None,
+) -> configparser.ConfigParser:
+    """
+    Load configuration in ConfigParser format for backward compatibility.
+
+    This function supports existing code that expects ConfigParser format
+    while using the new comprehensive configuration loading underneath.
+
+    Args:
+        app_config_path: SSM path for Gen 2/3 configurations
+
+    Returns:
+        ConfigParser with appConfig section containing all configuration
+    """
+    _logger.debug("Loading configuration in ConfigParser format")
+
+    config_parser = configparser.ConfigParser()
+    config_parser.add_section("appConfig")
+
+    try:
+        # Load comprehensive configuration
+        configurations, generation, _ = load_comprehensive_configuration(
+            app_config_path=app_config_path
+        )
+
+        # Map configurations to legacy format using helper
+        combined_config = _map_configurations_to_legacy_format(configurations)
+
+        # Set all values in the ConfigParser
+        for key, value in combined_config.items():
+            config_parser.set("appConfig", key, value)
+
+        _logger.debug(
+            "ConfigParser loaded with %d parameters (generation: %s)",
+            len(combined_config),
+            generation,
+        )
+
+    except (ClientError, ValueError, KeyError) as e:
+        _logger.warning("Failed to load comprehensive configuration: %s", e)
+
+        # Fallback to environment variables
+        combined_config = _get_environment_fallback_config()
+        for key, value in combined_config.items():
+            config_parser.set("appConfig", key, value)
+
+        _logger.debug("ConfigParser loaded from environment fallback")
+
+    return config_parser
+
+
+def _map_configurations_to_legacy_format(
+    configurations: dict[str, dict[str, Any]],
+) -> dict[str, str]:
+    """
+    Map modern configuration format to legacy ConfigParser format.
+
+    Args:
+        configurations: Modern configuration dictionary
+
+    Returns:
+        Flat dictionary suitable for ConfigParser appConfig section
+    """
+    # Configuration mapping: (section, modern_key) -> legacy_key
+    config_mappings = {
+        ("ha_config", "base_url"): "HA_BASE_URL",
+        ("ha_config", "token"): "HA_TOKEN",
+        ("ha_config", "verify_ssl"): "HA_VERIFY_SSL",
+        ("cloudflare_config", "client_id"): "CF_CLIENT_ID",
+        ("cloudflare_config", "client_secret"): "CF_CLIENT_SECRET",
+        ("cloudflare_config", "wrapper_secret"): "WRAPPER_SECRET",
+        ("security_config", "alexa_secret"): "ALEXA_SECRET",
+        ("security_config", "wrapper_secret"): "WRAPPER_SECRET",
+    }
+
+    combined_config: dict[str, str] = {}
+
+    for (section, modern_key), legacy_key in config_mappings.items():
+        section_config = configurations.get(section, {})
+        value = section_config.get(modern_key)
+
+        if value is not None:
+            # Special handling for boolean values
+            if isinstance(value, bool):
+                combined_config[legacy_key] = str(value).lower()
+            else:
+                combined_config[legacy_key] = str(value)
+
+    return combined_config
+
+
+def _get_environment_fallback_config() -> dict[str, str]:
+    """
+    Get fallback configuration from environment variables.
+
+    Returns:
+        Dictionary of environment variable values
+    """
+    return {
+        "HA_BASE_URL": os.environ.get("HA_BASE_URL", ""),
+        "HA_TOKEN": os.environ.get("HA_TOKEN", ""),
+        "CF_CLIENT_ID": os.environ.get("CF_CLIENT_ID", ""),
+        "CF_CLIENT_SECRET": os.environ.get("CF_CLIENT_SECRET", ""),
+        "ALEXA_SECRET": os.environ.get("ALEXA_SECRET", ""),
+        "WRAPPER_SECRET": os.environ.get("WRAPPER_SECRET", ""),
+    }
 
 
 def get_configuration_stats() -> dict[str, Any]:
@@ -2778,16 +3037,6 @@ def _validate_configuration(app_config: dict[str, Any]) -> tuple[bool, str | Non
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _create_ssm_client() -> SSMClient:
-    """Create SSM client with lazy initialization."""
-    global _ssm_client  # pylint: disable=global-statement
-    if _ssm_client is None:
-        _ssm_client = boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-            "ssm", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )
-    return _ssm_client
-
-
 def _get_dynamodb_client() -> Any:  # DynamoDB types not available
     """Get DynamoDB client with lazy initialization."""
     global _dynamodb_client  # pylint: disable=global-statement
@@ -2930,196 +3179,6 @@ def _cleanup_expired_cache() -> None:
 
     if expired_keys:
         _logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
-
-
-def _try_original_ssm_format(
-    ssm_path: str, config_section: str
-) -> dict[str, Any] | None:
-    """Try loading from original single JSON parameter format."""
-    ssm_client = _create_ssm_client()
-
-    # Support both APP_CONFIG_PATH and direct SSM path
-    ssm_param_name = ssm_path
-    needs_appconfig = not ssm_param_name.endswith(
-        "appConfig"
-    ) and not ssm_param_name.endswith("alexa")
-    if needs_appconfig:
-        ssm_param_name = f"{ssm_path.rstrip('/')}/appConfig"
-
-    try:
-        response = ssm_client.get_parameter(Name=ssm_param_name, WithDecryption=True)
-        param_value = response.get("Parameter", {}).get("Value", "")
-        original_config: dict[str, Any] = json.loads(param_value)
-
-        _logger.info("Loaded flat configuration from SSM: %s", ssm_param_name)
-        _logger.debug("Configuration keys: %s", list(original_config.keys()))
-
-        # Map original format to standardized keys
-        if config_section == "ha_config":
-            return _map_original_ha_config(original_config)
-
-        # For new features (OAuth, CloudFlare, Security, AWS),
-        # just return relevant subset since no backwards compatibility needed
-        return original_config
-
-    except (ClientError, json.JSONDecodeError, KeyError) as e:
-        _logger.debug(
-            "Original SSM format not available for %s: %s", ssm_param_name, str(e)
-        )
-        return None
-
-
-def _try_new_ssm_format(ssm_path: str, config_section: str) -> dict[str, Any] | None:
-    """Try loading from new standardized SSM parameter format."""
-    ssm_client = _create_ssm_client()
-
-    try:
-        response = ssm_client.get_parameters_by_path(
-            Path=ssm_path, Recursive=False, WithDecryption=True, MaxResults=10
-        )
-
-        for param in response.get("Parameters", []):
-            param_name = param.get("Name", "")
-            if param_name.endswith(f"/{config_section}"):
-                param_value = param.get("Value", "{}")
-                return json.loads(param_value)  # type: ignore[no-any-return]
-
-        return None
-
-    except (ClientError, json.JSONDecodeError, KeyError) as e:
-        _logger.debug("Standardized SSM format not available: %s", str(e))
-        return None
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Configuration Mapping Functions
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-def _map_original_ha_config(original_config: dict[str, Any]) -> dict[str, Any]:
-    """Map original HA configuration keys to standardized format."""
-    key_mapping: dict[str, str] = {
-        "HA_BASE_URL": "base_url",
-        "HA_TOKEN": "token",
-        "HA_VERIFY_SSL": "verify_ssl",
-        "HA_TIMEOUT": "timeout",
-    }
-
-    mapped_config: dict[str, Any] = {}
-    for original_key, standard_key in key_mapping.items():
-        if original_key in original_config:
-            mapped_config[standard_key] = original_config[original_key]
-
-    return mapped_config
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Foundation Pattern Compatibility
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-def _load_config_as_configparser(ssm_parameter_path: str) -> configparser.ConfigParser:
-    """
-    🔐 BACKWARDS COMPATIBLE CONFIGURATION MANAGER: Original Foundation Support
-
-    Load configparser from config stored in SSM Parameter Store with full backwards
-    compatibility for the original foundation pattern from dkaser's gist. This function
-    ensures the original flat JSON configuration is properly loaded into an appConfig
-    section as expected by the foundation code.
-
-    **FOUNDATION COMPATIBILITY:**
-    - Supports original flat JSON format with keys: HA_BASE_URL, CF_CLIENT_ID, etc.
-    - Creates appConfig section as expected by original foundation pattern
-    - APP_CONFIG_PATH environment variable support for existing deployments
-    - ALEXA_SECRET replaces WRAPPER_SECRET for enhanced naming
-
-    **CONFIGURATION SOURCES (Priority Order):**
-    1. APP_CONFIG_PATH environment variable (existing deployments)
-    2. Direct SSM path with /appConfig suffix
-    3. Direct SSM path as provided
-    4. Fallback to environment variables
-
-    :param ssm_parameter_path: Path to app config in SSM Parameter Store
-    :return: ConfigParser with appConfig section for foundation compatibility
-    """
-    _logger.info("Loading configuration using foundation-compatible pattern")
-    configuration = configparser.ConfigParser()
-
-    try:
-        # PRIORITY 1: APP_CONFIG_PATH environment variable (existing deployments)
-        app_config_path = os.environ.get("APP_CONFIG_PATH")
-        if app_config_path:
-            _logger.info("Using APP_CONFIG_PATH: %s", app_config_path)
-            # Historical pattern: APP_CONFIG_PATH always gets "/appConfig" appended
-            appconfig_path = f"{app_config_path.rstrip('/')}/appConfig"
-            _logger.info("Trying appConfig path: %s", appconfig_path)
-            config_dict = _load_flat_config_from_ssm(appconfig_path)
-            if config_dict:
-                configuration.add_section("appConfig")
-                for key, value in config_dict.items():
-                    configuration.set("appConfig", key, str(value))
-                _logger.info("✅ Configuration loaded from appConfig path")
-                return configuration
-
-        # PRIORITY 2: Direct SSM path with /appConfig suffix
-        if not ssm_parameter_path.endswith("/appConfig"):
-            appconfig_path = f"{ssm_parameter_path.rstrip('/')}/appConfig"
-            _logger.info("Trying appConfig path: %s", appconfig_path)
-            config_dict = _load_flat_config_from_ssm(appconfig_path)
-            if config_dict:
-                configuration.add_section("appConfig")
-                for key, value in config_dict.items():
-                    configuration.set("appConfig", key, str(value))
-                _logger.info("✅ Configuration loaded from appConfig path")
-                return configuration
-
-        # PRIORITY 3: Direct SSM path as provided
-        _logger.info("Trying direct SSM path: %s", ssm_parameter_path)
-        config_dict = _load_flat_config_from_ssm(ssm_parameter_path)
-        if config_dict:
-            configuration.add_section("appConfig")
-            for key, value in config_dict.items():
-                configuration.set("appConfig", key, str(value))
-            _logger.info("✅ Configuration loaded from direct SSM path")
-            return configuration
-
-    except (ClientError, NoCredentialsError, ValueError, KeyError) as e:
-        _logger.warning("SSM configuration loading failed: %s", str(e))
-
-    # PRIORITY 4: Fallback to environment variables
-    _logger.info("Using environment variable fallback")
-    env_config = _get_env_fallback_config()
-    configuration.add_section("appConfig")
-    for key, value in env_config.items():
-        configuration.set("appConfig", key, str(value))
-
-    _logger.info("✅ Configuration loaded from environment fallback")
-    return configuration
-
-
-def _load_flat_config_from_ssm(ssm_path: str) -> dict[str, Any] | None:
-    """Load flat JSON configuration from SSM parameter."""
-    try:
-        ssm_client = _create_ssm_client()
-        response = ssm_client.get_parameter(Name=ssm_path, WithDecryption=True)
-        param_value = response.get("Parameter", {}).get("Value", "")
-        return json.loads(param_value)  # type: ignore[no-any-return]
-    except (ClientError, NoCredentialsError, json.JSONDecodeError, KeyError) as e:
-        _logger.debug("Failed to load flat config from %s: %s", ssm_path, str(e))
-        return None
-
-
-def _get_env_fallback_config() -> dict[str, Any]:
-    """Get fallback configuration from environment variables."""
-    return {
-        "HA_BASE_URL": os.environ.get("HA_BASE_URL", "http://localhost:8123"),
-        "HA_TOKEN": os.environ.get("HA_TOKEN", "fallback_token"),
-        "CF_CLIENT_ID": os.environ.get("CF_CLIENT_ID", ""),
-        "CF_CLIENT_SECRET": os.environ.get("CF_CLIENT_SECRET", ""),
-        "ALEXA_SECRET": os.environ.get("ALEXA_SECRET", "fallback_secret"),
-        "OAUTH_CLIENT_ID": os.environ.get("OAUTH_CLIENT_ID", "fallback_client"),
-        "OAUTH_CLIENT_SECRET": os.environ.get("OAUTH_CLIENT_SECRET", "fallback_secret"),
-    }
 
 # Initialize structured logger
 logger = create_structured_logger(__name__)
@@ -3279,54 +3338,29 @@ def lambda_handler(
         "request_id": getattr(context, "aws_request_id", "unknown")[:8],
     }
 
-    # 🔄 GENERATION-AWARE CONFIGURATION MANAGEMENT: Backwards Compatible + Future Ready
-    # Supports Gen1 (ENV only), Gen2 (ENV + legacy SSM), Gen3 (modular SSM)
-    configs_to_warm = [
-        {
-            "cache_key": "homeassistant_config",
-            "ssm_path": SSM_ALEXA_CONFIG_PATH,
-            "description": "HomeAssistant Smart Home Bridge configuration",
-            "required_sections": ["ha_config", "oauth_config"],
-            "generation": "gen3",  # New modular format
-            "optional": False,  # Required for Smart Home Bridge functionality
-        },
-        {
-            "cache_key": "oauth_gateway_config",
-            "ssm_path": SSM_OAUTH_CONFIG_PATH,
-            "description": "OAuth Gateway with CloudFlare configuration",
-            "required_sections": ["ha_config", "oauth_config", "cloudflare_config"],
-            "generation": "gen3",  # New modular format
-            "optional": False,  # Required for OAuth Gateway functionality
-        },
-        {
-            "cache_key": "aws_runtime_config",
-            "ssm_path": SSM_AWS_RUNTIME_PATH,
-            "description": "AWS runtime optimization settings",
-            "required_sections": ["aws_config"],
-            "generation": "gen3",  # Performance optimization feature
-            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
-        },
-        {
-            "cache_key": "security_policies_config",
-            "ssm_path": SSM_SECURITY_POLICIES_PATH,
-            "description": "Security policies and rate limiting configuration",
-            "required_sections": ["security_config"],
-            "generation": "gen3",  # Enhanced security feature
-            "optional": True,  # OPTIONAL: Missing acceptable (backwards compatibility)
-        },
-    ]
+    # 🔄 SIMPLIFIED CONFIGURATION MANAGEMENT: Focus on Container Warming Only
+    # Each Lambda function handles its own configuration
+    # (Smart Home Bridge, OAuth Gateway)
+    # Configuration Manager only needs Lambda ARNs for container warming
 
-    # Process each configuration with generation-aware tolerance
-    for config in configs_to_warm:
-        results["configs_attempted"] += 1
-        _process_single_configuration(config, results)
+    # Skip configuration warming entirely - other functions handle their own configs
+    # This eliminates the false "configs_attempted" count and focuses on
+    # core functionality
+
+    results["configs_attempted"] = 0  # No longer attempting config warming
+    results["configs_warmed"] = 0     # Each function handles own configs
 
     # 🔥 CONTAINER WARMING: Keep Lambda functions warm to prevent cold starts
     _warm_lambda_containers(results)
 
-    # 📊 GENERATION-AWARE RESULTS: Focus on container warming success
-    success_rate = (results["configs_warmed"] / results["configs_attempted"]) * 100
+    # 📊 SIMPLIFIED RESULTS: Focus on container warming success only
     container_success = results.get("containers_warmed", 0) > 0
+
+    # Success rate calculation with zero-division protection
+    if results["configs_attempted"] > 0:
+        success_rate = (results["configs_warmed"] / results["configs_attempted"]) * 100
+    else:
+        success_rate = 100.0  # No config warming attempted = 100% success
 
     # The critical measure is container warming - config cache warming is optional
     if container_success:
@@ -3354,115 +3388,6 @@ def lambda_handler(
         )
 
     return {"statusCode": 200, "body": json.dumps(results)}
-
-
-def _process_single_configuration(
-    config: dict[str, Any], results: dict[str, Any]
-) -> None:
-    """
-    🔧 GENERATION-AWARE CONFIGURATION PROCESSING
-
-    Process one configuration entry with backwards compatibility and fault tolerance.
-    Respects the 'optional' flag to distinguish between required configurations
-    (missing = error) and optional configurations (missing = acceptable).
-
-    Supports:
-    - Gen1: Environment variables only
-    - Gen2: Environment variables + legacy SSM (/ha-alexa/appConfig)
-    - Gen3: Modular SSM (/home-assistant/service/config)
-    """
-    try:
-        success = warm_configuration(
-            str(config["cache_key"]),
-            str(config["ssm_path"]),
-            str(config["description"]),
-        )
-
-        if success:
-            results["configs_warmed"] += 1
-            logger.info(
-                "Configuration warmed successfully",
-                extra={
-                    "description": config["description"],
-                    "generation": config.get("generation", "unknown"),
-                },
-            )
-        else:
-            # Check if this configuration is optional (Gen3 enhancements)
-            is_optional = config.get("optional", False)
-            generation = config.get("generation", "unknown")
-
-            if is_optional:
-                # Optional configurations: Log as info, don't add to errors
-                logger.info(
-                    "Optional configuration not found (backwards compatible)",
-                    extra={
-                        "description": config["description"],
-                        "generation": generation,
-                        "ssm_path": config["ssm_path"],
-                        "impact": "No impact - system uses Gen1/Gen2 fallbacks",
-                    },
-                )
-            else:
-                # Required configurations: Log as error for troubleshooting
-                error_msg = f"Required configuration missing: {config['description']}"
-                results["errors"].append(error_msg)
-                logger.warning(
-                    "Required configuration not found",
-                    extra={
-                        "description": config["description"],
-                        "generation": generation,
-                        "ssm_path": config["ssm_path"],
-                        "impact": "Function may use Gen1/Gen2 fallbacks",
-                        "error_message": error_msg,
-                    },
-                )
-
-    except (KeyError, ValueError, TypeError, OSError) as e:
-        # Check if this is an optional configuration
-        is_optional = config.get("optional", False)
-        generation = config.get("generation", "unknown")
-
-        if is_optional:
-            # Optional configurations: Log as info, continue gracefully
-            logger.info(
-                "Optional configuration error (backwards compatible)",
-                extra={
-                    "description": config["description"],
-                    "generation": generation,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "impact": "No impact - system operates with Gen1/Gen2 fallbacks",
-                },
-            )
-        else:
-            # Required configurations: Add to errors for troubleshooting
-            error_msg = (
-                f"Error loading required config {config['description']}: {str(e)}"
-            )
-            results["errors"].append(error_msg)
-            logger.error(
-                "Required configuration error",
-                extra={
-                    "description": config["description"],
-                    "generation": generation,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "error_message": error_msg,
-                },
-            )
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Unexpected errors: Always log regardless of optional status
-        error_msg = f"Unexpected error warming {config['description']}: {str(e)}"
-        results["errors"].append(error_msg)
-        logger.error(
-            "Unexpected error during configuration warming",
-            extra={
-                "description": config["description"],
-                "error": str(e),
-                "error_type": type(e).__name__,
-            },
-        )
 
 
 def _get_lambda_arn_from_ssm(function_key: str) -> str | None:

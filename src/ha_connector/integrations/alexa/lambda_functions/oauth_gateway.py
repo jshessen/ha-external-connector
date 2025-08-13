@@ -46,7 +46,7 @@ from .shared_configuration import (
     create_warmup_response,
     extract_correlation_id,
     handle_warmup_request,
-    load_configuration,
+    load_configuration_as_configparser,
 )
 
 # ╰─────────────────── IMPORT_BLOCK_END ───────────────────╯
@@ -141,17 +141,15 @@ def get_app_config() -> HAConfig:
     """
     start_time = _performance_optimizer.start_timing("config_load")
     try:
-        config = load_configuration(
-            app_config_path=_default_app_config_path,
-            config_section="appConfig",
-            return_format="configparser",
+        config = load_configuration_as_configparser(
+            app_config_path=_default_app_config_path
         )
 
-        if isinstance(config, configparser.ConfigParser):
-            _performance_optimizer.record_cache_hit()
-            duration = _performance_optimizer.end_timing("config_load", start_time)
-            _logger.info("Configuration loaded (%.1fms)", duration * 1000)
-            return HAConfig(config)
+        # Config is always a ConfigParser instance
+        _performance_optimizer.record_cache_hit()
+        duration = _performance_optimizer.end_timing("config_load", start_time)
+        _logger.info("Configuration loaded (%.1fms)", duration * 1000)
+        return HAConfig(config)
 
         # Fallback to legacy loading if needed
         config = load_config(_default_app_config_path)
