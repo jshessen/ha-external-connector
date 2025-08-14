@@ -20,13 +20,28 @@ INTEGRATION ARCHITECTURE:
 - Professional deployment with enterprise security standards
 """
 
-# Component definitions for user selection interface
-AVAILABLE_COMPONENTS = {
+from typing import NotRequired, TypedDict
+
+
+class ComponentDict(TypedDict, total=False):
+    name: str
+    role: str
+    description: str
+    required: bool
+    dependencies: list[str]
+    deployment_size: str
+    performance_impact: str
+    benefits: NotRequired[list[str]]
+
+
+AVAILABLE_COMPONENTS: dict[str, dict[str, ComponentDict]] = {
     "core": {
         "smart_home_bridge": {
             "name": "Smart Home Bridge",
             "role": "Executive Receptionist",
-            "description": "Processes Alexa voice commands and communicates with Home Assistant",
+            "description": (
+                "Processes Alexa voice commands and communicates with Home Assistant"
+            ),
             "required": True,
             "dependencies": ["shared_configuration"],
             "deployment_size": "Medium",
@@ -37,7 +52,9 @@ AVAILABLE_COMPONENTS = {
         "cloudflare_security_gateway": {
             "name": "CloudFlare Security Gateway",
             "role": "Security Guard",
-            "description": "OAuth authentication with optional CloudFlare proxy protection",
+            "description": (
+                "OAuth authentication with optional CloudFlare proxy protection"
+            ),
             "required": False,
             "dependencies": ["shared_configuration"],
             "deployment_size": "Small",
@@ -51,7 +68,9 @@ AVAILABLE_COMPONENTS = {
         "configuration_manager": {
             "name": "Configuration Manager",
             "role": "Operations Manager",
-            "description": "Background service for performance optimization and config caching",
+            "description": (
+                "Background service for performance optimization and config caching"
+            ),
             "required": False,
             "dependencies": ["shared_configuration"],
             "deployment_size": "Small",

@@ -15,6 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ha_connector.web.api import integration_router, setup_router, status_router
+from ha_connector.web.api.alexa import router as alexa_router
+from ha_connector.web.api.integrations_selection import (
+    router as integrations_selection_router,
+)
 
 # Get the current file's directory to build paths
 WEB_DIR = Path(__file__).parent
@@ -45,6 +49,10 @@ def create_app() -> FastAPI:
     )
     web_app.include_router(status_router, prefix="/api/status", tags=["status"])
     web_app.include_router(setup_router, prefix="/api/setup", tags=["setup"])
+    web_app.include_router(alexa_router, prefix="/api", tags=["alexa"])
+    web_app.include_router(
+        integrations_selection_router, prefix="/api", tags=["integration-selection"]
+    )
 
     return web_app
 

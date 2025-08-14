@@ -1,32 +1,25 @@
 """
-� LAMBDA CONFIGURATION MANAGER: Professional Configuration Management Service 🗗️
+🏢 LAMBDA CONFIGURATION MANAGER: Professional Operations Management Service
 
-=== WHAT THIS FILE DOES (Executive Summary) ===
+=== OPERATIONS MANAGER RESPONSIBILITIES ===
 
-This is the **CENTRALIZED CONFIGURATION MANAGEMENT SERVICE** in your Alexa Smart Home
-ecosystem - a background service that ENRICHES other Lambda functions without creating
-dependencies.
-Each Lambd        {
-            "cache_key": "aws_runtime_config",
-            "ssm_path": "/homeassistant/aws/runtime",
-            "description": "AWS runtime optimization settings",
-            "required_sections": ["aws_config"],
-        },
-        {
-            "cache_key": "security_policies_config",
-            "ssm_path": "/homeassistant/security/policies",
-            "description": "Enhanced security and validation policies",
-            "required_sections": ["security_config"],
-        },perates in complete isolation but benefits from centralized
-configuration optimization and standardized configuration patterns.
+The Operations Manager runs the behind-the-scenes infrastructure that keeps
+all office functions running smoothly. This background service optimizes
+configuration delivery and maintains the shared resources that all departments
+depend on for peak performance.
 
-🏢 **INDEPENDENT LAMBDA ARCHITECTURE WITH CENTRALIZED OPTIMIZATION**
+OPERATIONS MANAGER FUNCTIONS:
+- Infrastructure Management: Maintain shared configuration cache and optimization
+- Resource Coordination: Pre-load configuration data for faster response times
+- Quality Assurance: Validate configuration integrity across all environments
+- Emergency Support: Provide fallback data when primary systems have issues
+- Performance Optimization: Establish patterns for sub-500ms response times
 
-Your Alexa Smart Home system operates like a modern corporate campus where each
-building (Lambda function) is completely self-sufficient but benefits from shared
-campus services (centralized configuration management):
+OFFICE ARCHITECTURE:
+Each department (Lambda function) operates independently but benefits from
+shared infrastructure services that the Operations Manager provides.
 
-🗗️ **CENTRALIZED CONFIGURATION MANAGEMENT SERVICE**
+🏢 **CENTRALIZED OPERATIONS MANAGEMENT SERVICE**
 **(THIS FILE - configuration_manager.py)**
 - 🔧 **Job**: Maintains shared configuration cache AND standardized config patterns
 - 📍 **Location**: Background service (scheduled maintenance operations)
@@ -61,12 +54,14 @@ campus services (centralized configuration management):
 � **INDEPENDENT OPERATION WITH OPTIMIZATION BENEFITS**
 
 **WITHOUT CACHE SERVICE (Baseline Operation):**
-- cloudflare_security_gateway.py: Environment variables → SSM Parameter Store → OAuth processing
+- cloudflare_security_gateway.py:
+  Environment variables → SSM Parameter Store → OAuth processing
 - smart_home_bridge.py: Environment variables → SSM Parameter Store → Voice commands
 - Performance: Standard AWS Lambda performance (acceptable)
 
 **WITH CACHE SERVICE (Enhanced Operation):**
-- cloudflare_security_gateway.py: Warm cache → Environment variables → SSM fallback → OAuth processing
+- cloudflare_security_gateway.py:
+Warm cache → Environment variables → SSM fallback → OAuth processing
 - smart_home_bridge.py: Warm cache → Env vars → SSM fallback → Voice commands
 - Performance: 75% faster cold starts, sub-500ms warm responses
 
@@ -253,7 +248,9 @@ SSM_SECURITY_POLICIES_PATH = "/home-assistant/security/policies"
 
 # Lambda ARN Storage Paths (Gen3 standard format)
 SSM_LAMBDA_ARN_BASE = "/home-assistant/alexa/lambda"
-SSM_CLOUDFLARE_SECURITY_GATEWAY_ARN = "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
+SSM_CLOUDFLARE_SECURITY_GATEWAY_ARN = (
+    "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
+)
 SSM_SMART_HOME_BRIDGE_ARN = "/home-assistant/alexa/lambda/smart-home-bridge-arn"
 
 # APP_CONFIG_PATH: Base reference point for finding SSM parameters
@@ -313,7 +310,8 @@ def build_ssm_lambda_arn_path(lambda_name: str) -> str:
     Build standardized SSM Lambda ARN storage path.
 
     Args:
-        lambda_name: Lambda function name (cloudflare-security-gateway, smart-home-bridge, etc.)
+        lambda_name: Lambda function name (cloudflare-security-gateway,
+                     smart-home-bridge, etc.)
 
     Returns:
         Standardized SSM Lambda ARN path
@@ -1019,7 +1017,8 @@ class ConfigurationManager:
                 "timeout": int(os.environ.get("HA_TIMEOUT", "30")),
             }
         if config_section == "cloudflare_config":
-            # CloudFlare config IS the OAuth config (cloudflare_security_gateway = CloudFlare-Security-Gateway)
+            # CloudFlare config IS the OAuth config
+            # (cloudflare_security_gateway = CloudFlare-Security-Gateway)
             return {
                 "client_id": os.environ.get("CF_CLIENT_ID", ""),
                 "client_secret": os.environ.get("CF_CLIENT_SECRET", ""),
@@ -1495,7 +1494,8 @@ def _is_cloudflare_config_complete(cf_config: dict[str, Any]) -> bool:
     """
     Check if CloudFlare configuration is complete for OAuth gateway functionality.
 
-    CloudFlare config IS the OAuth config - cloudflare_security_gateway.py IS the CloudFlare-Security-Gateway.
+    # CloudFlare config IS the OAuth config - cloudflare_security_gateway.py IS the
+    # CloudFlare-Security-Gateway.
     """
     required_fields = ["client_id", "client_secret", "wrapper_secret"]
     return all(
@@ -2251,7 +2251,8 @@ class AlexaValidator:
 
 class OAuthSecurityValidator:
     """
-    CloudFlare Security Gateway Security Validator: Enterprise Protection for OAuth Flows
+    CloudFlare Security Gateway Security Validator:
+    Enterprise Protection for OAuth Flows
 
     Specialized security validation for OAuth authentication flows, providing
     protection against rate limiting violations, request size attacks, and
@@ -3299,8 +3300,8 @@ def lambda_handler(
     - ⚡ **Team Support**: Guarantees instant resource access for all staff
 
     **BUSINESS IMPACT:**
-    - Security Guard (CloudFlare Security Gateway): Always has fresh authentication configs +
-      standard patterns
+    - Security Guard (CloudFlare Security Gateway):
+      Always has fresh authentication configs + standard patterns
     - Executive Receptionist (Smart Home Bridge): Processes commands sub-500ms +
       standard patterns
     - Overall Office Performance: 24/7 reliability with zero maintenance delays +
@@ -3363,7 +3364,9 @@ def lambda_handler(
             "cache_key": "cloudflare_security_gateway_config",
             "ssm_path": SSM_OAUTH_CONFIG_PATH,  # Gen3: /home-assistant/oauth/config
             "fallback_path": f"{SSM_GEN2_BASE_PATH}/appConfig",  # Gen2 fallback
-            "description": "CloudFlare Security Gateway configuration (Gen2/Gen3 compatible)",
+            "description": (
+                "CloudFlare Security Gateway configuration " "(Gen2/Gen3 compatible)"
+            ),
             "priority": "high",  # High priority: OAuth authentication
             "supports_env_override": True,
         },
@@ -3393,7 +3396,7 @@ def lambda_handler(
     # 🔥 CONTAINER WARMING: Keep Lambda functions warm to prevent cold starts
     _warm_lambda_containers(results)
 
-    #  SIMPLIFIED RESULTS: Focus on container warming success only
+    # 📊 SIMPLIFIED RESULTS: Focus on container warming success only
     container_success = results.get("containers_warmed", 0) > 0
 
     # Success rate calculation with zero-division protection
@@ -3590,7 +3593,8 @@ def _get_lambda_arn_from_ssm(function_key: str) -> str | None:
     Get Lambda function ARN from SSM parameter.
 
     Args:
-        function_key: Key identifying the function (cloudflare_security_gateway, smart_home_bridge)
+        function_key: Key identifying the function
+            (cloudflare_security_gateway, smart_home_bridge)
 
     Returns:
         Lambda function ARN or None if not found

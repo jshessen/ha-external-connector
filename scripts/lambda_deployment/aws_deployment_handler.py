@@ -10,8 +10,15 @@ Key Features:
 - Package Lambda functions into deployment-ready ZIP files
 - Deploy to AWS Lambda with validation and testing
 - Test deployed Lambda functions with appropriate payloads
+- Pure boto3 implementation (HACS-ready, no external dependencies)
 - AWS client management and error handling
 - Dry-run support for validation without deployment
+
+� **BOTO3-ONLY IMPLEMENTATION**:
+- Uses only boto3 API calls for all AWS operations
+- No external AWS CLI dependencies required
+- HACS-ready for Home Assistant Community Store deployment
+- Consistent programmatic interface across all operations
 """
 
 import json
@@ -24,9 +31,15 @@ from botocore.exceptions import ClientError
 
 
 class AWSDeploymentHandler:
-    """Handles AWS Lambda deployment and testing operations."""
+    """
+    Handles AWS Lambda deployment and testing operations with boto3-only implementation.
+    """
 
-    def __init__(self, config: Any, logger: logging.Logger):
+    def __init__(
+        self,
+        config: Any,
+        logger: logging.Logger,
+    ):
         """
         Initialize AWS deployment handler.
 
@@ -36,6 +49,21 @@ class AWSDeploymentHandler:
         """
         self.config = config
         self._logger = logger
+        self._boto3_clients: dict[str, Any] = {}
+
+    def _get_boto3_client(self, service: str) -> Any:
+        """
+        Get or create a boto3 client for the specified service.
+
+        Args:
+            service: AWS service name (e.g., 'lambda', 'ssm')
+
+        Returns:
+            Boto3 client instance
+        """
+        if service not in self._boto3_clients:
+            self._boto3_clients[service] = boto3.client(service)  # pyright: ignore
+        return self._boto3_clients[service]
 
     def package_function(self, function_name: str) -> bool:
         """

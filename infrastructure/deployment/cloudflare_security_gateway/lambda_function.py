@@ -1,8 +1,15 @@
 """
-🔐 CLOUDFLARE CLOUDFLARE SECURITY GATEWAY: Dedicated OAuth Authentication Service 🌐
+🔐 CLOUDFLARE SECURITY GATEWAY: Professional Building Security Services 👮
 
-Handles OAuth token exchange for Alexa Smart Home account linking.
-Provides optional CloudFlare protection for enhanced security.
+The Security Guard manages all visitor authentication and CloudFlare protection
+for Alexa Smart Home account linking. Ensures only authorized visitors gain
+access to the building through comprehensive security screening.
+
+SECURITY GUARD RESPONSIBILITIES:
+- Visitor Badge Validation: OAuth token exchange and verification
+- CloudFlare Protection: Enterprise security screening and rate limiting
+- Credential Verification: Home Assistant authentication and access control
+- Incident Documentation: Security event logging and audit trails
 
 Original work: Copyright 2019 Jason Hu <awaregit at gmail.com>
 Enhanced by: Jeff Hessenflow <jeff.hessenflow@gmail.com>
@@ -139,7 +146,9 @@ SSM_SECURITY_POLICIES_PATH = "/home-assistant/security/policies"
 
 # Lambda ARN Storage Paths (Gen3 standard format)
 SSM_LAMBDA_ARN_BASE = "/home-assistant/alexa/lambda"
-SSM_CLOUDFLARE_SECURITY_GATEWAY_ARN = "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
+SSM_CLOUDFLARE_SECURITY_GATEWAY_ARN = (
+    "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
+)
 SSM_SMART_HOME_BRIDGE_ARN = "/home-assistant/alexa/lambda/smart-home-bridge-arn"
 
 # APP_CONFIG_PATH: Base reference point for finding SSM parameters
@@ -199,7 +208,8 @@ def build_ssm_lambda_arn_path(lambda_name: str) -> str:
     Build standardized SSM Lambda ARN storage path.
 
     Args:
-        lambda_name: Lambda function name (cloudflare-security-gateway, smart-home-bridge, etc.)
+        lambda_name: Lambda function name (cloudflare-security-gateway,
+                     smart-home-bridge, etc.)
 
     Returns:
         Standardized SSM Lambda ARN path
@@ -905,7 +915,8 @@ class ConfigurationManager:
                 "timeout": int(os.environ.get("HA_TIMEOUT", "30")),
             }
         if config_section == "cloudflare_config":
-            # CloudFlare config IS the OAuth config (cloudflare_security_gateway = CloudFlare-Security-Gateway)
+            # CloudFlare config IS the OAuth config
+            # (cloudflare_security_gateway = CloudFlare-Security-Gateway)
             return {
                 "client_id": os.environ.get("CF_CLIENT_ID", ""),
                 "client_secret": os.environ.get("CF_CLIENT_SECRET", ""),
@@ -1381,7 +1392,8 @@ def _is_cloudflare_config_complete(cf_config: dict[str, Any]) -> bool:
     """
     Check if CloudFlare configuration is complete for OAuth gateway functionality.
 
-    CloudFlare config IS the OAuth config - cloudflare_security_gateway.py IS the CloudFlare-Security-Gateway.
+    # CloudFlare config IS the OAuth config - cloudflare_security_gateway.py IS the
+    # CloudFlare-Security-Gateway.
     """
     required_fields = ["client_id", "client_secret", "wrapper_secret"]
     return all(
@@ -2137,7 +2149,8 @@ class AlexaValidator:
 
 class OAuthSecurityValidator:
     """
-    CloudFlare Security Gateway Security Validator: Enterprise Protection for OAuth Flows
+    CloudFlare Security Gateway Security Validator:
+    Enterprise Protection for OAuth Flows
 
     Specialized security validation for OAuth authentication flows, providing
     protection against rate limiting violations, request size attacks, and
@@ -3068,23 +3081,23 @@ def _cleanup_expired_cache() -> None:
     if expired_keys:
         _logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
 
-# === LOGGING CONFIGURATION ===
+# === SECURITY GUARD INITIALIZATION ===
 _debug = bool(os.environ.get("DEBUG"))
 
-# Use shared configuration logger instead of local setup
+# Security Guard logging setup
 _logger = create_structured_logger("CloudFlareSecurityGateway")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
 
-# Initialize boto3 client at global scope for connection reuse
+# Initialize AWS SSM client for configuration access
 client = boto3.client("ssm")  # pyright: ignore[reportUnknownMemberType]
 _default_app_config_path = os.environ.get("APP_CONFIG_PATH", "/alexa/auth/")
 
-# ⚡ PHASE 2 SECURITY: Initialize security components at global scope
+# Initialize security components for visitor screening
 _rate_limiter = RateLimiter()
 _security_validator = SecurityValidator()
 _security_logger = SecurityEventLogger()
 
-# ⚡ PHASE 1B PERFORMANCE: Initialize performance optimizer at global scope
+# Initialize performance monitoring for security operations
 _performance_optimizer = PerformanceMonitor()
 
 log = logging.getLogger("werkzeug")
@@ -3145,14 +3158,14 @@ def load_config(ssm_parameter_path: str) -> configparser.ConfigParser:
 
 def get_app_config() -> HAConfig:
     """
-    ⚡ PERFORMANCE-OPTIMIZED: Load and return the HAConfig instance with 3-tier caching.
+    Security Guard Configuration Access: Load secure visitor credentials and settings.
 
-    CACHING STRATEGY:
-    1. Container Cache: 0-1ms (warm Lambda containers)
-    2. DynamoDB Shared Cache: 20-50ms (cross-Lambda sharing)
-    3. SSM Parameter Store: 100-200ms (authoritative source)
+    Retrieves authentication configuration through multi-tier caching for optimal
+    security response times. Essential for OAuth token validation and CloudFlare
+    protection settings.
 
-    :return: HAConfig instance with loaded configuration
+    Returns:
+        HAConfig instance with loaded security configuration
     """
     start_time = _performance_optimizer.start_timing("config_load")
     try:
@@ -3160,15 +3173,17 @@ def get_app_config() -> HAConfig:
             app_config_path=_default_app_config_path
         )
 
-        # Config is always a ConfigParser instance
+        # Configuration successfully loaded
         _performance_optimizer.record_cache_hit()
         duration = _performance_optimizer.end_timing("config_load", start_time)
-        _logger.info("Configuration loaded (%.1fms)", duration * 1000)
+        _logger.info("Security configuration loaded (%.1fms)", duration * 1000)
         return HAConfig(config)
 
     except Exception as e:
         duration = _performance_optimizer.end_timing("config_load", start_time)
-        _logger.error("Configuration loading failed (%.1fms): %s", duration * 1000, e)
+        _logger.error(
+            "Security configuration loading failed (%.1fms): %s", duration * 1000, e
+        )
         raise
 
 
@@ -3337,22 +3352,22 @@ def _execute_oauth_token_exchange(
 
 def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]:
     """
-    ⚡ PERFORMANCE-OPTIMIZED: CloudFlare Security Gateway Lambda Handler
+    Security Guard Entry Point: OAuth Authentication and CloudFlare Protection
 
-    Streamlined OAuth token exchange handler with performance monitoring
-    and comprehensive security validation. Refactored for maintainability
-    and reduced complexity.
+    The main security checkpoint for Alexa account linking. Validates visitor
+    credentials, processes OAuth token exchanges, and maintains comprehensive
+    security monitoring for all authentication requests.
 
-    PROCESSING FLOW:
-    1. Security validation (rate limiting, request size)
-    2. Configuration loading and validation
-    3. Request body processing and OAuth parameter validation
-    4. OAuth token exchange execution
-    5. Response processing and performance logging
+    SECURITY GUARD WORKFLOW:
+    1. Visitor Screening: Rate limiting and security validation
+    2. Credential Verification: Configuration loading and validation
+    3. Request Processing: OAuth parameter extraction and validation
+    4. Badge Issuance: OAuth token exchange with Home Assistant
+    5. Incident Logging: Security event documentation and monitoring
 
-    TARGET: <200ms OAuth token exchange time
+    Target Response Time: <200ms for OAuth authentication
     """
-    # Initialize request context and performance tracking
+    # Initialize request processing and correlation tracking
     correlation_id = extract_correlation_id(context)
     request_start = _performance_optimizer.start_timing("total_request")
 
@@ -3383,24 +3398,24 @@ def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]
         _performance_optimizer.end_timing("total_request", request_start)
         return body_error or {"error": "Request body processing failed"}
 
-    # 4. OAuth token exchange execution
+    # 4. Badge Issuance: OAuth token exchange execution
     success_response, oauth_error = _execute_oauth_token_exchange(
         oauth_config, req_body, correlation_id
     )
 
-    # 5. Response processing and performance logging
+    # 5. Incident Logging: Security documentation and monitoring
     total_duration = _performance_optimizer.end_timing("total_request", request_start)
 
     if oauth_error:
         _logger.warning(
-            "⚠️ OAuth failed in %.1fms (correlation: %s)",
+            "Security Guard: Authentication failed in %.1fms (correlation: %s)",
             total_duration * 1000,
             correlation_id,
         )
         return oauth_error
 
     _logger.info(
-        "✅ OAuth completed in %.1fms (correlation: %s)",
+        "Security Guard: Authentication completed in %.1fms (correlation: %s)",
         total_duration * 1000,
         correlation_id,
     )

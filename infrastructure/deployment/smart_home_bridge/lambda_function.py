@@ -1,8 +1,15 @@
 """
-⚡ HOME ASSISTANT ↔ ALEXA SMART HOME BRIDGE 🗣️
+💼 SMART HOME BRIDGE: Professional Executive Receptionist Services 🗣️
 
-High-performance voice command processor optimized for sub-500ms response times.
-Handles Alexa Smart Home directives and translates them for Home Assistant.
+The Executive Receptionist handles all daily voice command operations with
+exceptional efficiency and professionalism. Translates visitor requests
+into precise Home Assistant actions while maintaining sub-500ms response times.
+
+EXECUTIVE RECEPTIONIST RESPONSIBILITIES:
+- Voice Command Processing: Alexa directive translation and execution
+- Home Assistant Coordination: Efficient API communication and device control
+- Response Management: Professional status updates and error handling
+- Performance Monitoring: Service quality tracking and optimization
 
 Original work: Copyright 2019 Jason Hu <awaregit at gmail.com>
 Enhanced by: Jeff Hessenflow <jeff.hessenflow@gmail.com>
@@ -139,7 +146,9 @@ SSM_SECURITY_POLICIES_PATH = "/home-assistant/security/policies"
 
 # Lambda ARN Storage Paths (Gen3 standard format)
 SSM_LAMBDA_ARN_BASE = "/home-assistant/alexa/lambda"
-SSM_CLOUDFLARE_SECURITY_GATEWAY_ARN = "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
+SSM_CLOUDFLARE_SECURITY_GATEWAY_ARN = (
+    "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
+)
 SSM_SMART_HOME_BRIDGE_ARN = "/home-assistant/alexa/lambda/smart-home-bridge-arn"
 
 # APP_CONFIG_PATH: Base reference point for finding SSM parameters
@@ -199,7 +208,8 @@ def build_ssm_lambda_arn_path(lambda_name: str) -> str:
     Build standardized SSM Lambda ARN storage path.
 
     Args:
-        lambda_name: Lambda function name (cloudflare-security-gateway, smart-home-bridge, etc.)
+        lambda_name: Lambda function name (cloudflare-security-gateway,
+                     smart-home-bridge, etc.)
 
     Returns:
         Standardized SSM Lambda ARN path
@@ -905,7 +915,8 @@ class ConfigurationManager:
                 "timeout": int(os.environ.get("HA_TIMEOUT", "30")),
             }
         if config_section == "cloudflare_config":
-            # CloudFlare config IS the OAuth config (cloudflare_security_gateway = CloudFlare-Security-Gateway)
+            # CloudFlare config IS the OAuth config
+            # (cloudflare_security_gateway = CloudFlare-Security-Gateway)
             return {
                 "client_id": os.environ.get("CF_CLIENT_ID", ""),
                 "client_secret": os.environ.get("CF_CLIENT_SECRET", ""),
@@ -1381,7 +1392,8 @@ def _is_cloudflare_config_complete(cf_config: dict[str, Any]) -> bool:
     """
     Check if CloudFlare configuration is complete for OAuth gateway functionality.
 
-    CloudFlare config IS the OAuth config - cloudflare_security_gateway.py IS the CloudFlare-Security-Gateway.
+    # CloudFlare config IS the OAuth config - cloudflare_security_gateway.py IS the
+    # CloudFlare-Security-Gateway.
     """
     required_fields = ["client_id", "client_secret", "wrapper_secret"]
     return all(
@@ -2137,7 +2149,8 @@ class AlexaValidator:
 
 class OAuthSecurityValidator:
     """
-    CloudFlare Security Gateway Security Validator: Enterprise Protection for OAuth Flows
+    CloudFlare Security Gateway Security Validator:
+    Enterprise Protection for OAuth Flows
 
     Specialized security validation for OAuth authentication flows, providing
     protection against rate limiting violations, request size attacks, and
@@ -3068,24 +3081,24 @@ def _cleanup_expired_cache() -> None:
     if expired_keys:
         _logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
 
-# === LOGGING CONFIGURATION ===
+# === EXECUTIVE RECEPTIONIST INITIALIZATION ===
 _debug = bool(os.environ.get("DEBUG"))
 
-# Use shared configuration logger instead of local setup
+# Executive Receptionist logging setup
 _logger = create_structured_logger("SmartHomeBridge")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
 
-# Initialize boto3 client at global scope for connection reuse
+# Initialize AWS SSM client for configuration access
 client = boto3.client("ssm")  # type: ignore[assignment]
 _default_app_config_path = os.environ.get("APP_CONFIG_PATH", "/alexa/auth/")
 
-# ⚡ PHASE 4 PERFORMANCE OPTIMIZATION: Initialize performance monitoring at global scope
+# Initialize performance monitoring for voice command operations
 _performance_optimizer = PerformanceMonitor()
 _response_cache = ResponseCache()
 _connection_pool = ConnectionPoolManager()
 
-# Initialize app at global scope for reuse across invocations
-app = None  # pylint: disable=invalid-name  # Lambda container reuse pattern
+# Initialize application instance for Lambda container reuse
+app = None  # pylint: disable=invalid-name  # Lambda container optimization
 
 
 class HAConfig:
@@ -3159,7 +3172,8 @@ def _execute_alexa_request(
         )
 
         _logger.info(
-            "✅ HA request successful (correlation: %s)", request_config.correlation_id
+            "Executive Receptionist: HA request successful (correlation: %s)",
+            request_config.correlation_id,
         )
         return response
 
@@ -3289,48 +3303,49 @@ def _validate_request_security(
 
 def _setup_configuration() -> configparser.ConfigParser:
     """
-    ⚡ PERFORMANCE-OPTIMIZED: Set up application configuration with multi-layer caching.
+    Executive Receptionist Configuration Setup: Load office operating procedures.
 
-    CACHING STRATEGY:
-    1. Container Cache: 0-1ms (warm Lambda containers)
-    2. DynamoDB Shared Cache: 20-50ms (cross-Lambda sharing)
-    3. SSM Parameter Store: 100-200ms (authoritative source)
+    Retrieves operational configuration through multi-tier caching for optimal
+    voice command response times. Essential for Home Assistant communication
+    and Alexa directive processing.
 
     Returns:
-        ConfigParser instance with loaded configuration
+        ConfigParser instance with loaded operational configuration
     """
     start_time = _performance_optimizer.start_timing("config_load")
 
     try:
         # ╭─────────────────── TRANSFER BLOCK START ───────────────────╮
-        # ║                           🚀 TRANSFER-READY CODE 🚀                       ║
-        # ║ 📋 BLOCK PURPOSE: Strategic 3-tier caching for <500ms voice commands     ║
-        # ║ 🔄 TRANSFER STATUS: Ready for duplication across Lambda functions        ║
-        # ║ ⚡ PERFORMANCE: Container 0-1ms | Shared 20-50ms | SSM 100-200ms         ║
-        # ║                                                                           ║
-        # ║ 🎯 USAGE PATTERN:                                                         ║
-        # ║   1. Copy entire block between "BLOCK_START" and "BLOCK_END" markers     ║
-        # ║   2. Update function prefixes as needed (e.g., _oauth_ → _bridge_)        ║
-        # ║   3. Adjust cache keys and table names for target service                ║
-        # ║   4. Maintain identical core functionality across Lambda functions       ║
-        # ╚═══════════════════════════════════════════════════════════════════════════╝
+        # ║                    TRANSFER-READY CODE                       ║
+        # ║ PURPOSE: Strategic 3-tier caching for <500ms voice commands ║
+        # ║ STATUS: Ready for duplication across Lambda functions        ║
+        # ║ PERFORMANCE: Container 0-1ms | Shared 20-50ms | SSM 100-200ms ║
+        # ║                                                              ║
+        # ║ USAGE PATTERN:                                               ║
+        # ║   1. Copy entire block between "BLOCK_START" and "BLOCK_END" ║
+        # ║   2. Update function prefixes as needed (_bridge_, etc.)     ║
+        # ║   3. Adjust cache keys and table names for target service    ║
+        # ║   4. Maintain identical core functionality                   ║
+        # ╚══════════════════════════════════════════════════════════════╝
 
         # Use shared configuration loading which handles all caching internally
         config = load_configuration_as_configparser(
             app_config_path=_default_app_config_path
         )
 
-        # Config is always a ConfigParser instance
+        # Configuration successfully loaded
         _performance_optimizer.record_cache_hit()
         duration = _performance_optimizer.end_timing("config_load", start_time)
-        _logger.info("✅ Configuration loaded (%.1fms)", duration * 1000)
+        _logger.info(
+            "Executive Receptionist: Configuration loaded (%.1fms)", duration * 1000
+        )
         return config
 
         # ╭─────────────────── TRANSFER BLOCK END ───────────────────╮
 
     except (ValueError, RuntimeError, KeyError, ImportError) as e:
         _performance_optimizer.record_cache_miss()
-        _logger.warning("Enhanced config loading failed, using fallback: %s", e)
+        _logger.warning("Configuration loading failed, using fallback: %s", e)
 
         # Fallback to basic shared configuration loading
         config = load_configuration_as_configparser(
@@ -3338,9 +3353,12 @@ def _setup_configuration() -> configparser.ConfigParser:
         )
 
         duration = _performance_optimizer.end_timing("config_load", start_time)
-        _logger.warning("⚠️ Fallback configuration loaded (%.1fms)", duration * 1000)
+        _logger.warning(
+            "Executive Receptionist: Fallback configuration loaded (%.1fms)",
+            duration * 1000,
+        )
 
-        # Config is always a ConfigParser instance
+        # Configuration fallback successful
         return config
 
 
