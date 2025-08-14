@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-OAuth Gateway Testing Suite
-Comprehensive testing tool for OAuth Gateway Lambda function validation
+CloudFlare Security Gateway Testing Suite
+Comprehensive testing tool for CloudFlare Security Gateway Lambda function validation
 
 This tool validates the OAuth token exchange functionality that handles Alexa Smart Home
 account linking. It can test both the o    except botocore.exceptions.ClientError as e:
@@ -38,7 +38,7 @@ account linking. It can test both the o    except botocore.exceptions.ClientErro
             "requestId": str(uuid.uuid4())
         }
         logger.error("❌ Lambda invocation failed: %s", error_response["errorMessage"])
-        return error_responseCloudFlare-Wrapper functionality and
+        return error_responseCloudFlare-Security-Gateway functionality and
 enhanced performance-optimized versions.
 
 Features:
@@ -51,21 +51,22 @@ Features:
 - Professional artifact management for CI/CD integration
 
 Usage:
-    python oauth_gateway_testing_suite.py    # Run full test suite
+    python cloudflare_security_gateway_testing_suite.py    # Run full test suite
         # (continues on next line if needed)
-    python oauth_gateway_testing_suite.py --token-exchange \
+    python cloudflare_security_gateway_testing_suite.py --token-exchange \
         # Test OAuth flow only
-    python oauth_gateway_testing_suite.py --security-validation \
+    python cloudflare_security_gateway_testing_suite.py --security-validation \
         # Test security features
-    python oauth_gateway_testing_suite.py --performance-benchmark \
+    python cloudflare_security_gateway_testing_suite.py --performance-benchmark \
         # Test performance
-    python oauth_gateway_testing_suite.py --baseline-test \
+    python cloudflare_security_gateway_testing_suite.py --baseline-test \
         # Test original functionality
-    python oauth_gateway_testing_suite.py --function oauth_gateway \
+    python cloudflare_security_gateway_testing_suite.py --function \
+        cloudflare_security_gateway \
         # Test specific function
-    python oauth_gateway_testing_suite.py --save-files \
+    python cloudflare_security_gateway_testing_suite.py --save-files \
         # Save artifacts permanently
-    python oauth_gateway_testing_suite.py --cleanup \
+    python cloudflare_security_gateway_testing_suite.py --cleanup \
         # Clean up test artifacts
 """
 
@@ -131,7 +132,7 @@ def get_oauth_test_configuration() -> dict[str, str]:
         Dictionary containing OAuth configuration for testing
     """
     try:
-        ssm_client = boto3.client("ssm")  # pyright: ignore[reportUnknownMemberType]
+        ssm_client = boto3.client("ssm")  # pyright: ignore
 
         # Get the main app configuration
         response = ssm_client.get_parameter(
@@ -262,7 +263,7 @@ def test_lambda_function(
     payload: dict[str, Any], function_name: str = "HomeAssistantOAuth"
 ) -> dict[str, Any]:
     """
-    Test the OAuth Gateway Lambda function with a payload.
+    Test the CloudFlare Security Gateway Lambda function with a payload.
 
     Args:
         payload: The OAuth request payload to send
@@ -272,9 +273,7 @@ def test_lambda_function(
         Lambda response with OAuth token or error
     """
     try:
-        lambda_client = boto3.client(  # pyright: ignore[reportUnknownMemberType]
-            "lambda"
-        )
+        lambda_client = boto3.client("lambda")  # pyright: ignore
 
         logger.info("🚀 Invoking Lambda function: %s", function_name)
         logger.debug("Request payload: %s", json.dumps(payload, indent=2))
@@ -327,7 +326,7 @@ def test_lambda_function(
                 if "stackTrace" in response_payload:
                     logger.debug("Stack trace: %s", response_payload["stackTrace"])
         else:
-            logger.info("✅ OAuth Gateway Response received")
+            logger.info("✅ CloudFlare Security Gateway Response received")
             logger.debug("Response: %s", json.dumps(response_payload, indent=2))
 
         return response_payload
@@ -478,7 +477,7 @@ def validate_oauth_response(response: dict[str, Any]) -> tuple[bool, str]:
     Validate OAuth response format and content.
 
     Args:
-        response: OAuth Gateway response to validate
+        response: CloudFlare Security Gateway response to validate
 
     Returns:
         Tuple of (is_valid, validation_message)
@@ -727,7 +726,7 @@ def run_oauth_performance_benchmark(
     iterations: int = 5,
 ) -> None:
     """
-    Benchmark OAuth Gateway performance.
+    Benchmark CloudFlare Security Gateway performance.
 
     Args:
         function_name: Lambda function name to test
@@ -764,7 +763,7 @@ def run_baseline_functionality_test(
     function_name: str = "HomeAssistantOAuth", save_permanently: bool = False
 ) -> None:
     """
-    Test baseline OAuth functionality (original CloudFlare-Wrapper behavior).
+    Test baseline OAuth functionality (original CloudFlare-Security-Gateway behavior).
 
     This validates that the core OAuth token exchange works correctly,
     providing a baseline for comparing enhanced versions.
@@ -823,31 +822,32 @@ def run_baseline_functionality_test(
 
 
 def parse_arguments():
-    """Parse command-line arguments for OAuth Gateway testing."""
+    """Parse command-line arguments for CloudFlare Security Gateway testing."""
     parser = argparse.ArgumentParser(
-        description="OAuth Gateway Testing Suite",
+        description="CloudFlare Security Gateway Testing Suite",
         epilog="""
 Examples:
   # Run full test suite
-  python oauth_gateway_testing_suite.py
+  python cloudflare_security_gateway_testing_suite.py
 
   # Test OAuth flow only
-  python oauth_gateway_testing_suite.py --token-exchange
+  python cloudflare_security_gateway_testing_suite.py --token-exchange
 
   # Test security features
-  python oauth_gateway_testing_suite.py --security-validation
+  python cloudflare_security_gateway_testing_suite.py --security-validation
 
   # Test performance
-  python oauth_gateway_testing_suite.py --performance-benchmark
+  python cloudflare_security_gateway_testing_suite.py --performance-benchmark
 
   # Test original functionality
-  python oauth_gateway_testing_suite.py --baseline-test
+  python cloudflare_security_gateway_testing_suite.py --baseline-test
 
   # Test specific function
-  python oauth_gateway_testing_suite.py --function oauth_gateway
+  python cloudflare_security_gateway_testing_suite.py --function \
+    cloudflare_security_gateway
 
   # Save artifacts permanently
-  python oauth_gateway_testing_suite.py --save-files
+  python cloudflare_security_gateway_testing_suite.py --save-files
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -930,7 +930,7 @@ def cleanup_artifacts() -> None:
 
 
 def main():
-    """Main entry point for OAuth Gateway testing."""
+    """Main entry point for CloudFlare Security Gateway testing."""
     args = parse_arguments()
 
     if args.cleanup:
@@ -938,7 +938,7 @@ def main():
         cleanup_temp_files()
         return
 
-    logger.info("🔐 Starting OAuth Gateway Testing Suite...")
+    logger.info("🔐 Starting CloudFlare Security Gateway Testing Suite...")
     logger.info("🎯 Target function: %s", args.function)
 
     try:
@@ -954,7 +954,9 @@ def main():
             )
         else:
             # Run full test suite
-            logger.info("🚀 Running comprehensive OAuth Gateway test suite...")
+            logger.info(
+                "🚀 Running comprehensive CloudFlare Security Gateway test suite..."
+            )
 
             run_baseline_functionality_test(args.function, args.save_files)
             logger.info("")
@@ -969,10 +971,12 @@ def main():
                 args.function, args.save_files, args.iterations
             )
 
-            logger.info("🎉 Comprehensive OAuth Gateway test suite completed!")
+            logger.info(
+                "🎉 Comprehensive CloudFlare Security Gateway test suite completed!"
+            )
 
     except (botocore.exceptions.BotoCoreError, KeyError, json.JSONDecodeError) as e:
-        logger.error("❌ OAuth Gateway testing failed: %s", e)
+        logger.error("❌ CloudFlare Security Gateway testing failed: %s", e)
         logger.error(
             "💡 Check if the specified Lambda function exists and is accessible"
         )

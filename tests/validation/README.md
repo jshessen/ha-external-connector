@@ -13,8 +13,8 @@ This directory contains comprehensive validation and testing tools for the Home 
 Historical validation scripts from development phases:
 
 - **`test_authentication_fix.py`** - Authentication fix validation
-- **`test_deployed_oauth_gateway.py`** - Deployed OAuth Gateway testing
-- **`test_oauth_gateway_validation.py`** - OAuth Gateway validation suite
+- **`test_deployed_cloudflare_security_gateway.py`** - Deployed CloudFlare Security Gateway testing
+- **`test_cloudflare_security_gateway_validation.py`** - CloudFlare Security Gateway validation suite
 - **`test_smart_home_bridge_validation.py`** - Smart Home Bridge validation
 
 ### 📋 Documentation
@@ -95,8 +95,8 @@ python test_guest_fan_comprehensive.py
 # Test Smart Home Bridge
 python test_smart_home_bridge_validation.py
 
-# Test OAuth Gateway
-python test_oauth_gateway_validation.py
+# Test CloudFlare Security Gateway
+python test_cloudflare_security_gateway_validation.py
 ```
 
 ### Manual Lambda Testing
@@ -112,7 +112,7 @@ aws lambda invoke --function-name HomeAssistant --payload file://guest_fan_on_1.
 - [ ] Authentication (no 401 errors)
 - [ ] Discovery responses complete
 - [ ] Smart Home Bridge functionality
-- [ ] OAuth Gateway token exchange
+- [ ] CloudFlare Security Gateway token exchange
 - [ ] CloudWatch logs clean
 - [ ] Home Assistant device state changes
 

@@ -137,12 +137,12 @@ class ServiceInstaller:
             ServiceType.ALEXA_OAUTH: {
                 # Clean naming convention
                 "function_name": "Alexa_OAuth-Gateway",  # Consistent naming
-                "resource_id": "ha-alexa-oauth-gateway",  # Technical ID
-                "display_name": "Alexa OAuth Gateway",
+                "resource_id": "ha-alexa-cloudflare-security-gateway",  # Technical ID
+                "display_name": "Alexa CloudFlare Security Gateway",
                 # Function configuration
-                "handler": "oauth_gateway.lambda_handler",
+                "handler": "cloudflare_security_gateway.lambda_handler",
                 "source_path": (
-                    "src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py"
+                    "src/ha_connector/integrations/alexa/lambda_functions/cloudflare_security_gateway.py"
                 ),
                 "runtime": "python3.13",
                 "description": "Alexa OAuth Handler with Cloudflare proxy support",
@@ -161,9 +161,9 @@ class ServiceInstaller:
                 "resource_id": "ha-cloudflare-proxy",  # Technical ID
                 "display_name": "CloudFlare Proxy Gateway",
                 # Function configuration
-                "handler": "oauth_gateway.lambda_handler",
+                "handler": "cloudflare_security_gateway.lambda_handler",
                 "source_path": (
-                    "src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py"
+                    "src/ha_connector/integrations/alexa/lambda_functions/cloudflare_security_gateway.py"
                 ),
                 "runtime": "python3.13",
                 "description": "Dedicated CloudFlare Proxy Gateway",
@@ -709,7 +709,7 @@ class ServiceInstaller:
         # New clean naming pattern mappings (exact matches)
         clean_name_mappings = {
             "alexa_smart-home-bridge": ServiceType.ALEXA,
-            "alexa_oauth-gateway": ServiceType.ALEXA_OAUTH,
+            "alexa_cloudflare-security-gateway": ServiceType.ALEXA_OAUTH,
             "alexa_config-manager": ServiceType.ALEXA_CONFIG,
         }
         if lambda_lower in clean_name_mappings:

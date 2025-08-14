@@ -118,7 +118,8 @@ Examples:
   %(prog)s --package                                  Package all functions
   %(prog)s --package --function smart_home_bridge     Package specific function
   %(prog)s --deploy                                   Deploy all functions
-  %(prog)s --deploy --function oauth_gateway          Deploy single function
+  %(prog)s --deploy --function cloudflare_security_gateway
+      Deploy single function
   %(prog)s --deploy --dry-run                         Test deployment of all functions
   %(prog)s --test --function smart_home_bridge        Test deployed function
   %(prog)s --validate                                 Validate deployment files
@@ -170,23 +171,23 @@ Notes:
             help=(
                 "Specify which function to operate on. "
                 "Required for --test. Optional for --package and --deploy "
-                "(defaults to 'all'). Available: smart_home_bridge, oauth_gateway, "
-                "configuration_manager, all"
+                "(defaults to 'all'). Available: smart_home_bridge, "
+                "cloudflare_security_gateway, configuration_manager, all"
             ),
         )
         parser.add_argument(
             "--function-names",
             help=(
                 "Custom AWS Lambda function names as JSON string. "
-                'Example: \'{"oauth_gateway": "MyCustomName", '
+                'Example: \'{"cloudflare_security_gateway": "MyCustomName", '
                 '"smart_home_bridge": "MyBridge"}\''
             ),
         )
         parser.add_argument(
             "--oauth-name",
             help=(
-                "Custom AWS function name for oauth_gateway "
-                "(overrides default 'CloudFlare-Wrapper')"
+                "Custom AWS function name for cloudflare_security_gateway "
+                "(overrides default 'CloudFlare-Security-Gateway')"
             ),
         )
         parser.add_argument(
@@ -237,7 +238,7 @@ Notes:
             # Validate function name
             available_functions = [
                 "smart_home_bridge",
-                "oauth_gateway",
+                "cloudflare_security_gateway",
                 "configuration_manager",
                 "all",
             ]
@@ -326,14 +327,18 @@ Notes:
 
         # Parse individual name arguments (lower precedence)
         if args.oauth_name:
-            custom_names["oauth_gateway"] = args.oauth_name
+            custom_names["cloudflare_security_gateway"] = args.oauth_name
         if args.bridge_name:
             custom_names["smart_home_bridge"] = args.bridge_name
         if args.config_name:
             custom_names["configuration_manager"] = args.config_name
 
         # Validate function name keys
-        valid_keys = {"oauth_gateway", "smart_home_bridge", "configuration_manager"}
+        valid_keys = {
+            "cloudflare_security_gateway",
+            "smart_home_bridge",
+            "configuration_manager",
+        }
         invalid_keys = set(custom_names.keys()) - valid_keys
         if invalid_keys:
             raise ValueError(

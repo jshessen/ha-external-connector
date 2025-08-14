@@ -47,7 +47,7 @@ APP_CONFIG_PATH_GEN3_DEFAULT = "/home-assistant/alexa/"
 ```bash
 # Core Lambda ARNs (required for cross-Lambda communication)
 /home-assistant/alexa/lambda/configuration_manager_arn
-/home-assistant/alexa/lambda/oauth_gateway_arn
+/home-assistant/alexa/lambda/cloudflare_security_gateway_arn
 /home-assistant/alexa/lambda/smart_home_bridge_arn
 ```
 
@@ -112,7 +112,7 @@ APP_CONFIG_PATH_GEN3_DEFAULT = "/home-assistant/alexa/"
 ```json
 {
   "configuration_manager_arn": "arn:aws:lambda:us-east-1:719118582283:function:ConfigurationManager",
-  "oauth_gateway_arn": "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Wrapper",
+  "cloudflare_security_gateway_arn": "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Security-Gateway",
   "smart_home_bridge_arn": "arn:aws:lambda:us-east-1:719118582283:function:HomeAssistant"
 }
 ```
@@ -140,11 +140,11 @@ APP_CONFIG_PATH_GEN3_DEFAULT = "/home-assistant/alexa/"
 
 ### Migration Strategy
 
-**Step 1: Set Lambda ARNs**
+#### Step 1: Set Lambda ARNs
 
 ```bash
-aws ssm put-parameter --name "/home-assistant/alexa/lambda/oauth_gateway_arn" \
-  --value "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Wrapper" \
+aws ssm put-parameter --name "/home-assistant/alexa/lambda/cloudflare_security_gateway_arn" \
+  --value "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Security-Gateway" \
   --type "String"
 
 aws ssm put-parameter --name "/home-assistant/alexa/lambda/smart_home_bridge_arn" \
@@ -156,7 +156,7 @@ aws ssm put-parameter --name "/home-assistant/alexa/lambda/configuration_manager
   --type "String"
 ```
 
-**Step 2: Set Cache Configuration**
+### Step 2: Set Cache Configuration
 
 ```bash
 aws ssm put-parameter --name "/home-assistant/alexa/lambda/cache/shared_cache_table" \
@@ -172,7 +172,7 @@ aws ssm put-parameter --name "/home-assistant/alexa/lambda/cache/ttl_seconds" \
   --type "String"
 ```
 
-**Step 3: Set Core Configuration**
+### Step 3: Set Core Configuration
 
 ```bash
 # Example: Set HA core configuration
@@ -185,12 +185,12 @@ aws ssm put-parameter --name "/home-assistant/alexa/core/long_lived_access_token
   --type "SecureString"
 ```
 
-**Step 4: Update Lambda Environment Variables**
+### Step 4: Update Lambda Environment Variables
 
 ```bash
 # Update all Lambda functions to use Gen 3 base path
 aws lambda update-function-configuration \
-  --function-name CloudFlare-Wrapper \
+  --function-name CloudFlare-Security-Gateway \
   --environment Variables='{APP_CONFIG_PATH="/home-assistant/alexa/"}'
 
 aws lambda update-function-configuration \
@@ -224,7 +224,7 @@ The system automatically detects configuration generation:
 ```bash
 # Check Lambda ARN parameters
 aws ssm get-parameters --names \
-  "/home-assistant/alexa/lambda/oauth_gateway_arn" \
+  "/home-assistant/alexa/lambda/cloudflare_security_gateway_arn" \
   "/home-assistant/alexa/lambda/smart_home_bridge_arn" \
   "/home-assistant/alexa/lambda/configuration_manager_arn"
 

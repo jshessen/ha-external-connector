@@ -12,7 +12,7 @@
                 "deprecation": "Maintain for existing deployments"
             },
             "Gen2_TransitionPaths": {
-                "description": "OAuth Gateway transition paths for enhanced security",
+                "description": "CloudFlare Security Gateway transition paths for enhanced security",
                 "paths": [
                     "/homeassistant/alexa/config/oauth_config",
                     "/homeassistant/alexa/config/cloudflare_config",
@@ -49,7 +49,7 @@
             ],
             "Resource": [
                 "arn:aws:lambda:us-east-1:719118582283:function:HomeAssistant",
-                "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Wrapper",
+                "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Security-Gateway",
                 "arn:aws:lambda:us-east-1:719118582283:function:ConfigurationManager"
             ],
             "Condition": {
@@ -117,7 +117,7 @@
             "Resource": [
                 "arn:aws:logs:us-east-1:719118582283:log-group:/aws/lambda/ConfigurationManager:*",
                 "arn:aws:logs:us-east-1:719118582283:log-group:/aws/lambda/HomeAssistant:*",
-                "arn:aws:logs:us-east-1:719118582283:log-group:/aws/lambda/CloudFlare-Wrapper:*",
+                "arn:aws:logs:us-east-1:719118582283:log-group:/aws/lambda/CloudFlare-Security-Gateway:*",
                 "*"
             ]
         },
@@ -151,7 +151,7 @@
             ],
             "Resource": [
                 "arn:aws:lambda:us-east-1:719118582283:function:HomeAssistant:*",
-                "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Wrapper:*"
+                "arn:aws:lambda:us-east-1:719118582283:function:CloudFlare-Security-Gateway:*"
             ]
         }
     ]

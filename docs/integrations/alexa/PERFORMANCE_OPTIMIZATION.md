@@ -12,7 +12,7 @@ Your Alexa skill uses two specialized Lambda functions:
 
 | Function | Purpose | Performance Target | Use Case |
 |----------|---------|-------------------|----------|
-| **OAuth Gateway** | Account linking & authentication | 2-6 seconds (acceptable) | One-time setup |
+| **CloudFlare Security Gateway** | Account linking & authentication | 2-6 seconds (acceptable) | One-time setup |
 | **Smart Home Bridge** | Voice command processing | <500ms (critical) | Every voice command |
 
 ### Why Performance Matters
@@ -256,7 +256,7 @@ Our shared cache architecture works with AWS Lambda's container lifecycle:
   - Updates shared cache if data is stale
 
 - **Cross-Container Sharing**: Multiple Lambda functions benefit
-  - Smart Home Bridge and OAuth Gateway share cached configuration
+  - Smart Home Bridge and CloudFlare Security Gateway share cached configuration
   - Configuration Manager Lambda keeps cache fresh with EventBridge schedule
 
 ### Optimization Techniques
@@ -394,7 +394,7 @@ Updated performance targets with shared cache:
 | Function | Monthly Invocations | Duration | Memory | Free Tier Impact |
 |----------|-------------------|----------|---------|------------------|
 | Smart Home Bridge | ~10,000 | 50-100ms | 256MB | <1% of 1M requests |
-| OAuth Gateway | ~100 | 100-200ms | 256MB | <0.01% of 1M requests |
+| CloudFlare Security Gateway | ~100 | 100-200ms | 256MB | <0.01% of 1M requests |
 | Configuration Manager | ~4,320 | 20-50ms | 128MB | <0.5% of 1M requests |
 | **Total** | **~14,420** | **Variable** | **Mixed** | **<2% of free tier** |
 
@@ -526,10 +526,10 @@ aws lambda update-function-code \
   --function-name your-smart-home-bridge \
   --zip-file fileb://smart_home_bridge_with_cache.zip
 
-# Deploy enhanced OAuth Gateway with token caching
+# Deploy enhanced CloudFlare Security Gateway with token caching
 aws lambda update-function-code \
-  --function-name your-oauth-gateway \
-  --zip-file fileb://oauth_gateway_with_cache.zip
+  --function-name your-cloudflare-security-gateway \
+  --zip-file fileb://cloudflare_security_gateway_with_cache.zip
 
 # Deploy Configuration Manager Lambda
 aws lambda create-function \
@@ -616,7 +616,7 @@ aws logs filter-log-events \
 
 # Monitor OAuth token cache effectiveness
 aws logs filter-log-events \
-  --log-group-name "/aws/lambda/your-oauth-gateway" \
+  --log-group-name "/aws/lambda/your-cloudflare-security-gateway" \
   --filter-pattern "OAuth token cache HIT"
 ```
 
@@ -638,7 +638,7 @@ aws logs filter-log-events \
 **Deployment:**
 
 - [ ] Deploy enhanced Smart Home Bridge function
-- [ ] Deploy enhanced OAuth Gateway function
+- [ ] Deploy enhanced CloudFlare Security Gateway function
 - [ ] Deploy Configuration Manager Lambda function
 - [ ] Create EventBridge warming schedule
 - [ ] Configure DynamoDB tables (or allow auto-creation)

@@ -36,7 +36,6 @@ if str(current_dir) not in sys.path:
 
 try:
     from aws_deployment_handler import AWSDeploymentHandler
-    from cli import main as cli_main
     from import_manager import ImportManager
     from marker_system import DeploymentMarkerSystem, ExtractedContent
     from validation_system import DeploymentValidationSystem
@@ -72,7 +71,7 @@ class DeploymentConfig:
         Args:
             workspace_root: Path to the workspace root directory
             custom_names: Optional custom AWS function names to override defaults
-                         Format: {"oauth_gateway": "CustomName1",
+                         Format: {"cloudflare_security_gateway": "CustomName1",
                                   "smart_home_bridge": "CustomName2"}
 
         Returns:
@@ -82,7 +81,7 @@ class DeploymentConfig:
 
         # Default AWS function names
         default_function_names = {
-            "oauth_gateway": "CloudFlare-Wrapper",
+            "cloudflare_security_gateway": "CloudFlare-Security-Gateway",
             "smart_home_bridge": "HomeAssistant",
             "configuration_manager": "ConfigurationManager",
         }
@@ -98,7 +97,7 @@ class DeploymentConfig:
             deployment_dir=root / "infrastructure/deployment",
             shared_module="shared_configuration",
             lambda_functions=[
-                ("oauth_gateway.py", "oauth_gateway"),
+                ("cloudflare_security_gateway.py", "cloudflare_security_gateway"),
                 ("smart_home_bridge.py", "smart_home_bridge"),
                 ("configuration_manager.py", "configuration_manager"),
             ],
@@ -386,8 +385,33 @@ class DeploymentManager:
 
 # For backward compatibility, keep main() function here
 def main() -> None:
-    """Main entry point - delegates to CLI handler."""
-    cli_main()
+    """Main entry point - implements basic CLI functionality."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Lambda Deployment Manager")
+    parser.add_argument("--build", action="store_true", help="Build deployment files")
+    parser.add_argument("--package", help="Package specific function")
+    parser.add_argument("--deploy", help="Deploy specific function")
+    parser.add_argument("--function", help="Specify function name for package/deploy")
+
+    args = parser.parse_args()
+
+    # Get workspace root (assuming script is run from workspace root)
+    workspace_root = str(Path.cwd())
+    manager = DeploymentManager(workspace_root)
+
+    if args.build:
+        success = manager.build_deployment()
+        sys.exit(0 if success else 1)
+    elif args.package:
+        success = manager.package_function(args.package)
+        sys.exit(0 if success else 1)
+    elif args.deploy:
+        success = manager.deploy_function(args.deploy)
+        sys.exit(0 if success else 1)
+    else:
+        parser.print_help()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

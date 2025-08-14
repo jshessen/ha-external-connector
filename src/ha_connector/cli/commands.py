@@ -62,7 +62,7 @@ class AlexaSetupConfig(BaseModel):
     generate_test_data: bool = True
     generate_guide: bool = True
     lambda_function_url: str | None = None
-    oauth_gateway_url: str | None = None
+    cloudflare_security_gateway_url: str | None = None
     ha_base_url: str | None = None
     alexa_secret: str | None = None
     validate_config: bool = True
@@ -1269,7 +1269,7 @@ def _generate_configuration_guide(
     try:
         guide_content = alexa_manager.generate_configuration_guide(
             lambda_function_url=guide_lambda_url,
-            oauth_gateway_url=config.oauth_gateway_url,
+            cloudflare_security_gateway_url=config.cloudflare_security_gateway_url,
             ha_base_url=config.ha_base_url,
             skill_id=config.skill_id,
         )
@@ -1353,8 +1353,10 @@ def alexa_setup(  # pylint: disable=too-many-positional-arguments
     lambda_function_url: Optional[str] = typer.Option(  # noqa: UP045
         None, "--lambda-url", help="Lambda function URL (if known)"
     ),
-    oauth_gateway_url: Optional[str] = typer.Option(  # noqa: UP045
-        None, "--oauth-url", help="OAuth Gateway Lambda URL (if using CloudFlare)"
+    cloudflare_security_gateway_url: Optional[str] = typer.Option(  # noqa: UP045
+        None,
+        "--oauth-url",
+        help="CloudFlare Security Gateway Lambda URL (if using CloudFlare)",
     ),
     ha_base_url: Optional[str] = typer.Option(  # noqa: UP045
         None, "--ha-url", help="Home Assistant base URL"
@@ -1386,7 +1388,7 @@ def alexa_setup(  # pylint: disable=too-many-positional-arguments
         generate_test_data=generate_test_data,
         generate_guide=generate_guide,
         lambda_function_url=lambda_function_url,
-        oauth_gateway_url=oauth_gateway_url,
+        cloudflare_security_gateway_url=cloudflare_security_gateway_url,
         ha_base_url=ha_base_url,
         verbose=verbose,
     )

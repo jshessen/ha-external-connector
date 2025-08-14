@@ -38,7 +38,7 @@ The Alexa Smart Home Bridge is the core component that processes voice commands 
 ### Components
 
 - **Smart Home Bridge**: Lambda function processing Alexa directives
-- **OAuth Gateway**: Secure authentication handling
+- **CloudFlare Security Gateway**: Secure authentication handling
 - **Home Assistant Integration**: API communication with HA
 
 ### Data Flow
@@ -178,7 +178,7 @@ grep -i alexa /config/home-assistant.log
 
 ### OAuth Security
 
-The OAuth Gateway provides additional security:
+The CloudFlare Security Gateway provides additional security:
 
 - Rate limiting protection
 - CloudFlare Access integration

@@ -380,7 +380,7 @@ class SmartHomeSkillAutomator:
     def generate_configuration_guide(
         self,
         lambda_function_url: str,
-        oauth_gateway_url: str | None = None,
+        cloudflare_security_gateway_url: str | None = None,
         ha_base_url: str | None = None,
         skill_id: str | None = None,
     ) -> str:
@@ -392,7 +392,9 @@ class SmartHomeSkillAutomator:
 
         Args:
             lambda_function_url: Voice Command Bridge Lambda URL
-            oauth_gateway_url: OAuth Gateway Lambda URL (optional)
+            cloudflare_security_gateway_url: (
+                "CloudFlare Security Gateway Lambda URL (optional)"
+            )
             ha_base_url: Home Assistant base URL (optional)
             skill_id: Alexa Skill ID if known (optional)
 
@@ -402,11 +404,11 @@ class SmartHomeSkillAutomator:
         logger.info("Generating Alexa Developer Console configuration guide")
 
         # Determine account linking configuration
-        if oauth_gateway_url and ha_base_url:
+        if cloudflare_security_gateway_url and ha_base_url:
             # CloudFlare OAuth setup
             web_auth_uri = f"{ha_base_url}/auth/authorize"
-            access_token_uri = oauth_gateway_url
-            setup_type = "CloudFlare OAuth Gateway"
+            access_token_uri = cloudflare_security_gateway_url
+            setup_type = "CloudFlare CloudFlare Security Gateway"
         elif ha_base_url:
             # Direct Home Assistant OAuth
             web_auth_uri = f"{ha_base_url}/auth/authorize"
@@ -415,7 +417,9 @@ class SmartHomeSkillAutomator:
         else:
             # Generic setup
             web_auth_uri = "https://your-homeassistant.domain.com/auth/authorize"
-            access_token_uri = "https://your-homeassistant.domain.com/auth/token"  # nosec B105
+            access_token_uri = (
+                "https://your-homeassistant.domain.com/auth/token"  # nosec B105
+            )
             setup_type = "Generic OAuth Setup"
 
         guide = f"""

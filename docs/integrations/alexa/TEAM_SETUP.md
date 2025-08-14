@@ -2,18 +2,18 @@
 
 ## 👮💼 Security Guard & Executive Receptionist Setup
 
-This guide shows you how to configure your Alexa Smart Home Skill to work with both team members: the **Security Guard** (OAuth Gateway) and the **Executive Receptionist** (Voice Command Bridge).
+This guide shows you how to configure your Alexa Smart Home Skill to work with both team members: the **Security Guard** (CloudFlare Security Gateway) and the **Executive Receptionist** (Voice Command Bridge).
 
 ---
 
 ## 🎯 **THE COMPLETE TEAM OVERVIEW**
 
-### 👮 **SECURITY GUARD** (`cloudflare_oauth_gateway.py`)
+### 👮 **SECURITY GUARD** (`cloudflare_cloudflare_security_gateway.py`)
 
 - **Role**: Handles OAuth authentication and CloudFlare protection
 - **When Active**: During account linking and token refresh
 - **Specializes In**: High-security authentication tasks
-- **Lambda URL**: `https://your-oauth-gateway-lambda-url.us-east-1.on.aws/`
+- **Lambda URL**: `https://your-cloudflare-security-gateway-lambda-url.us-east-1.on.aws/`
 
 ### 💼 **EXECUTIVE RECEPTIONIST** (`voice_command_bridge.py`)
 
@@ -53,7 +53,7 @@ Web Authorization URI:
    👮 → This goes to your SECURITY GUARD for initial credential checking
 
 Access Token URI:
-   https://your-oauth-gateway-lambda-url.us-east-1.on.aws/
+   https://your-cloudflare-security-gateway-lambda-url.us-east-1.on.aws/
    👮 → This goes to your SECURITY GUARD for token exchange and refresh
 
 Client ID:
@@ -117,7 +117,7 @@ Account Linking Required: YES
 
 ### ✅ **Security Guard Setup**
 
-- [ ] Deploy `cloudflare_oauth_gateway.py` to AWS Lambda
+- [ ] Deploy `cloudflare_cloudflare_security_gateway.py` to AWS Lambda
 - [ ] Configure AWS Parameter Store with OAuth credentials
 - [ ] Set up CloudFlare Access headers
 - [ ] Test OAuth flow in Alexa app
@@ -203,7 +203,7 @@ Account Linking Required: YES
 
 ## 📚 **ADDITIONAL RESOURCES**
 
-- **Security Guard Documentation**: See `cloudflare_oauth_gateway.py` header
+- **Security Guard Documentation**: See `cloudflare_cloudflare_security_gateway.py` header
 - **Executive Receptionist Documentation**: See `voice_command_bridge.py` header
 - **AWS Lambda Setup**: See project deployment guides
 - **Home Assistant Integration**: See HA configuration documentation

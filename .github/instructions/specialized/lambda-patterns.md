@@ -140,12 +140,12 @@ def load_standardized_configuration(...):
 
 **🔧 SYNCHRONIZATION PROCESS:**
 
-1. **Edit Primary Source** (typically `oauth_gateway.py`)
+1. **Edit Primary Source** (typically `cloudflare_security_gateway.py`)
 2. **Copy Transfer Block Content** (between START/END markers)
 3. **Update Target Location** (e.g., `smart_home_bridge.py`)
 4. **Apply Service Customizations**:
    - Cache prefixes: `oauth_config_` → `bridge_config_`
-   - Function names: `"oauth_gateway"` → `"smart_home_bridge"`
+   - Function names: `"cloudflare_security_gateway"` → `"smart_home_bridge"`
    - Service-specific constants and identifiers
 5. **Test Both Functions** independently after synchronization
 
@@ -167,13 +167,13 @@ def load_standardized_configuration(...):
 
 ## Service Specialization Patterns
 
-### OAuth Gateway (oauth_gateway.py)
+### CloudFlare Security Gateway (cloudflare_security_gateway.py)
 
 **🔐 SECURITY-FIRST ARCHITECTURE:**
 
 ```python
 """
-🌐 STREAMLINED CLOUDFLARE OAUTH GATEWAY: Essential Security Bridge for Alexa 🔐
+🌐 STREAMLINED CLOUDFLARE CLOUDFLARE SECURITY GATEWAY: Essential Security Bridge for Alexa 🔐
 
 This is your "security checkpoint" that handles OAuth authentication with
 CloudFlare protection for account linking workflows.
@@ -316,7 +316,7 @@ from .shared_configuration import (
 ```python
 # In integration_installer.py
 class ServiceType(Enum):
-    ALEXA_OAUTH = "alexa_oauth"           # → oauth_gateway.py
+    ALEXA_OAUTH = "alexa_oauth"           # → cloudflare_security_gateway.py
     ALEXA_SMART_HOME = "alexa_smart_home" # → smart_home_bridge.py
     ALEXA_CONFIG = "alexa_config"         # → configuration_manager.py
 ```
@@ -327,7 +327,7 @@ class ServiceType(Enum):
 def get_lambda_function_path(service_type: ServiceType) -> Path:
     """Resolve Lambda function file from ServiceType."""
     mapping = {
-        ServiceType.ALEXA_OAUTH: "oauth_gateway.py",
+        ServiceType.ALEXA_OAUTH: "cloudflare_security_gateway.py",
         ServiceType.ALEXA_SMART_HOME: "smart_home_bridge.py",
         ServiceType.ALEXA_CONFIG: "configuration_manager.py",
     }
@@ -370,7 +370,7 @@ def lambda_handler(event: dict, context: Any) -> dict:
 
 ```python
 # Validate imports work after deployment script runs
-python -c "from oauth_gateway import lambda_handler; print('✅ OAuth Gateway imports')"
+python -c "from cloudflare_security_gateway import lambda_handler; print('✅ CloudFlare Security Gateway imports')"
 python -c "from smart_home_bridge import lambda_handler; print('✅ Smart Home Bridge imports')"
 python -c "from configuration_manager import lambda_handler; print('✅ Config Manager imports')"
 ```

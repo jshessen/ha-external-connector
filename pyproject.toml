@@ -320,7 +320,7 @@ disable = [
     # === FILE-SPECIFIC OVERRIDES (Document per-file exceptions below) ===
     # Per-file overrides should be documented here for transparency:
     # - voice_command_bridge.py: "too-many-lines" (intentionally verbose for non-technical documentation)
-    # - cloudflare_oauth_gateway.py: "too-many-lines" (OAuth gateway with comprehensive security features)
+    # - cloudflare_cloudflare_security_gateway.py: "too-many-lines" (OAuth gateway with comprehensive security features)
     # - Future files with specific needs should be listed here
 ]
 

@@ -7,8 +7,8 @@ The deployment shell scripts have been removed as they were redundant technical 
 ### **Individual Function Deployment**
 
 ```bash
-# Deploy OAuth Gateway
-python scripts/lambda_deployment/deployment_manager.py --deploy --function oauth_gateway
+# Deploy CloudFlare Security Gateway
+python scripts/lambda_deployment/deployment_manager.py --deploy --function cloudflare_security_gateway
 
 # Deploy Smart Home Bridge
 python scripts/lambda_deployment/deployment_manager.py --deploy --function smart_home_bridge
@@ -21,7 +21,7 @@ python scripts/lambda_deployment/deployment_manager.py --deploy --function all
 
 ```bash
 # Test deployments without making changes
-python scripts/lambda_deployment/deployment_manager.py --deploy --function oauth_gateway --dry-run
+python scripts/lambda_deployment/deployment_manager.py --deploy --function cloudflare_security_gateway --dry-run
 python scripts/lambda_deployment/deployment_manager.py --deploy --function all --dry-run
 ```
 
@@ -47,7 +47,7 @@ python scripts/lambda_deployment/deployment_manager.py --clean
 ### **What Was Removed**
 
 - ❌ `deploy_enhanced_smart_home_bridge.sh` (116 lines of wrapper code)
-- ❌ `deploy_oauth_gateway.sh` (97 lines of wrapper code)
+- ❌ `deploy_cloudflare_security_gateway.sh` (97 lines of wrapper code)
 
 ### **Why Removed**
 
@@ -61,7 +61,7 @@ python scripts/lambda_deployment/deployment_manager.py --clean
 
 | Old Command | New Command |
 |-------------|-------------|
-| `bash deploy_oauth_gateway.sh --dry-run` | `python scripts/lambda_deployment/deployment_manager.py --deploy --function oauth_gateway --dry-run` |
+| `bash deploy_cloudflare_security_gateway.sh --dry-run` | `python scripts/lambda_deployment/deployment_manager.py --deploy --function cloudflare_security_gateway --dry-run` |
 | `bash deploy_enhanced_smart_home_bridge.sh` | `python scripts/lambda_deployment/deployment_manager.py --deploy --function smart_home_bridge` |
 | Deploy both functions | `python scripts/lambda_deployment/deployment_manager.py --deploy --function all` |
 

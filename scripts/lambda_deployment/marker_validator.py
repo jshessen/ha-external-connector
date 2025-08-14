@@ -12,7 +12,8 @@ Key Features:
 - Development workflow integration
 
 Usage:
-    python scripts/lambda_deployment/marker_validator.py --file oauth_gateway.py
+    python scripts/lambda_deployment/marker_validator.py \
+        --file cloudflare_security_gateway.py
     python scripts/lambda_deployment/marker_validator.py --all
     python scripts/lambda_deployment/marker_validator.py --shared-config
 """
@@ -74,7 +75,7 @@ class MarkerValidator:
         Returns:
             True if all validations pass, False otherwise
         """
-        lambda_files = ["oauth_gateway.py", "smart_home_bridge.py"]
+        lambda_files = ["cloudflare_security_gateway.py", "smart_home_bridge.py"]
         self._logger.info("🔍 Validating all Lambda function markers...")
 
         all_valid = True
@@ -265,11 +266,11 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --file oauth_gateway.py      Validate specific file
+  %(prog)s --file cloudflare_security_gateway.py      Validate specific file
   %(prog)s --all                        Validate all Lambda functions
   %(prog)s --shared-config              Validate shared configuration
   %(prog)s --complete                   Validate entire project
-  %(prog)s --preview oauth_gateway.py   Preview extracted content
+  %(prog)s --preview cloudflare_security_gateway.py   Preview extracted content
         """,
     )
 

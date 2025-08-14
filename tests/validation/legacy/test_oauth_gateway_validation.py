@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-🌐 OAUTH GATEWAY VALIDATION SUITE
+🌐 CLOUDFLARE SECURITY GATEWAY VALIDATION SUITE
 =================================
 
-Comprehensive testing for OAuth Gateway Lambda function including:
+Comprehensive testing for CloudFlare Security Gateway Lambda function including:
 - OAuth authentication flow validation
 - CloudFlare header validation
 - Account linking simulation
 - Error handling verification
 - Integration testing
 
-This validates the OAuth Gateway before deployment to ensure Alexa account linking works.
+This validates the CloudFlare Security Gateway before deployment to ensure Alexa account linking works.
 
 Author: GitHub Copilot
 Date: August 11, 2025
@@ -29,32 +29,32 @@ logger = logging.getLogger(__name__)
 # Create mock Lambda context
 mock_context = MagicMock()
 mock_context.aws_request_id = str(uuid.uuid4())[:8]
-mock_context.function_name = "OAuthGateway"
+mock_context.function_name = "CloudFlareSecurityGateway"
 mock_context.memory_limit_in_mb = 128
 
 
-class OAuthGatewayValidator:
-    """OAuth Gateway validation test suite."""
+class CloudFlareSecurityGatewayValidator:
+    """CloudFlare Security Gateway validation test suite."""
 
     def __init__(self):
         self.test_results = []
         self.start_time = time.time()
 
     def run_all_tests(self) -> tuple[bool, int, int]:
-        """Run complete OAuth Gateway validation suite."""
-        logger.info("🌐 Starting OAuth Gateway Validation Suite")
+        """Run complete CloudFlare Security Gateway validation suite."""
+        logger.info("🌐 Starting CloudFlare Security Gateway Validation Suite")
         logger.info("=" * 60)
 
-        # Import the OAuth Gateway function
+        # Import the CloudFlare Security Gateway function
         try:
             import sys
 
-            sys.path.insert(0, "infrastructure/deployment/oauth_gateway")
+            sys.path.insert(0, "infrastructure/deployment/cloudflare_security_gateway")
             from lambda_function import lambda_handler
 
-            logger.info("✅ OAuth Gateway module imported successfully")
+            logger.info("✅ CloudFlare Security Gateway module imported successfully")
         except ImportError as e:
-            logger.error("❌ Failed to import OAuth Gateway: %s", str(e))
+            logger.error("❌ Failed to import CloudFlare Security Gateway: %s", str(e))
             logger.error(
                 "   Run: python scripts/lambda_deployment/deployment_manager.py --build"
             )
@@ -269,7 +269,7 @@ class OAuthGatewayValidator:
         total_time = time.time() - self.start_time
 
         logger.info("")
-        logger.info("🌐 OAuth Gateway Validation Complete")
+        logger.info("🌐 CloudFlare Security Gateway Validation Complete")
         logger.info("=" * 60)
         logger.info(
             "📊 Results: %d passed, %d failed (%.2fs total)",
@@ -279,15 +279,15 @@ class OAuthGatewayValidator:
         )
 
         if passed:
-            logger.info("✅ OAuth Gateway is ready for deployment!")
+            logger.info("✅ CloudFlare Security Gateway is ready for deployment!")
             logger.info("")
             logger.info("📋 Next steps:")
-            logger.info("1. Deploy: bash deploy_oauth_gateway.sh")
+            logger.info("1. Deploy: bash deploy_cloudflare_security_gateway.sh")
             logger.info("2. Update Alexa skill Token URI to Function URL")
             logger.info("3. Test account linking in mobile app")
             logger.info("4. Verify voice commands work after linking")
         else:
-            logger.error("❌ OAuth Gateway validation failed!")
+            logger.error("❌ CloudFlare Security Gateway validation failed!")
             logger.error("   Please review errors and fix issues before deployment")
 
         # Detailed results
@@ -302,7 +302,7 @@ class OAuthGatewayValidator:
 
 def main():
     """Main validation entry point."""
-    validator = OAuthGatewayValidator()
+    validator = CloudFlareSecurityGatewayValidator()
 
     try:
         passed, passed_count, failed_count = validator.run_all_tests()

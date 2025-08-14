@@ -1,32 +1,32 @@
-# OAuth Gateway Testing Strategy
+# CloudFlare Security Gateway Testing Strategy
 
 ## Overview
 
-This document outlines the comprehensive testing strategy for evolving the OAuth Gateway from the original CloudFlare-Wrapper functionality to an enhanced, performance-optimized version.
+This document outlines the comprehensive testing strategy for evolving the CloudFlare Security Gateway from the original CloudFlare-Security-Gateway functionality to an enhanced, performance-optimized version.
 
 ## Evolution Pattern (Following Smart Home Bridge Success)
 
-The OAuth Gateway evolution follows the proven pattern used for the Smart Home Bridge:
+The CloudFlare Security Gateway evolution follows the proven pattern used for the Smart Home Bridge:
 
 1. **Baseline**: `Home_Assistant_Wrapper.py` (original OAuth functionality)
-2. **Target**: `oauth_gateway.py.bkp` (enhanced version with performance optimizations)
-3. **Current**: `oauth_gateway.py` (reset to baseline for systematic evolution)
+2. **Target**: `cloudflare_security_gateway.py.bkp` (enhanced version with performance optimizations)
+3. **Current**: `cloudflare_security_gateway.py` (reset to baseline for systematic evolution)
 
-## Testing Suite: `oauth_gateway_testing_suite.py`
+## Testing Suite: `cloudflare_security_gateway_testing_suite.py`
 
 ### Comprehensive Test Coverage
 
-The testing suite provides complete OAuth Gateway validation:
+The testing suite provides complete CloudFlare Security Gateway validation:
 
 ```bash
 # Full test suite (recommended for comprehensive validation)
-python tests/validation/tools/oauth_gateway_testing_suite.py
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py
 
 # Individual test categories
-python tests/validation/tools/oauth_gateway_testing_suite.py --baseline-test
-python tests/validation/tools/oauth_gateway_testing_suite.py --token-exchange
-python tests/validation/tools/oauth_gateway_testing_suite.py --security-validation
-python tests/validation/tools/oauth_gateway_testing_suite.py --performance-benchmark
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --baseline-test
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --token-exchange
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --security-validation
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --performance-benchmark
 ```
 
 ### Test Categories
@@ -84,11 +84,11 @@ python tests/validation/tools/oauth_gateway_testing_suite.py --performance-bench
 - Enhanced: <500ms average (with caching)
 - Optimized: <200ms average (with container optimization)
 
-## OAuth Gateway Configuration
+## CloudFlare Security Gateway Configuration
 
 ### SSM Parameter Structure
 
-The OAuth Gateway uses `/ha-alexa/appConfig` with the following structure:
+The CloudFlare Security Gateway uses `/ha-alexa/appConfig` with the following structure:
 
 ```json
 {
@@ -112,13 +112,13 @@ The OAuth Gateway uses `/ha-alexa/appConfig` with the following structure:
 
 ```bash
 # 1. Test current baseline functionality
-python tests/validation/tools/oauth_gateway_testing_suite.py --baseline-test
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --baseline-test
 
 # 2. Validate all security features work
-python tests/validation/tools/oauth_gateway_testing_suite.py --security-validation
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --security-validation
 
 # 3. Establish performance baseline
-python tests/validation/tools/oauth_gateway_testing_suite.py --performance-benchmark
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --performance-benchmark
 ```
 
 ### Phase 2: Incremental Enhancement
@@ -126,17 +126,17 @@ python tests/validation/tools/oauth_gateway_testing_suite.py --performance-bench
 For each enhancement iteration:
 
 ```bash
-# 1. Make code changes to oauth_gateway.py
+# 1. Make code changes to cloudflare_security_gateway.py
 
 # 2. Deploy to Lambda
-python scripts/lambda_deployment/deployment_manager.py --package --function oauth_gateway
+python scripts/lambda_deployment/deployment_manager.py --package --function cloudflare_security_gateway
 # (Follow deployment prompts)
 
 # 3. Validate enhanced functionality
-python tests/validation/tools/oauth_gateway_testing_suite.py --function oauth_gateway
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --function cloudflare_security_gateway
 
 # 4. Compare performance improvements
-python tests/validation/tools/oauth_gateway_testing_suite.py --performance-benchmark --function oauth_gateway
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --performance-benchmark --function cloudflare_security_gateway
 
 # 5. Repeat for next enhancement
 ```
@@ -145,10 +145,10 @@ python tests/validation/tools/oauth_gateway_testing_suite.py --performance-bench
 
 ```bash
 # Comprehensive final validation
-python tests/validation/tools/oauth_gateway_testing_suite.py --save-files
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --save-files
 ```
 
-## Enhancement Roadmap (Based on oauth_gateway.py.bkp)
+## Enhancement Roadmap (Based on cloudflare_security_gateway.py.bkp)
 
 ### Target Enhancements
 
@@ -188,21 +188,21 @@ python tests/validation/tools/oauth_gateway_testing_suite.py --save-files
 
 ```bash
 # Automatic cleanup after testing
-python tests/validation/tools/oauth_gateway_testing_suite.py
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py
 ```
 
 ### Permanent Artifact Saving
 
 ```bash
 # Save all test artifacts for analysis
-python tests/validation/tools/oauth_gateway_testing_suite.py --save-files
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --save-files
 ```
 
 ### Manual Cleanup
 
 ```bash
 # Clean up any leftover test artifacts
-python tests/validation/tools/oauth_gateway_testing_suite.py --cleanup
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --cleanup
 ```
 
 ## Success Criteria
@@ -254,7 +254,7 @@ python tests/validation/tools/oauth_gateway_testing_suite.py --cleanup
 export DEBUG=true
 
 # Or test with debug-enabled configuration
-python tests/validation/tools/oauth_gateway_testing_suite.py --function oauth_gateway_debug
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --function cloudflare_security_gateway_debug
 ```
 
 ## Automation Integration
@@ -265,7 +265,7 @@ The testing suite is designed for automated testing:
 
 ```bash
 # Exit code 0 = success, non-zero = failure
-python tests/validation/tools/oauth_gateway_testing_suite.py
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py
 echo "Test exit code: $?"
 ```
 
@@ -273,7 +273,7 @@ echo "Test exit code: $?"
 
 ```bash
 # Performance regression detection
-python tests/validation/tools/oauth_gateway_testing_suite.py --performance-benchmark --iterations 10
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --performance-benchmark --iterations 10
 ```
 
-This comprehensive testing strategy ensures reliable, systematic evolution of the OAuth Gateway while maintaining functionality and improving performance throughout the development process.
+This comprehensive testing strategy ensures reliable, systematic evolution of the CloudFlare Security Gateway while maintaining functionality and improving performance throughout the development process.

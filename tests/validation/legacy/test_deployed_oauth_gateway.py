@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-🔐 OAUTH GATEWAY DEPLOYED FUNCTION VALIDATION
+🔐 CLOUDFLARE SECURITY GATEWAY DEPLOYED FUNCTION VALIDATION
 ============================================
 
-Validates the deployed CloudFlare-Wrapper Lambda function containing OAuth Gateway code.
+Validates the deployed CloudFlare-Security-Gateway Lambda function containing CloudFlare Security Gateway code.
 Tests OAuth authentication flow, configuration loading, and CloudFlare integration.
 
 Usage:
-    python test_deployed_oauth_gateway.py
-    python test_deployed_oauth_gateway.py --verbose
+    python test_deployed_cloudflare_security_gateway.py
+    python test_deployed_cloudflare_security_gateway.py --verbose
 """
 
 import json
@@ -21,11 +21,11 @@ import boto3
 import requests
 
 
-class DeployedOAuthGatewayValidator:
-    """Validates the deployed OAuth Gateway Lambda function."""
+class DeployedCloudFlareSecurityGatewayValidator:
+    """Validates the deployed CloudFlare Security Gateway Lambda function."""
 
     def __init__(
-        self, function_name: str = "CloudFlare-Wrapper", verbose: bool = False
+        self, function_name: str = "CloudFlare-Security-Gateway", verbose: bool = False
     ):
         self.function_name = function_name
         self.lambda_client = boto3.client("lambda")
@@ -38,8 +38,8 @@ class DeployedOAuthGatewayValidator:
         self.logger = logging.getLogger(__name__)
 
     def run_all_tests(self) -> bool:
-        """Run comprehensive validation of deployed OAuth Gateway."""
-        print("🔐 OAUTH GATEWAY DEPLOYED FUNCTION VALIDATION")
+        """Run comprehensive validation of deployed CloudFlare Security Gateway."""
+        print("🔐 CLOUDFLARE SECURITY GATEWAY DEPLOYED FUNCTION VALIDATION")
         print("=" * 50)
         print()
 
@@ -75,7 +75,7 @@ class DeployedOAuthGatewayValidator:
         print(f"📊 VALIDATION SUMMARY: {passed}/{total} tests passed")
 
         if passed == total:
-            print("🎉 ALL TESTS PASSED! OAuth Gateway is ready for Alexa integration.")
+            print("🎉 ALL TESTS PASSED! CloudFlare Security Gateway is ready for Alexa integration.")
             print()
             print("📋 Next Steps:")
             print("1. 🔗 Update Alexa Developer Console:")
@@ -92,7 +92,7 @@ class DeployedOAuthGatewayValidator:
         try:
             response = self.lambda_client.get_function(FunctionName=self.function_name)
 
-            # Verify it's our OAuth Gateway code
+            # Verify it's our CloudFlare Security Gateway code
             code_size = response["Configuration"]["CodeSize"]
             runtime = response["Configuration"]["Runtime"]
 
@@ -100,7 +100,7 @@ class DeployedOAuthGatewayValidator:
             self.logger.info(f"Code size: {code_size} bytes")
             self.logger.info(f"Runtime: {runtime}")
 
-            # OAuth Gateway should be a decent size (>10KB)
+            # CloudFlare Security Gateway should be a decent size (>10KB)
             return code_size > 10000 and runtime.startswith("python3")
 
         except Exception as e:
@@ -145,7 +145,7 @@ class DeployedOAuthGatewayValidator:
             # Test basic HTTP access (should return 400 for empty request, not 5xx)
             response = requests.get(function_url, timeout=10)
 
-            # OAuth Gateway should return 400 for GET request (needs POST)
+            # CloudFlare Security Gateway should return 400 for GET request (needs POST)
             # 5xx would indicate server error
             success = response.status_code in [400, 405, 200]
 
@@ -336,15 +336,15 @@ def main():
     """Main validation script."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Validate deployed OAuth Gateway")
+    parser = argparse.ArgumentParser(description="Validate deployed CloudFlare Security Gateway")
     parser.add_argument(
-        "--function-name", default="CloudFlare-Wrapper", help="Lambda function name"
+        "--function-name", default="CloudFlare-Security-Gateway", help="Lambda function name"
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
-    validator = DeployedOAuthGatewayValidator(
+    validator = DeployedCloudFlareSecurityGatewayValidator(
         function_name=args.function_name, verbose=args.verbose
     )
 

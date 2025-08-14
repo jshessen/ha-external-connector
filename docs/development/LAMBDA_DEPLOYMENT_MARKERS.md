@@ -68,7 +68,7 @@ def lambda_handler(event, context):
 ### ✅ Currently Implemented
 
 - **`smart_home_bridge.py`** - Voice command processing Lambda
-- **`oauth_gateway.py`** - OAuth authentication and proxy Lambda
+- **`cloudflare_security_gateway.py`** - OAuth authentication and proxy Lambda
 - **`configuration_manager.py`** - Configuration management Lambda
 
 ### 📋 Marker Sections per File
@@ -173,7 +173,7 @@ All Lambda function files now use the standardized marker system for consistent 
 
 ### Core Lambda Functions
 
-1. **`oauth_gateway.py`** - OAuth authentication and Smart Home proxy
+1. **`cloudflare_security_gateway.py`** - OAuth authentication and Smart Home proxy
 2. **`smart_home_bridge.py`** - Voice command processing
 3. **`configuration_manager.py`** - Configuration optimization service
 Shared Library

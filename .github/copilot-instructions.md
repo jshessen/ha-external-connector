@@ -640,7 +640,7 @@ This project intentionally maintains synchronized duplicate code between Lambda 
 
 **📋 TRANSFER BLOCK LOCATIONS:**
 
-- **Primary Source**: `src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py` (line ~3149)
+- **Primary Source**: `src/ha_connector/integrations/alexa/lambda_functions/cloudflare_security_gateway.py` (line ~3149)
 - **Synchronized Target**: `src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py` (line ~255)
 - **Infrastructure**: `infrastructure/deployment/smart_home_bridge.py` (separate deployment script)
 
@@ -669,7 +669,7 @@ def load_standardized_configuration(...):
 
 **⚠️ CRITICAL AI ASSISTANT GUIDELINES:**
 
-1. **NEVER "Clean Up" Duplicate Code**: The duplicate code between OAuth Gateway and Smart Home Bridge is INTENTIONAL
+1. **NEVER "Clean Up" Duplicate Code**: The duplicate code between CloudFlare Security Gateway and Smart Home Bridge is INTENTIONAL
 2. **Preserve Transfer Blocks**: When editing one transfer block, copy changes to the synchronized location
 3. **Maintain Service-Specific Customizations**: Each Lambda function has its own cache prefixes and service identifiers
 4. **Infrastructure Files Are Separate**: Don't confuse `infrastructure/deployment/` files with main Lambda functions
@@ -678,12 +678,12 @@ def load_standardized_configuration(...):
 
 When updating shared functionality:
 
-1. **Edit Primary Source** (oauth_gateway.py transfer block)
+1. **Edit Primary Source** (cloudflare_security_gateway.py transfer block)
 2. **Copy Transfer Block Content** (between START/END markers)
 3. **Update Target Location** (smart_home_bridge.py transfer block)
 4. **Apply Service Customizations**:
    - Cache prefixes: `oauth_config_` → `bridge_config_`
-   - Lambda function names: `"oauth_gateway"` → `"smart_home_bridge"`
+   - Lambda function names: `"cloudflare_security_gateway"` → `"smart_home_bridge"`
    - Service-specific constants and identifiers
 5. **Test Both Functions** independently after synchronization
 
@@ -691,7 +691,7 @@ When updating shared functionality:
 
 - **Lambda Independence**: Each function can be deployed separately without shared dependencies
 - **Performance Optimization**: Eliminates import overhead and cold start penalties
-- **Service Specialization**: OAuth Gateway handles authentication, Smart Home Bridge handles voice commands
+- **Service Specialization**: CloudFlare Security Gateway handles authentication, Smart Home Bridge handles voice commands
 - **Maintenance Efficiency**: Transfer blocks enable quick synchronization of shared optimizations
 
 **📊 PERFORMANCE BENEFITS:**

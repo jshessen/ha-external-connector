@@ -40,7 +40,7 @@ python scripts/lambda_deployment/cli.py --package --function smart_home_bridge
 python scripts/lambda_deployment/cli.py --deploy
 
 # Deploy single function with dry-run validation
-python scripts/lambda_deployment/cli.py --deploy --function oauth_gateway --dry-run
+python scripts/lambda_deployment/cli.py --deploy --function cloudflare_security_gateway --dry-run
 
 # Test deployed function
 python scripts/lambda_deployment/cli.py --test --function smart_home_bridge
@@ -57,11 +57,11 @@ python scripts/lambda_deployment/cli.py --clean
 ```bash
 # Deploy with custom AWS function names
 python scripts/lambda_deployment/cli.py --deploy \
-  --function-names '{"oauth_gateway": "MyCustomOAuth", "smart_home_bridge": "MyBridge"}'
+  --function-names '{"cloudflare_security_gateway": "MyCustomOAuth", "smart_home_bridge": "MyBridge"}'
 
 # Or use individual name arguments
 python scripts/lambda_deployment/cli.py --deploy \
-  --oauth-name "CloudFlare-Wrapper" \
+  --oauth-name "CloudFlare-Security-Gateway" \
   --bridge-name "HomeAssistant" \
   --config-name "ConfigurationManager"
 ```
@@ -73,7 +73,7 @@ python scripts/lambda_deployment/cli.py --deploy \
 python scripts/lambda_deployment/marker_validator.py --all
 
 # Validate specific file
-python scripts/lambda_deployment/marker_validator.py --file oauth_gateway.py
+python scripts/lambda_deployment/marker_validator.py --file cloudflare_security_gateway.py
 
 # Complete project validation
 python scripts/lambda_deployment/marker_validator.py --complete
@@ -90,7 +90,7 @@ python scripts/lambda_deployment/deployment_manager.py --validate
 ## Available Lambda Functions
 
 - **`smart_home_bridge`** - Core Home Assistant integration (AWS: "HomeAssistant")
-- **`oauth_gateway`** - CloudFlare OAuth wrapper (AWS: "CloudFlare-Wrapper")
+- **`cloudflare_security_gateway`** - CloudFlare OAuth wrapper (AWS: "CloudFlare-Security-Gateway")
 - **`configuration_manager`** - Centralized configuration management (AWS: "ConfigurationManager")
 
 ## CLI Command Reference
@@ -112,7 +112,7 @@ python scripts/lambda_deployment/deployment_manager.py --validate
 
 - `--function all` - Operate on all functions (default for package/deploy)
 - `--function smart_home_bridge` - Target specific function
-- `--function oauth_gateway` - Target OAuth gateway
+- `--function cloudflare_security_gateway` - Target OAuth gateway
 - `--function configuration_manager` - Target configuration manager
 
 ### Customization

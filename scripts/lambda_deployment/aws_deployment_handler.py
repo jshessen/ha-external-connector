@@ -138,7 +138,7 @@ class AWSDeploymentHandler:
                     self._logger.warning(
                         "⚠️ Lambda function runtime issue - unexpected response format"
                     )
-            elif function_name == "oauth_gateway":
+            elif function_name == "cloudflare_security_gateway":
                 # For OAuth gateway, expect token exchange response or auth error
                 if (
                     "access_token" in payload
@@ -365,7 +365,7 @@ class AWSDeploymentHandler:
                 "source": "deployment_test",
                 "request_id": "test-deployment-config-001",
             }
-        # oauth_gateway
+        # cloudflare_security_gateway
         return {
             "httpMethod": "GET",
             "path": "/oauth",
@@ -465,7 +465,7 @@ class AWSDeploymentHandler:
                         configs_attempted,
                     )
                 return True
-            elif containers_warmed > 0:
+            if containers_warmed > 0:
                 self._logger.warning(
                     "⚠️ Configuration Manager partially successful containers (%d/%d)",
                     containers_warmed,

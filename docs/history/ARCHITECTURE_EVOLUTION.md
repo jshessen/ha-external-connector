@@ -22,7 +22,7 @@ Your project successfully implements the complete Alexa Smart Home integration w
 ```text
 Current                        → Proposed
 voice_command_bridge.py        → smart_home_bridge.py
-cloudflare_oauth_gateway.py    → oauth_gateway.py
+cloudflare_cloudflare_security_gateway.py    → cloudflare_security_gateway.py
 alexa_skill_manager.py         → skill_automation_manager.py
 service_installer.py           → integration_installer.py
 ```
@@ -158,7 +158,7 @@ This creates a consistent pattern for adding new external connectors.
 ```bash
 cd src/aws/
 mv voice_command_bridge.py smart_home_bridge.py
-mv cloudflare_oauth_gateway.py oauth_gateway.py
+mv cloudflare_cloudflare_security_gateway.py cloudflare_security_gateway.py
 ```
 
 ### 2. Update Documentation (15 minutes)

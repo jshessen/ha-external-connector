@@ -43,7 +43,7 @@ mkdir -p src/ha_connector/platforms/{aws,cloudflare,home_assistant}
 ```bash
 # Alexa Integration Files (better naming)
 mv src/aws/voice_command_bridge.py → src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py
-mv src/aws/cloudflare_oauth_gateway.py → src/ha_connector/integrations/alexa/lambda_functions/oauth_gateway.py
+mv src/aws/cloudflare_cloudflare_security_gateway.py → src/ha_connector/integrations/alexa/lambda_functions/cloudflare_security_gateway.py
 mv src/ha_connector/aws/alexa_skill_manager.py → src/ha_connector/integrations/alexa/automation_manager.py
 
 # Platform Consolidation (adapters → platforms)
@@ -120,7 +120,7 @@ custom_components/ha_external_connector/
 │   ├── __init__.py
 │   ├── smart_home_bridge.py   # Lambda function management
 │   ├── skill_setup.py         # Alexa skill automation
-│   └── oauth_gateway.py       # OAuth handling
+│   └── cloudflare_security_gateway.py       # OAuth handling
 ├── platforms/                 # Platform integrations
 │   ├── aws/                   # AWS resource management
 │   └── cloudflare/            # DNS and certificates

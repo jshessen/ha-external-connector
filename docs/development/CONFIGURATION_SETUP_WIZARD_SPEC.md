@@ -221,7 +221,7 @@ class IAMPolicyManager:
                     ],
                     "Resource": [
                         "arn:aws:lambda:*:*:function:HomeAssistant",
-                        "arn:aws:lambda:*:*:function:CloudFlare-Wrapper",
+                        "arn:aws:lambda:*:*:function:CloudFlare-Security-Gateway",
                         "arn:aws:lambda:*:*:function:ConfigurationManager",
                         "arn:aws:ssm:*:*:parameter/ha-alexa/*",
                         "arn:aws:logs:*:*:*"
@@ -251,7 +251,7 @@ class IAMPolicyManager:
                     ],
                     "Resource": [
                         "arn:aws:lambda:*:*:function:HomeAssistant",
-                        "arn:aws:lambda:*:*:function:CloudFlare-Wrapper",
+                        "arn:aws:lambda:*:*:function:CloudFlare-Security-Gateway",
                         "arn:aws:lambda:*:*:function:ConfigurationManager",
                         "arn:aws:ssm:*:*:parameter/home-assistant/alexa/*",
                         "arn:aws:dynamodb:*:*:table/ha-external-connector-*",

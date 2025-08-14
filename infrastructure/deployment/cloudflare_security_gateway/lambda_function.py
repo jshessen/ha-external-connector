@@ -1,5 +1,5 @@
 """
-🔐 CLOUDFLARE OAUTH GATEWAY: Dedicated OAuth Authentication Service 🌐
+🔐 CLOUDFLARE CLOUDFLARE SECURITY GATEWAY: Dedicated OAuth Authentication Service 🌐
 
 Handles OAuth token exchange for Alexa Smart Home account linking.
 Provides optional CloudFlare protection for enhanced security.
@@ -139,7 +139,7 @@ SSM_SECURITY_POLICIES_PATH = "/home-assistant/security/policies"
 
 # Lambda ARN Storage Paths (Gen3 standard format)
 SSM_LAMBDA_ARN_BASE = "/home-assistant/alexa/lambda"
-SSM_OAUTH_GATEWAY_ARN = "/home-assistant/alexa/lambda/oauth-gateway-arn"
+SSM_CLOUDFLARE_SECURITY_GATEWAY_ARN = "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
 SSM_SMART_HOME_BRIDGE_ARN = "/home-assistant/alexa/lambda/smart-home-bridge-arn"
 
 # APP_CONFIG_PATH: Base reference point for finding SSM parameters
@@ -199,14 +199,14 @@ def build_ssm_lambda_arn_path(lambda_name: str) -> str:
     Build standardized SSM Lambda ARN storage path.
 
     Args:
-        lambda_name: Lambda function name (oauth-gateway, smart-home-bridge, etc.)
+        lambda_name: Lambda function name (cloudflare-security-gateway, smart-home-bridge, etc.)
 
     Returns:
         Standardized SSM Lambda ARN path
 
     Examples:
-        build_ssm_lambda_arn_path("oauth-gateway")
-        -> "/home-assistant/alexa/lambda/oauth-gateway-arn"
+        build_ssm_lambda_arn_path("cloudflare-security-gateway")
+        -> "/home-assistant/alexa/lambda/cloudflare-security-gateway-arn"
         build_ssm_lambda_arn_path("smart-home-bridge")
         -> "/home-assistant/alexa/lambda/smart-home-bridge-arn"
     """
@@ -905,7 +905,7 @@ class ConfigurationManager:
                 "timeout": int(os.environ.get("HA_TIMEOUT", "30")),
             }
         if config_section == "cloudflare_config":
-            # CloudFlare config IS the OAuth config (oauth_gateway = CloudFlare-Wrapper)
+            # CloudFlare config IS the OAuth config (cloudflare_security_gateway = CloudFlare-Security-Gateway)
             return {
                 "client_id": os.environ.get("CF_CLIENT_ID", ""),
                 "client_secret": os.environ.get("CF_CLIENT_SECRET", ""),
@@ -949,7 +949,7 @@ class ConfigurationManager:
 
         # Fallback to SSM JSON parameter
         if not app_config_path:
-            _logger.warning("⚠️ No SSM path provided for Gen 2 fallback")
+            _logger.info("⚠️ No SSM path provided for Gen 2 fallback")
             return env_config
 
         try:
@@ -977,11 +977,13 @@ class ConfigurationManager:
                 except (ClientError, json.JSONDecodeError):
                     continue
 
-            _logger.warning("⚠️ No SSM JSON parameter found, using environment config")
+            _logger.info("⚠️ No SSM JSON parameter found, using environment config")
             return env_config
 
         except (ClientError, json.JSONDecodeError, NoCredentialsError) as e:
-            _logger.warning("⚠️ Failed to load Gen 2 SSM config: %s", e)
+            _logger.info(
+                "⚠️ Failed to load Gen 2 SSM config, using environment fallback: %s", e
+            )
             return env_config
 
     def _load_generation_3_modular_ssm(
@@ -1297,7 +1299,7 @@ def load_comprehensive_configuration(
         if features['core_available']:
             # smart_home_bridge.py can work
         if features['core_available'] and features['cloudflare_available']:
-            # oauth_gateway.py can work (CloudFlare IS the OAuth gateway)
+            # cloudflare_security_gateway.py can work (CloudFlare IS the OAuth gateway)
         if features['lambda_coordination_available']:
             # configuration_manager.py can work with warming
     """
@@ -1379,7 +1381,7 @@ def _is_cloudflare_config_complete(cf_config: dict[str, Any]) -> bool:
     """
     Check if CloudFlare configuration is complete for OAuth gateway functionality.
 
-    CloudFlare config IS the OAuth config - oauth_gateway.py IS the CloudFlare-Wrapper.
+    CloudFlare config IS the OAuth config - cloudflare_security_gateway.py IS the CloudFlare-Security-Gateway.
     """
     required_fields = ["client_id", "client_secret", "wrapper_secret"]
     return all(
@@ -1410,7 +1412,7 @@ def _is_lambda_config_complete(lambda_config: dict[str, Any]) -> bool:
     # Check for either configuration manager ARN or other Lambda ARNs
     coordination_fields = [
         "configuration_manager_arn",
-        "oauth_gateway_arn",
+        "cloudflare_security_gateway_arn",
         "smart_home_bridge_arn",
     ]
 
@@ -1493,7 +1495,7 @@ def _map_configurations_to_legacy_format(
         ("cloudflare_config", "client_secret"): "CF_CLIENT_SECRET",
         ("cloudflare_config", "wrapper_secret"): "WRAPPER_SECRET",
         ("security_config", "alexa_secret"): "ALEXA_SECRET",
-        ("security_config", "wrapper_secret"): "WRAPPER_SECRET",
+        # Note: wrapper_secret is only mapped from cloudflare_config to avoid conflicts
     }
 
     combined_config: dict[str, str] = {}
@@ -2129,13 +2131,13 @@ class AlexaValidator:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# OAuth Gateway Helper Infrastructure
+# CloudFlare Security Gateway Helper Infrastructure
 # ═══════════════════════════════════════════════════════════════════════════
 
 
 class OAuthSecurityValidator:
     """
-    OAuth Gateway Security Validator: Enterprise Protection for OAuth Flows
+    CloudFlare Security Gateway Security Validator: Enterprise Protection for OAuth Flows
 
     Specialized security validation for OAuth authentication flows, providing
     protection against rate limiting violations, request size attacks, and
@@ -3070,7 +3072,7 @@ def _cleanup_expired_cache() -> None:
 _debug = bool(os.environ.get("DEBUG"))
 
 # Use shared configuration logger instead of local setup
-_logger = create_structured_logger("OAuthGateway")
+_logger = create_structured_logger("CloudFlareSecurityGateway")
 _logger.setLevel(logging.DEBUG if _debug else logging.INFO)
 
 # Initialize boto3 client at global scope for connection reuse
@@ -3162,12 +3164,6 @@ def get_app_config() -> HAConfig:
         _performance_optimizer.record_cache_hit()
         duration = _performance_optimizer.end_timing("config_load", start_time)
         _logger.info("Configuration loaded (%.1fms)", duration * 1000)
-        return HAConfig(config)
-
-        # Fallback to legacy loading if needed
-        config = load_config(_default_app_config_path)
-        duration = _performance_optimizer.end_timing("config_load", start_time)
-        _logger.info("Legacy configuration loaded (%.1fms)", duration * 1000)
         return HAConfig(config)
 
     except Exception as e:
@@ -3341,7 +3337,7 @@ def _execute_oauth_token_exchange(
 
 def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]:
     """
-    ⚡ PERFORMANCE-OPTIMIZED: OAuth Gateway Lambda Handler
+    ⚡ PERFORMANCE-OPTIMIZED: CloudFlare Security Gateway Lambda Handler
 
     Streamlined OAuth token exchange handler with performance monitoring
     and comprehensive security validation. Refactored for maintainability
@@ -3364,8 +3360,8 @@ def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]
     _logger.debug("Event: %s", event)
 
     # 🔥 CONTAINER WARMING: Handle warmup requests from configuration manager
-    if handle_warmup_request(event, correlation_id, "oauth_gateway"):
-        return create_warmup_response("oauth_gateway", correlation_id)
+    if handle_warmup_request(event, correlation_id, "cloudflare_security_gateway"):
+        return create_warmup_response("cloudflare_security_gateway", correlation_id)
 
     # 1. Security validation
     (is_secure, security_error, _) = _validate_oauth_security(event, correlation_id)
