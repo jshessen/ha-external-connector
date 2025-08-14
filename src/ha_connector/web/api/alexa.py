@@ -15,6 +15,12 @@ from ...integrations.alexa.skill_definition_manager import (
     SkillDefinitionRequest,
     SkillDefinitionResponse,
 )
+from ...integrations.alexa.console_automation import (
+    AmazonDeveloperConsoleAutomator,
+    ConsoleAutomationRequest,
+    ConsoleAutomationResponse,
+    AutomationMethod,
+)
 from ...utils import ValidationError
 
 router = APIRouter(prefix="/alexa", tags=["alexa"])
@@ -37,8 +43,9 @@ class SkillListResponse(BaseModel):
     total_count: int
 
 
-# Global skill manager instance
+# Global skill manager and console automator instances
 skill_manager = AlexaSkillDefinitionManager()
+console_automator = AmazonDeveloperConsoleAutomator(skill_manager)
 
 
 @router.post("/skills", response_model=SkillDefinitionResponse)
@@ -347,4 +354,164 @@ async def get_skill_manifest_template() -> dict[str, Any]:
                 "skipOnEnablement": False,
             },
         }
+    }
+
+
+@router.post("/skills/{skill_id}/console-automation", response_model=ConsoleAutomationResponse)
+async def create_console_automation_guide(
+    skill_id: str, request: ConsoleAutomationRequest
+) -> ConsoleAutomationResponse:
+    """
+    Create Amazon Developer Console automation guide for a skill.
+
+    This endpoint provides comprehensive automation assistance including:
+    - Step-by-step manual instructions with exact values
+    - Browser automation scripts (Selenium/Playwright)
+    - Validation checklists for setup verification
+    - Troubleshooting guidance
+    """
+    try:
+        # Set the skill_id from the path parameter
+        request.skill_id = skill_id
+        return console_automator.create_automation_guide(request)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create automation guide: {str(e)}",
+        ) from e
+
+
+@router.get("/skills/{skill_id}/browser-automation-script")
+async def get_browser_automation_script(skill_id: str) -> dict[str, str]:
+    """
+    Get Selenium/Playwright browser automation script for skill setup.
+
+    Returns a complete Python script that can automate the Amazon Developer
+    Console setup process using browser automation tools.
+    """
+    try:
+        if skill_id not in skill_manager.skills:
+            raise ValidationError(f"Skill not found: {skill_id}")
+
+        skill_manifest = skill_manager.skills[skill_id]
+        script_content = console_automator._generate_browser_automation_script(skill_manifest)
+
+        return {
+            "skill_id": skill_id,
+            "script_type": "selenium",
+            "script_content": script_content,
+            "requirements": "selenium, webdriver-manager",
+            "usage_instructions": "Save as .py file and run: python amazon_console_automation.py",
+        }
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+
+
+@router.post("/skills/{skill_id}/validate-console-setup")
+async def validate_console_setup(skill_id: str) -> dict[str, Any]:
+    """
+    Validate that a skill is properly configured in Amazon Developer Console.
+
+    Provides validation checklist and recommendations for verifying
+    the skill setup without requiring direct API access.
+    """
+    try:
+        return console_automator.validate_skill_setup(skill_id)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+
+
+@router.get("/skills/{skill_id}/export-manifest")
+async def export_skill_manifest(skill_id: str) -> dict[str, Any]:
+    """
+    Export skill manifest for import into Amazon Developer Console.
+
+    Generates a complete skill manifest that can be imported directly
+    into the Amazon Developer Console.
+    """
+    try:
+        return console_automator.generate_manifest_export(skill_id)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+
+
+@router.get("/console-automation/methods")
+async def get_automation_methods() -> dict[str, Any]:
+    """Get available console automation methods and their descriptions."""
+    return {
+        "automation_methods": {
+            "guided_manual": {
+                "name": "Guided Manual Setup",
+                "description": "Step-by-step instructions with exact values to enter",
+                "pros": [
+                    "No additional software required",
+                    "Works with any browser",
+                    "Easy to follow and understand",
+                    "Full control over each step",
+                ],
+                "cons": [
+                    "Manual data entry required",
+                    "More time-consuming",
+                    "Prone to human error",
+                ],
+                "estimated_time": 25,
+                "difficulty": "beginner",
+            },
+            "browser_automation": {
+                "name": "Browser Automation",
+                "description": "Selenium script to automate form filling",
+                "pros": [
+                    "Automated form filling",
+                    "Faster execution",
+                    "Reduced human error",
+                    "Consistent results",
+                ],
+                "cons": [
+                    "Requires Python and Selenium",
+                    "May break with console updates",
+                    "Still requires manual OAuth secret entry",
+                ],
+                "estimated_time": 10,
+                "difficulty": "intermediate",
+            },
+            "manifest_import": {
+                "name": "Manifest Import",
+                "description": "Generate manifest for console import",
+                "pros": [
+                    "Quick skill creation",
+                    "Accurate configuration",
+                    "No form filling required",
+                ],
+                "cons": [
+                    "Limited to manifest import only",
+                    "Still requires manual account linking setup",
+                    "Not all settings available via import",
+                ],
+                "estimated_time": 5,
+                "difficulty": "beginner",
+            },
+            "hybrid": {
+                "name": "Hybrid Approach",
+                "description": "Combination of automation and manual steps",
+                "pros": [
+                    "Best of both approaches",
+                    "Automation where possible",
+                    "Manual control for critical steps",
+                ],
+                "cons": [
+                    "More complex workflow",
+                    "Requires understanding of both methods",
+                ],
+                "estimated_time": 15,
+                "difficulty": "intermediate",
+            },
+        },
+        "recommendations": {
+            "first_time_users": "guided_manual",
+            "experienced_users": "browser_automation",
+            "quick_setup": "manifest_import",
+            "production_deployment": "hybrid",
+        },
     }
