@@ -71,15 +71,38 @@
       "editorRuler.foreground": "#ff4444"
     },
     "makefile.configureOnOpen": false,
-    "github.copilot.chat.agent.terminal.denyList": {
-      "chmod": false
+    "github.copilot.chat.tools.autoApprove": {
+      "run_in_terminal": [
+        "python",
+        "source",
+        "ruff",
+        "pylint",
+        "mypy",
+        "pytest",
+        "git",
+        "echo",
+        "ls",
+        "cat"
+      ]
     },
 
     // Bandit security linting configuration
     "python.linting.banditEnabled": true,
     "python.linting.banditArgs": ["--configfile", "pyproject.toml"],
     "bandit.importStrategy": "fromEnvironment",
-    "python.linting.vulturePath": "source ${workspaceFolder}/.venv/bin/activate && ${workspaceFolder}/.venv/bin/vulture"
+    "python.linting.vulturePath": "source ${workspaceFolder}/.venv/bin/activate && ${workspaceFolder}/.venv/bin/vulture",
+    "python.analysis.addHoverSummaries": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.fixAll": [
+      "source.convertImportFormat"
+    ],
+    "python.analysis.aiCodeActions": {
+      "generateDocstring": true,
+      "enable": true,
+      "implementAbstractClasses": true,
+      "generateSymbol": true,
+      "convertFormatString": true
+    }
   },
   "extensions": {
     "recommendations": [

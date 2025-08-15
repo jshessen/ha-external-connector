@@ -34,6 +34,7 @@ This project uses a hierarchical instruction system to eliminate conflicts:
 - **Lambda functions** (`**/lambda_functions/**/*.py`) → `instructions/specialized/lambda-patterns.md`
 - **Test files** (`**/test_*.py`, `**/tests/**/*.py`) → `instructions/specialized/testing-patterns.md`
 - **Security files** (`**/security/**/*.py`) → `instructions/specialized/security-patterns.md`
+- **Pydantic models** (`**/*models*.py`, Pylance type issues) → `instructions/core/quality-standards.md#pydantic-type-annotation-patterns`
 - **Markdown files** (`**/*.md`) → `instructions/documentation/markdown-standards.md`
 
 ## ⚡ Streamlined Terminal Automation
@@ -443,6 +444,13 @@ When working on files matching these patterns, reference the relevant instructio
 - All function parameters must be typed
 - Use modern Python typing syntax (`dict` vs `Dict`, `|` vs `Union`)
 - Generator types must specify full `Generator[YieldType, SendType, ReturnType]`
+
+**🔧 PYDANTIC TYPE PATTERNS:**
+
+- Use `Annotated[Type, Field(...)]` pattern for forward references with `default_factory`
+- Resolves Pylance/Pyright "partially unknown" type errors
+- Essential for `list[ForwardRef]` fields in same module
+- See `instructions/core/quality-standards.md` for detailed patterns
 
 **🔧 BOTO3 TYPE HANDLING:**
 

@@ -180,6 +180,77 @@ except ClientError as e:
                  region, str(e), exc_info=True)
 ```
 
+## Pydantic Type Annotation Patterns
+
+### Forward Reference Type Resolution (Pylance/Pyright)
+
+When working with forward references in Pydantic models, especially `list[Type]` fields with `default_factory`, Pylance/Pyright may report "Type is partially unknown" errors even when MyPy works correctly.
+
+#### Problem Pattern: Traditional Field Assignment with Forward References
+
+```python
+from __future__ import annotations
+from pydantic import BaseModel, Field
+
+class ConsoleSetupStepDetails(BaseModel):
+    # ❌ PYLANCE ISSUE: Reports "Type of 'form_fields' is partially unknown"
+    form_fields: list[ConsoleFormField] = Field(
+        default_factory=list, description="Form fields configuration"
+    )
+    validation_results: list[SkillValidationResult] = Field(
+        default_factory=list, description="Skill validation operation results"
+    )
+
+class ConsoleFormField(BaseModel):  # Defined later in same file
+    field_name: str = Field(description="Logical name for the form field")
+    # ... other fields
+```
+
+#### Solution Pattern: Annotated Type Pattern
+
+```python
+from __future__ import annotations
+from typing import Annotated
+from pydantic import BaseModel, Field
+
+class ConsoleSetupStepDetails(BaseModel):
+    # ✅ PYLANCE COMPATIBLE: Uses Annotated pattern for forward references
+    form_fields: Annotated[
+        list[ConsoleFormField],
+        Field(default_factory=list, description="Form fields configuration"),
+    ]
+    validation_results: Annotated[
+        list[SkillValidationResult],
+        Field(default_factory=list, description="Skill validation operation results"),
+    ]
+
+class ConsoleFormField(BaseModel):  # Defined later in same file
+    field_name: str = Field(description="Logical name for the form field")
+    # ... other fields
+```
+
+**Key Benefits:**
+
+- **Pylance/Pyright compatibility**: Resolves "partially unknown" type errors
+- **MyPy compatibility**: Works perfectly with all type checkers
+- **Runtime compatibility**: Identical behavior to traditional pattern
+- **Pydantic v2 best practice**: Officially recommended pattern for complex field metadata
+
+**When to Use Annotated Pattern:**
+
+- ✅ Forward references in same module with `default_factory`
+- ✅ Complex field validation rules and constraints
+- ✅ Multiple field metadata requirements
+- ✅ Type checker compatibility issues
+
+**When to Use Traditional Assignment:**
+
+- ✅ Simple fields without forward references
+- ✅ Fields with only `default`, `alias` (for better static type checker `__init__` synthesis)
+- ✅ Basic field definitions without complex metadata
+
+**Documentation Reference:** [Pydantic Annotated Pattern](https://docs.pydantic.dev/latest/concepts/fields/#the-annotated-pattern)
+
 ## TypedDict Safety Patterns
 
 ### AWS Boto3 Response Handling
