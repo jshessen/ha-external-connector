@@ -338,7 +338,7 @@ def handle_warmup_request(
         True if this is a warmup request, False otherwise
     """
     if event.get("warmup") is True:
-        _logger.info(
+        _shared_logger.info(
             "🔥 Container warmup request received for %s (correlation: %s)",
             function_name,
             correlation_id,
@@ -408,7 +408,7 @@ def retry_with_exponential_backoff(
         for attempt in range(retry_config.max_retries + 1):
             try:
                 if attempt > 0:
-                    _logger.info(
+                    _shared_logger.info(
                         "🔄 Retry attempt %d/%d after %.2fs delay (correlation: %s)",
                         attempt,
                         retry_config.max_retries,
@@ -419,7 +419,7 @@ def retry_with_exponential_backoff(
 
                 result = func(*args, **kwargs)
                 if attempt > 0:
-                    _logger.info(
+                    _shared_logger.info(
                         "✅ Retry successful on attempt %d (correlation: %s)",
                         attempt + 1,
                         correlation_id,
@@ -429,7 +429,7 @@ def retry_with_exponential_backoff(
             except (*retry_config.retriable_exceptions,) as e:
                 last_exception = e
                 if attempt < retry_config.max_retries:
-                    _logger.warning(
+                    _shared_logger.warning(
                         "⚠️ Attempt %d failed: %s (retrying in %.2fs, correlation: %s)",
                         attempt + 1,
                         str(e),
@@ -441,7 +441,7 @@ def retry_with_exponential_backoff(
                         retry_config.max_delay,
                     )
                 else:
-                    _logger.error(
+                    _shared_logger.error(
                         "❌ All %d attempts failed (correlation: %s)",
                         retry_config.max_retries + 1,
                         correlation_id,
@@ -567,7 +567,7 @@ class HomeAssistantRetryHandler:
         body = json.dumps(data) if data else None
 
         def _make_request():
-            _logger.debug(
+            _shared_logger.debug(
                 "🌐 HA API Request: %s %s (correlation: %s)",
                 method,
                 endpoint,
@@ -583,7 +583,7 @@ class HomeAssistantRetryHandler:
             )
 
             duration_ms = (time.time() - start_time) * 1000
-            _logger.info(
+            _shared_logger.info(
                 "📊 HA API Response: %d in %.0fms (correlation: %s)",
                 response.status,
                 duration_ms,
@@ -625,7 +625,7 @@ class HomeAssistantRetryHandler:
         # Auto-reset circuit breaker after configured timeout
         reset_timeout = self.api_config.circuit_breaker_config.reset_timeout
         if time.time() - self._last_failure_time > reset_timeout:
-            _logger.info(
+            _shared_logger.info(
                 "🔄 Circuit breaker auto-reset (correlation: %s)",
                 self.api_config.correlation_id,
             )
@@ -636,7 +636,7 @@ class HomeAssistantRetryHandler:
 
     def get_retry_stats(self) -> dict[str, Any]:
         """Get retry handler statistics for monitoring."""
-        stats = {
+        stats: dict[str, Any] = {
             "circuit_breaker_failures": self._circuit_breaker_failures,
             "circuit_breaker_open": self._is_circuit_breaker_open(),
             "last_failure_time": self._last_failure_time,
@@ -644,12 +644,11 @@ class HomeAssistantRetryHandler:
         }
 
         if self.api_config.retry_config is not None:
-            stats.update(
-                {
-                    "max_retries": self.api_config.retry_config.max_retries,
-                    "base_delay": self.api_config.retry_config.base_delay,
-                }
-            )
+            retry_stats: dict[str, Any] = {
+                "max_retries": self.api_config.retry_config.max_retries,
+                "base_delay": self.api_config.retry_config.base_delay,
+            }
+            stats.update(retry_stats)
 
         return stats
 
@@ -725,13 +724,13 @@ OAUTH_TOKEN_CACHE_TABLE = os.environ.get(
 )
 
 # Shared clients for Lambda container reuse
-_ssm_client: SSMClient | None = None
-_dynamodb_client: Any = None  # DynamoDB types not available - use Any
-_config_cache: dict[str, Any] = {}
+_shared_ssm_client: SSMClient | None = None
+_shared_dynamodb_client: Any = None  # DynamoDB types not available - use Any
+_shared_config_cache: dict[str, Any] = {}
 
 # Logger for shared operations
-_logger = logging.getLogger("SharedConfiguration")
-_logger.setLevel(logging.INFO)
+_shared_logger = logging.getLogger("SharedConfiguration")
+_shared_logger.setLevel(logging.INFO)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -808,20 +807,20 @@ class ConfigurationManager:
         Returns:
             Tuple of (configuration_dict, generation_used)
         """
-        _logger.info("Loading configuration for section: %s", config_section)
+        _shared_logger.info("Loading configuration for section: %s", config_section)
 
         # Check container cache first for performance
         cache_key = f"{config_section}:{app_config_path or 'env_only'}"
         cached_config = self._get_container_cache(cache_key)
         if cached_config:
-            _logger.debug("Configuration loaded from container cache")
+            _shared_logger.debug("Configuration loaded from container cache")
             return cached_config["config"], cached_config["generation"]
 
         # Detect configuration generation
         generation = force_generation or self._detect_configuration_generation(
             app_config_path
         )
-        _logger.info("Detected configuration generation: %s", generation)
+        _shared_logger.info("Detected configuration generation: %s", generation)
 
         # Load configuration based on generation
         if generation == ConfigurationGeneration.GEN_1_ENV_ONLY:
@@ -835,7 +834,7 @@ class ConfigurationManager:
                 config_section, app_config_path
             )
         else:
-            _logger.warning("⚠️ Unknown generation, falling back to Gen 1")
+            _shared_logger.warning("⚠️ Unknown generation, falling back to Gen 1")
             config = self._load_generation_1_env_only(config_section)
             generation = ConfigurationGeneration.GEN_1_ENV_ONLY
 
@@ -845,7 +844,7 @@ class ConfigurationManager:
         # Cache the result for performance
         self._set_container_cache(cache_key, config, generation)
 
-        _logger.info("✅ Configuration loaded successfully (%s)", generation)
+        _shared_logger.info("✅ Configuration loaded successfully (%s)", generation)
         return config, generation
 
     def _detect_configuration_generation(self, app_config_path: str | None) -> str:
@@ -897,15 +896,17 @@ class ConfigurationManager:
                 pass
 
         except (ClientError, NoCredentialsError):
-            _logger.debug("SSM access failed, defaulting to Gen 1")
+            _shared_logger.debug("SSM access failed, defaulting to Gen 1")
 
         # Default to Gen 1 if detection fails
-        _logger.debug("No SSM configuration found, using Gen 1")
+        _shared_logger.debug("No SSM configuration found, using Gen 1")
         return ConfigurationGeneration.GEN_1_ENV_ONLY
 
     def _load_generation_1_env_only(self, config_section: str) -> dict[str, Any]:
         """Load Generation 1 configuration (pure environment variables)."""
-        _logger.debug("📍 Loading Gen 1 configuration from environment variables")
+        _shared_logger.debug(
+            "📍 Loading Gen 1 configuration from environment variables"
+        )
 
         if config_section == "ha_config":
             return {
@@ -943,24 +944,24 @@ class ConfigurationManager:
                 "cloudflare_wrapper_arn": os.environ.get("CLOUDFLARE_WRAPPER_ARN", ""),
                 "smart_home_bridge_arn": os.environ.get("SMART_HOME_BRIDGE_ARN", ""),
             }
-        _logger.warning("⚠️ Unknown config section for Gen 1: %s", config_section)
+        _shared_logger.warning("⚠️ Unknown config section for Gen 1: %s", config_section)
         return {}
 
     def _load_generation_2_env_ssm_json(
         self, config_section: str, app_config_path: str | None
     ) -> dict[str, Any]:
         """Load Generation 2 configuration (environment with SSM JSON fallback)."""
-        _logger.debug("📍 Loading Gen 2 configuration (ENV → SSM JSON)")
+        _shared_logger.debug("📍 Loading Gen 2 configuration (ENV → SSM JSON)")
 
         # Try environment variables first
         env_config = self._load_generation_1_env_only(config_section)
         if self._is_config_complete(env_config, config_section):
-            _logger.debug("Using environment variables for Gen 2")
+            _shared_logger.debug("Using environment variables for Gen 2")
             return env_config
 
         # Fallback to SSM JSON parameter
         if not app_config_path:
-            _logger.info("⚠️ No SSM path provided for Gen 2 fallback")
+            _shared_logger.info("⚠️ No SSM path provided for Gen 2 fallback")
             return env_config
 
         try:
@@ -983,16 +984,18 @@ class ConfigurationManager:
                     structured_config = self._apply_environment_overrides(
                         structured_config, config_section
                     )
-                    _logger.debug("✅ Loaded Gen 2 config from SSM: %s", path)
+                    _shared_logger.debug("✅ Loaded Gen 2 config from SSM: %s", path)
                     return structured_config
                 except (ClientError, json.JSONDecodeError):
                     continue
 
-            _logger.info("⚠️ No SSM JSON parameter found, using environment config")
+            _shared_logger.info(
+                "⚠️ No SSM JSON parameter found, using environment config"
+            )
             return env_config
 
         except (ClientError, json.JSONDecodeError, NoCredentialsError) as e:
-            _logger.info(
+            _shared_logger.info(
                 "⚠️ Failed to load Gen 2 SSM config, using environment fallback: %s", e
             )
             return env_config
@@ -1001,7 +1004,7 @@ class ConfigurationManager:
         self, config_section: str, app_config_path: str | None
     ) -> dict[str, Any]:
         """Load Generation 3 configuration (modular SSM with caching)."""
-        _logger.debug("📍 Loading Gen 3 configuration (Modular SSM + Caching)")
+        _shared_logger.debug("📍 Loading Gen 3 configuration (Modular SSM + Caching)")
 
         # Check shared cache first
         cache_key = f"{app_config_path}:{config_section}"
@@ -1011,7 +1014,7 @@ class ConfigurationManager:
             shared_config = self._apply_environment_overrides(
                 shared_config, config_section
             )
-            _logger.debug("Configuration loaded from shared cache")
+            _shared_logger.debug("Configuration loaded from shared cache")
             return shared_config
 
         # Load from SSM structured parameters
@@ -1031,14 +1034,14 @@ class ConfigurationManager:
             # Cache for future requests
             self._set_shared_cache(cache_key, config)
 
-            _logger.debug("✅ Loaded Gen 3 config from SSM: %s", param_path)
+            _shared_logger.debug("✅ Loaded Gen 3 config from SSM: %s", param_path)
             return config
 
         except (ClientError, json.JSONDecodeError, NoCredentialsError) as e:
-            _logger.warning("⚠️ Failed to load Gen 3 config: %s", e)
+            _shared_logger.warning("⚠️ Failed to load Gen 3 config: %s", e)
 
             # Fallback to environment variables
-            _logger.debug("🔄 Falling back to environment variables")
+            _shared_logger.debug("🔄 Falling back to environment variables")
             return self._load_generation_1_env_only(config_section)
 
     def _apply_environment_overrides(
@@ -1093,13 +1096,15 @@ class ConfigurationManager:
                             config[config_key] = transform_func(env_value)
                         override_count += 1
                     except (ValueError, TypeError) as e:
-                        _logger.warning("⚠️ Failed to transform %s: %s", env_var, e)
+                        _shared_logger.warning(
+                            "⚠️ Failed to transform %s: %s", env_var, e
+                        )
                 else:
                     config[config_mapping] = env_value
                     override_count += 1
 
         if override_count > 0:
-            _logger.info(
+            _shared_logger.info(
                 "Applied %d environment overrides to %s",
                 override_count,
                 config_section,
@@ -1109,7 +1114,7 @@ class ConfigurationManager:
 
     def _is_config_complete(self, config: dict[str, Any], config_section: str) -> bool:
         """Check if configuration has required fields populated."""
-        required_fields = {
+        required_fields: dict[str, list[str]] = {
             "ha_config": ["base_url"],
             "cloudflare_config": ["client_id"],  # CloudFlare IS the OAuth config
             "security_config": [],  # All optional
@@ -1191,7 +1196,7 @@ class ConfigurationManager:
                 if time.time() < ttl:
                     return json.loads(item["config"]["S"])
         except (ClientError, NoCredentialsError, ValueError, KeyError) as e:
-            _logger.debug("Shared cache access failed: %s", e)
+            _shared_logger.debug("Shared cache access failed: %s", e)
         return None
 
     def _set_shared_cache(self, cache_key: str, config: dict[str, Any]) -> None:
@@ -1213,7 +1218,7 @@ class ConfigurationManager:
                 },
             )
         except (ClientError, NoCredentialsError, ValueError, KeyError) as e:
-            _logger.debug("Shared cache store failed: %s", e)
+            _shared_logger.debug("Shared cache store failed: %s", e)
 
     def _get_ssm_client(self) -> SSMClient:
         """Get SSM client with lazy initialization."""
@@ -1314,7 +1319,7 @@ def load_comprehensive_configuration(
         if features['lambda_coordination_available']:
             # configuration_manager.py can work with warming
     """
-    _logger.info("Loading comprehensive configuration with feature detection")
+    _shared_logger.info("Loading comprehensive configuration with feature detection")
 
     configurations: dict[str, dict[str, Any]] = {}
     features_available: dict[str, bool] = {
@@ -1347,12 +1352,12 @@ def load_comprehensive_configuration(
             configurations[section] = config
             generation_used = generation  # Track the latest generation detected
 
-            _logger.debug(
+            _shared_logger.debug(
                 "Loaded %s configuration: %s keys", section, len(config.keys())
             )
 
         except (ClientError, ValueError, KeyError, ImportError) as e:
-            _logger.debug("Failed to load %s configuration: %s", section, e)
+            _shared_logger.debug("Failed to load %s configuration: %s", section, e)
             configurations[section] = {}
 
     # Determine feature availability based on loaded configurations
@@ -1374,7 +1379,7 @@ def load_comprehensive_configuration(
 
     # Log feature availability for debugging
     available_features = [k for k, v in features_available.items() if v]
-    _logger.info("Available features: %s", available_features)
+    _shared_logger.info("Available features: %s", available_features)
 
     return configurations, generation_used, features_available
 
@@ -1449,7 +1454,7 @@ def load_configuration_as_configparser(
     Returns:
         ConfigParser with appConfig section containing all configuration
     """
-    _logger.debug("Loading configuration in ConfigParser format")
+    _shared_logger.debug("Loading configuration in ConfigParser format")
 
     config_parser = configparser.ConfigParser()
     config_parser.add_section("appConfig")
@@ -1467,21 +1472,21 @@ def load_configuration_as_configparser(
         for key, value in combined_config.items():
             config_parser.set("appConfig", key, value)
 
-        _logger.debug(
+        _shared_logger.debug(
             "ConfigParser loaded with %d parameters (generation: %s)",
             len(combined_config),
             generation,
         )
 
     except (ClientError, ValueError, KeyError) as e:
-        _logger.warning("Failed to load comprehensive configuration: %s", e)
+        _shared_logger.warning("Failed to load comprehensive configuration: %s", e)
 
         # Fallback to environment variables
         combined_config = _get_environment_fallback_config()
         for key, value in combined_config.items():
             config_parser.set("appConfig", key, value)
 
-        _logger.debug("ConfigParser loaded from environment fallback")
+        _shared_logger.debug("ConfigParser loaded from environment fallback")
 
     return config_parser
 
@@ -1564,7 +1569,7 @@ def get_configuration_stats() -> dict[str, Any]:
             "supported_generations": supported_gens,
         }
     except Exception as e:  # pylint: disable=broad-except
-        _logger.warning("Failed to get configuration stats: %s", e)
+        _shared_logger.warning("Failed to get configuration stats: %s", e)
         supported_gens = ["Gen1_ENV_ONLY", "Gen2_ENV_TO_SSM", "Gen3_MODULAR_SSM"]
         return {
             "error": str(e),
@@ -1651,7 +1656,7 @@ class RateLimiter:
         ]
 
         if len(recent_global) >= SecurityConfig.MAX_REQUESTS_PER_MINUTE:
-            _logger.warning(
+            _shared_logger.warning(
                 "🚨 Global rate limit exceeded: %d requests in last minute",
                 len(recent_global),
             )
@@ -1668,7 +1673,7 @@ class RateLimiter:
         ]
 
         if len(recent_ip_requests) >= SecurityConfig.MAX_REQUESTS_PER_IP_PER_MINUTE:
-            _logger.warning(
+            _shared_logger.warning(
                 "🚨 Per-IP rate limit exceeded for %s: %d requests in last minute",
                 client_ip,
                 len(recent_ip_requests),
@@ -1679,7 +1684,7 @@ class RateLimiter:
                 self._blocked_ips[client_ip] = (
                     current_time + SecurityConfig.BLOCK_DURATION_SECONDS
                 )
-                _logger.error(
+                _shared_logger.error(
                     "🚫 Blocking suspicious IP %s for %d seconds",
                     client_ip,
                     SecurityConfig.BLOCK_DURATION_SECONDS,
@@ -1866,11 +1871,11 @@ class SecurityEventLogger:
         }
 
         if severity == "ERROR":
-            _logger.error("🚨 SECURITY_EVENT: %s", json.dumps(log_entry))
+            _shared_logger.error("🚨 SECURITY_EVENT: %s", json.dumps(log_entry))
         elif severity == "WARNING":
-            _logger.warning("⚠️ SECURITY_EVENT: %s", json.dumps(log_entry))
+            _shared_logger.warning("⚠️ SECURITY_EVENT: %s", json.dumps(log_entry))
         else:
-            _logger.info("SECURITY_EVENT: %s", json.dumps(log_entry))
+            _shared_logger.info("SECURITY_EVENT: %s", json.dumps(log_entry))
 
     @staticmethod
     def log_oauth_success(client_ip: str, destination: str) -> None:
@@ -2274,7 +2279,7 @@ class OAuthConfigurationManager:
             config["wrapper_secret"] = wrapper_secret
 
         if errors:
-            _logger.error(
+            _shared_logger.error(
                 "OAuth configuration validation failed (correlation: %s): %s",
                 correlation_id,
                 ", ".join(errors),
@@ -2323,7 +2328,7 @@ class OAuthRequestProcessor:
             )
             return req_body, None
         except (ValueError, KeyError, UnicodeDecodeError) as e:
-            _logger.error(
+            _shared_logger.error(
                 "Request body processing failed (correlation: %s): %s",
                 correlation_id,
                 e,
@@ -2355,7 +2360,7 @@ class OAuthRequestProcessor:
             client_secret = client_secret_bytes[0].decode("utf-8")
 
             if client_secret != wrapper_secret:
-                _logger.error(
+                _shared_logger.error(
                     "Client secret mismatch (correlation: %s)", correlation_id
                 )
                 return False, "Client secret mismatch"
@@ -2363,7 +2368,7 @@ class OAuthRequestProcessor:
             return True, None
 
         except (ValueError, KeyError, UnicodeDecodeError) as e:
-            _logger.error(
+            _shared_logger.error(
                 "OAuth parameter validation failed (correlation: %s): %s",
                 correlation_id,
                 e,
@@ -2428,7 +2433,7 @@ class OAuthRequestProcessor:
             return success_response, None
 
         except (urllib3.exceptions.HTTPError, json.JSONDecodeError, ValueError) as e:
-            _logger.error(
+            _shared_logger.error(
                 "OAuth request execution failed (correlation: %s): %s",
                 correlation_id,
                 e,
@@ -2691,7 +2696,7 @@ class RequestBatcher:
         self._max_batch_size = max_batch_size
         self._max_wait_time = max_wait_time
         self._pending_requests: list[dict[str, Any]] = []
-        self._batch_stats = {
+        self._batch_stats: dict[str, int | float] = {
             "batches_processed": 0,
             "requests_batched": 0,
             "individual_requests": 0,
@@ -2757,9 +2762,9 @@ def create_structured_logger(
     - Correlation ID support for request tracing
     - Memory-efficient log formatting
     """
-    logger = logging.getLogger(logger_name)
+    local_logger = logging.getLogger(logger_name)
 
-    if not logger.handlers:
+    if not local_logger.handlers:
         handler = logging.StreamHandler()
 
         # Performance-optimized formatter
@@ -2768,14 +2773,16 @@ def create_structured_logger(
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        local_logger.addHandler(handler)
 
-    logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    local_logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
     if correlation_id:
-        logger = logging.LoggerAdapter(logger, {"correlation_id": correlation_id})
+        local_logger = logging.LoggerAdapter(
+            local_logger, {"correlation_id": correlation_id}
+        )
 
-    return logger
+    return local_logger
 
 
 def extract_correlation_id(context: Any) -> str:
@@ -2824,13 +2831,13 @@ def cache_configuration(
     if force_refresh:
         # Clear existing cache before storing new configuration
         _invalidate_cache(config_section, ssm_path)
-        _logger.info("Cache invalidated for %s:%s", ssm_path, config_section)
+        _shared_logger.info("Cache invalidated for %s:%s", ssm_path, config_section)
 
     # Store in both cache layers
     cache_config_in_container(config_section, ssm_path, config)
     _cache_config_in_shared_cache(config_section, ssm_path, config)
 
-    _logger.info("Configuration cached for %s:%s", ssm_path, config_section)
+    _shared_logger.info("Configuration cached for %s:%s", ssm_path, config_section)
 
 
 def get_cache_stats() -> dict[str, Any]:
@@ -2940,12 +2947,12 @@ def _validate_configuration(app_config: dict[str, Any]) -> tuple[bool, str | Non
 
 def _get_dynamodb_client() -> Any:  # DynamoDB types not available
     """Get DynamoDB client with lazy initialization."""
-    global _dynamodb_client  # pylint: disable=global-statement
-    if _dynamodb_client is None:
-        _dynamodb_client = boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportUnknownVariableType]
+    global _shared_dynamodb_client  # pylint: disable=global-statement
+    if _shared_dynamodb_client is None:
+        _shared_dynamodb_client = boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportUnknownVariableType]
             "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
         )
-    return _dynamodb_client  # pyright: ignore[reportUnknownVariableType]
+    return _shared_dynamodb_client  # pyright: ignore[reportUnknownVariableType]
 
 
 def get_container_cached_config(
@@ -2953,17 +2960,17 @@ def get_container_cached_config(
 ) -> dict[str, Any] | None:
     """Get configuration from container-level cache."""
     # Periodic cleanup every 50 cache operations to prevent memory bloat
-    if len(_config_cache) >= 50:
+    if len(_shared_config_cache) >= 50:
         _cleanup_expired_cache()
 
     cache_key = f"{ssm_path}:{config_section}"
-    if cache_key in _config_cache:
-        cache_entry = _config_cache[cache_key]
+    if cache_key in _shared_config_cache:
+        cache_entry = _shared_config_cache[cache_key]
         # Check TTL
         if time.time() - cache_entry["timestamp"] < CONTAINER_CACHE_TTL:
             return cache_entry["config"]  # type: ignore[no-any-return]
         # Remove expired entry
-        del _config_cache[cache_key]
+        del _shared_config_cache[cache_key]
     return None
 
 
@@ -2985,7 +2992,7 @@ def _cache_config_in_shared_cache(
             },
         )
     except (ClientError, ValueError, KeyError) as e:
-        _logger.debug("Failed to cache in shared cache: %s", str(e))
+        _shared_logger.debug("Failed to cache in shared cache: %s", str(e))
 
 
 def cache_config_in_container(
@@ -2994,7 +3001,7 @@ def cache_config_in_container(
     """Store configuration in container-level cache."""
     cache_key = f"{ssm_path}:{config_section}"
 
-    _config_cache[cache_key] = {"config": config, "timestamp": time.time()}
+    _shared_config_cache[cache_key] = {"config": config, "timestamp": time.time()}
 
 
 def _clear_container_cache(
@@ -3004,12 +3011,12 @@ def _clear_container_cache(
     if config_section and ssm_path:
         # Clear specific cache entry
         cache_key = f"{ssm_path}:{config_section}"
-        _config_cache.pop(cache_key, None)
-        _logger.debug("Cleared container cache for %s", cache_key)
+        _shared_config_cache.pop(cache_key, None)
+        _shared_logger.debug("Cleared container cache for %s", cache_key)
     else:
         # Clear all cache entries
-        _config_cache.clear()
-        _logger.debug("Cleared all container cache entries")
+        _shared_config_cache.clear()
+        _shared_logger.debug("Cleared all container cache entries")
 
 
 def _clear_shared_cache(config_section: str, ssm_path: str) -> None:
@@ -3021,28 +3028,28 @@ def _clear_shared_cache(config_section: str, ssm_path: str) -> None:
         dynamodb.delete_item(
             TableName=SHARED_CACHE_TABLE, Key={"cache_key": {"S": cache_key}}
         )
-        _logger.debug("Cleared shared cache for %s", cache_key)
+        _shared_logger.debug("Cleared shared cache for %s", cache_key)
     except (ClientError, ValueError, KeyError) as e:
-        _logger.debug("Failed to clear shared cache: %s", str(e))
+        _shared_logger.debug("Failed to clear shared cache: %s", str(e))
 
 
 def _invalidate_cache(config_section: str, ssm_path: str) -> None:
     """Invalidate both container and shared cache for a configuration section."""
     _clear_container_cache(config_section, ssm_path)
     _clear_shared_cache(config_section, ssm_path)
-    _logger.info("Cache invalidated for %s:%s", ssm_path, config_section)
+    _shared_logger.info("Cache invalidated for %s:%s", ssm_path, config_section)
 
 
 def _get_cache_stats() -> dict[str, Any]:
     """Get cache statistics for monitoring and debugging."""
-    container_cache_size = len(_config_cache)
+    container_cache_size = len(_shared_config_cache)
 
     # Calculate cache hit/miss ratios and TTL info
     current_time = time.time()
     valid_entries = 0
     expired_entries = 0
 
-    for _cache_key, cache_entry in _config_cache.items():
+    for _cache_key, cache_entry in _shared_config_cache.items():
         if current_time - cache_entry["timestamp"] < CONTAINER_CACHE_TTL:
             valid_entries += 1
         else:
@@ -3071,15 +3078,15 @@ def _cleanup_expired_cache() -> None:
     current_time = time.time()
     expired_keys: list[str] = []
 
-    for cache_key, cache_entry in _config_cache.items():
+    for cache_key, cache_entry in _shared_config_cache.items():
         if current_time - cache_entry["timestamp"] >= CONTAINER_CACHE_TTL:
             expired_keys.append(cache_key)
 
     for cache_key in expired_keys:
-        del _config_cache[cache_key]
+        del _shared_config_cache[cache_key]
 
     if expired_keys:
-        _logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
+        _shared_logger.debug("Cleaned up %d expired cache entries", len(expired_keys))
 
 # === EXECUTIVE RECEPTIONIST INITIALIZATION ===
 _debug = bool(os.environ.get("DEBUG"))
