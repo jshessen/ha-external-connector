@@ -81,7 +81,7 @@ def create_mock_aws_response(
     if data is None:
         data = {}
 
-    response = {
+    response: dict[str, Any] = {
         "ResponseMetadata": {
             "HTTPStatusCode": 200 if success else 400,
             "RequestId": "mock-request-id",

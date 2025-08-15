@@ -10,10 +10,10 @@ import pytest
 from moto import mock_aws
 
 if TYPE_CHECKING:
-    # Import AWS client types from types-boto3 packages
-    from types_boto3_iam.client import IAMClient
-    from types_boto3_lambda.client import LambdaClient
-    from types_boto3_ssm.client import SSMClient
+    # Import AWS client types from mypy-boto3 packages
+    from mypy_boto3_iam.client import IAMClient
+    from mypy_boto3_lambda.client import LambdaClient
+    from mypy_boto3_ssm.client import SSMClient
 
 # Test parameters
 AWS_MANAGER_TEST_PARAMS: dict[str, Any] = {
