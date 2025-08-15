@@ -11,14 +11,16 @@ Builds on the existing CLI wizard and web API patterns to provide:
 4. Integration compatibility and conflict detection
 """
 
-from dataclasses import dataclass, field
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from ha_connector.utils import HAConnectorLogger
+
 from ..config.manager import InstallationScenario
-from ..utils import HAConnectorLogger
 
 logger = HAConnectorLogger("integrations.selection")
 
@@ -44,11 +46,10 @@ class IntegrationStatus(str, Enum):
     INCOMPATIBLE = "incompatible"
 
 
-@dataclass
-class IntegrationRequirement:
+class IntegrationRequirement(BaseModel):
     """Requirements for an integration."""
 
-    aws_services: list[str] = field(default_factory=list)
+    aws_services: list[str] = Field(default_factory=list)
     home_assistant_version: str | None = None
     requires_domain: bool = False
     requires_oauth: bool = False
@@ -56,8 +57,7 @@ class IntegrationRequirement:
     complexity_level: str = "intermediate"  # beginner, intermediate, advanced
 
 
-@dataclass
-class IntegrationDefinition:
+class IntegrationDefinition(BaseModel):
     """Complete definition of an available integration."""
 
     integration_type: IntegrationType
@@ -65,12 +65,12 @@ class IntegrationDefinition:
     description: str
     long_description: str
     requirements: IntegrationRequirement
-    dependencies: set[IntegrationType] = field(default_factory=set)
-    conflicts: set[IntegrationType] = field(default_factory=set)
-    optional_enhancements: set[IntegrationType] = field(default_factory=set)
-    lambda_functions: list[str] = field(default_factory=list)
+    dependencies: set[IntegrationType] = Field(default_factory=set)  # type: ignore[type-arg]
+    conflicts: set[IntegrationType] = Field(default_factory=set)  # type: ignore[type-arg]
+    optional_enhancements: set[IntegrationType] = Field(default_factory=set)  # type: ignore[type-arg]
+    lambda_functions: list[str] = Field(default_factory=list)
     status: IntegrationStatus = IntegrationStatus.AVAILABLE
-    configuration: dict[str, Any] = field(default_factory=dict)
+    configuration: dict[str, Any] = Field(default_factory=dict)
 
 
 class IntegrationSelectionRequest(BaseModel):
@@ -117,14 +117,18 @@ class InteractiveIntegrationSelector:
     def _initialize_integrations(self) -> dict[IntegrationType, IntegrationDefinition]:
         """Initialize the catalog of available integrations."""
 
-        integrations = {}
+        integrations: dict[IntegrationType, IntegrationDefinition] = {}
 
         # Alexa Smart Home (Direct)
         integrations[IntegrationType.ALEXA_SMART_HOME] = IntegrationDefinition(
             integration_type=IntegrationType.ALEXA_SMART_HOME,
             name="Alexa Smart Home (Direct)",
             description="Direct Alexa Smart Home skill integration",
-            long_description="Connect Alexa directly to Home Assistant via AWS Lambda for voice control of devices. Provides fast response times and simple setup.",
+            long_description=(
+                "Connect Alexa directly to Home Assistant via AWS Lambda for "
+                "voice control of devices. Provides fast response times "
+                "and simple setup."
+            ),
             requirements=IntegrationRequirement(
                 aws_services=["lambda", "iam"],
                 requires_oauth=True,
@@ -140,7 +144,10 @@ class InteractiveIntegrationSelector:
             integration_type=IntegrationType.ALEXA_CLOUDFLARE,
             name="Alexa Smart Home (CloudFlare)",
             description="Alexa Smart Home with CloudFlare Access security",
-            long_description="Enhanced Alexa integration with CloudFlare Access providing additional security layers, DNS management, and access controls.",
+            long_description=(
+                "Enhanced Alexa integration with CloudFlare Access providing "
+                "additional security layers, DNS management, and access controls."
+            ),
             requirements=IntegrationRequirement(
                 aws_services=["lambda", "iam"],
                 requires_domain=True,
@@ -158,7 +165,10 @@ class InteractiveIntegrationSelector:
             integration_type=IntegrationType.IOS_COMPANION,
             name="iOS Companion",
             description="Home Assistant iOS app integration via CloudFlare",
-            long_description="Secure external access for the Home Assistant iOS app using CloudFlare Access for authentication and secure tunneling.",
+            long_description=(
+                "Secure external access for the Home Assistant iOS app using "
+                "CloudFlare Access for authentication and secure tunneling."
+            ),
             requirements=IntegrationRequirement(
                 aws_services=["lambda", "iam"],
                 requires_domain=True,
@@ -175,7 +185,10 @@ class InteractiveIntegrationSelector:
             integration_type=IntegrationType.CLOUDFLARE_SECURITY,
             name="CloudFlare Security Gateway",
             description="OAuth security layer via CloudFlare Access",
-            long_description="Provides secure OAuth authentication and access control using CloudFlare Access. Required for CloudFlare-based integrations.",
+            long_description=(
+                "Provides secure OAuth authentication and access control using "
+                "CloudFlare Access. Required for CloudFlare-based integrations."
+            ),
             requirements=IntegrationRequirement(
                 aws_services=["lambda", "iam", "ssm"],
                 requires_domain=True,
@@ -191,7 +204,10 @@ class InteractiveIntegrationSelector:
             integration_type=IntegrationType.PERFORMANCE_OPTIMIZATION,
             name="Performance Optimization",
             description="Advanced caching and performance enhancements",
-            long_description="Implements multi-tier caching, Lambda container warming, and performance optimizations for sub-500ms voice response times.",
+            long_description=(
+                "Implements multi-tier caching, Lambda container warming, "
+                "and performance optimizations for sub-500ms voice response times."
+            ),
             requirements=IntegrationRequirement(
                 aws_services=["lambda", "dynamodb", "ssm"],
                 estimated_setup_time=20,
@@ -219,13 +235,13 @@ class InteractiveIntegrationSelector:
             Resolved integration selection with recommendations
         """
         logger.info(
-            "🎯 Processing integration selection: %s", request.selected_integrations
+            f"🎯 Processing integration selection: {request.selected_integrations}"
         )
 
-        selected = set(request.selected_integrations)
-        resolved_dependencies = set()
-        conflicts = []
-        recommendations = []
+        selected: set[IntegrationType] = set(request.selected_integrations)
+        resolved_dependencies: set[IntegrationType] = set()
+        conflicts: list[str] = []
+        recommendations: list[str] = []
 
         # Resolve dependencies
         if request.auto_resolve_dependencies:
@@ -251,22 +267,26 @@ class InteractiveIntegrationSelector:
             for int_type in all_integrations
         )
 
-        lambda_functions = list(
-            set().union(
-                *[
-                    self.available_integrations[int_type].lambda_functions
-                    for int_type in all_integrations
-                ]
+        lambda_functions: list[str] = list(
+            set(
+                func
+                for int_type in all_integrations
+                for func in self.available_integrations[int_type].lambda_functions
             )
         )
 
-        aws_services = list(
-            set().union(
-                *[
-                    self.available_integrations[int_type].requirements.aws_services
+        aws_services: list[str] = (
+            list(
+                set(
+                    aws_service
                     for int_type in all_integrations
-                ]
+                    for aws_service in self.available_integrations[
+                        int_type
+                    ].requirements.aws_services
+                )
             )
+            if all_integrations
+            else []
         )
 
         # Generate configuration steps
@@ -285,7 +305,7 @@ class InteractiveIntegrationSelector:
 
     def _detect_conflicts(self, integrations: set[IntegrationType]) -> list[str]:
         """Detect conflicts between selected integrations."""
-        conflicts = []
+        conflicts: list[str] = []
 
         for integration_type in integrations:
             integration = self.available_integrations[integration_type]
@@ -294,7 +314,8 @@ class InteractiveIntegrationSelector:
             if conflicting:
                 for conflict in conflicting:
                     conflicts.append(
-                        f"{integration.name} conflicts with {self.available_integrations[conflict].name}"
+                        f"{integration.name} conflicts with "
+                        f"{self.available_integrations[conflict].name}"
                     )
 
         return conflicts
@@ -306,7 +327,7 @@ class InteractiveIntegrationSelector:
         target_scenario: InstallationScenario | None,
     ) -> list[str]:
         """Generate setup recommendations based on selection."""
-        recommendations = []
+        recommendations: list[str] = []
 
         all_integrations = selected | dependencies
 
@@ -326,11 +347,10 @@ class InteractiveIntegrationSelector:
         if (
             IntegrationType.ALEXA_SMART_HOME in all_integrations
             or IntegrationType.ALEXA_CLOUDFLARE in all_integrations
-        ):
-            if IntegrationType.PERFORMANCE_OPTIMIZATION not in all_integrations:
-                recommendations.append(
-                    "⚡ Consider adding Performance Optimization for faster voice responses"
-                )
+        ) and IntegrationType.PERFORMANCE_OPTIMIZATION not in all_integrations:
+            recommendations.append(
+                "⚡ Consider adding Performance Optimization for faster voice responses"
+            )
 
         # Complexity warnings
         advanced_integrations = [
@@ -345,11 +365,14 @@ class InteractiveIntegrationSelector:
             )
 
         # Scenario-specific recommendations
-        if target_scenario == InstallationScenario.DIRECT_ALEXA:
-            if IntegrationType.CLOUDFLARE_SECURITY in all_integrations:
-                recommendations.append(
-                    "💡 Direct Alexa scenario doesn't require CloudFlare - consider simpler setup"
-                )
+        if (
+            target_scenario == InstallationScenario.DIRECT_ALEXA
+            and IntegrationType.CLOUDFLARE_SECURITY in all_integrations
+        ):
+            recommendations.append(
+                "💡 Direct Alexa scenario doesn't require CloudFlare - "
+                "consider simpler setup"
+            )
 
         return recommendations
 
@@ -357,7 +380,7 @@ class InteractiveIntegrationSelector:
         self, integrations: set[IntegrationType]
     ) -> list[dict[str, Any]]:
         """Generate ordered configuration steps for selected integrations."""
-        steps = []
+        steps: list[dict[str, Any]] = []
 
         # Step 1: Prerequisites
         steps.append(
@@ -373,12 +396,11 @@ class InteractiveIntegrationSelector:
 
         # Step 2: Lambda Deployment
         lambda_functions = list(
-            set().union(
-                *[
-                    self.available_integrations[int_type].lambda_functions
-                    for int_type in integrations
-                ]
-            )
+            {
+                func
+                for int_type in integrations
+                for func in self.available_integrations[int_type].lambda_functions
+            }
         )
 
         if lambda_functions:
@@ -386,7 +408,9 @@ class InteractiveIntegrationSelector:
                 {
                     "step": 2,
                     "title": "AWS Lambda Deployment",
-                    "description": f"Deploy Lambda functions: {', '.join(lambda_functions)}",
+                    "description": (
+                        f"Deploy Lambda functions: {', '.join(lambda_functions)}"
+                    ),
                     "lambda_functions": lambda_functions,
                     "estimated_time": 15,
                     "type": "deployment",
@@ -437,7 +461,7 @@ class InteractiveIntegrationSelector:
     ) -> list[dict[str, Any]]:
         """Suggest optimal integration combinations based on user goals."""
 
-        suggestions = []
+        suggestions: list[dict[str, Any]] = []
 
         if "alexa" in primary_goal.lower():
             # Simple Alexa setup
@@ -481,7 +505,9 @@ class InteractiveIntegrationSelector:
             suggestions.append(
                 {
                     "name": "High-Performance Alexa",
-                    "description": "Alexa with performance optimizations for fastest responses",
+                    "description": (
+                        "Alexa with performance optimizations for fastest responses"
+                    ),
                     "integrations": [
                         IntegrationType.ALEXA_SMART_HOME,
                         IntegrationType.PERFORMANCE_OPTIMIZATION,

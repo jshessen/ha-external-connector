@@ -200,9 +200,9 @@ OAUTH_TOKEN_CACHE_TABLE = os.environ.get(
 )
 
 # Container-level cache and AWS clients for configuration management
-_config_cache: dict[str, Any] = {}
-_ssm_client: Any = None  # Lazy initialization for SSM client
-_dynamodb_client: Any = None
+_manager_config_cache: dict[str, Any] = {}
+_config_ssm_client: Any = None  # Lazy initialization for SSM client
+_manager_dynamodb_client: Any = None
 
 # Security infrastructure (Phase 2c) - Medium security for background service
 _rate_limiter = RateLimiter()  # Shared rate limiter for API calls
@@ -345,7 +345,7 @@ def lambda_handler(
             "ssm_path": SSM_OAUTH_CONFIG_PATH,  # Gen3: /home-assistant/oauth/config
             "fallback_path": f"{SSM_GEN2_BASE_PATH}/appConfig",  # Gen2 fallback
             "description": (
-                "CloudFlare Security Gateway configuration " "(Gen2/Gen3 compatible)"
+                "CloudFlare Security Gateway configuration (Gen2/Gen3 compatible)"
             ),
             "priority": "high",  # High priority: OAuth authentication
             "supports_env_override": True,
@@ -579,10 +579,8 @@ def _get_lambda_arn_from_ssm(function_key: str) -> str | None:
     Returns:
         Lambda function ARN or None if not found
     """
-    ssm_client = (
-        boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
-            "ssm"
-        )
+    ssm_client = boto3.client(  # pyright: ignore[reportArgumentType, reportUnknownMemberType]
+        "ssm"
     )
 
     # Define SSM parameter paths for Lambda ARNs using centralized constants
@@ -1031,9 +1029,7 @@ def load_from_ssm(ssm: Any, ssm_path: str) -> dict[str, Any] | None:
 
         config_data: dict[str, Any] = {}
         if "Parameters" in response and response.get("Parameters"):
-            for param in response.get(
-                "Parameters"
-            ):  # pylint: disable=duplicate-code # AWS parameter processing pattern
+            for param in response.get("Parameters"):  # pylint: disable=duplicate-code # AWS parameter processing pattern
                 param_name = param.get("Name")
                 param_value = param.get("Value")
                 if param_name and param_value:

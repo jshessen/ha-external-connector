@@ -37,7 +37,9 @@ async def get_available_integrations() -> list[dict[str, Any]]:
             "long_description": integration.long_description,
             "requirements": {
                 "aws_services": integration.requirements.aws_services,
-                "home_assistant_version": integration.requirements.home_assistant_version,
+                "home_assistant_version": (
+                    integration.requirements.home_assistant_version
+                ),
                 "requires_domain": integration.requirements.requires_domain,
                 "requires_oauth": integration.requirements.requires_oauth,
                 "estimated_setup_time": integration.requirements.estimated_setup_time,
@@ -109,7 +111,9 @@ async def get_integration_details(integration_type: IntegrationType) -> dict[str
             "long_description": integration.long_description,
             "requirements": {
                 "aws_services": integration.requirements.aws_services,
-                "home_assistant_version": integration.requirements.home_assistant_version,
+                "home_assistant_version": (
+                    integration.requirements.home_assistant_version
+                ),
                 "requires_domain": integration.requirements.requires_domain,
                 "requires_oauth": integration.requirements.requires_oauth,
                 "estimated_setup_time": integration.requirements.estimated_setup_time,
@@ -173,13 +177,18 @@ async def get_selection_wizard_steps() -> list[dict[str, Any]]:
         {
             "step": 1,
             "title": "Define Your Goals",
-            "description": "What do you want to achieve with Home Assistant external integrations?",
+            "description": (
+                "What do you want to achieve with Home Assistant external "
+                "integrations?"
+            ),
             "type": "goal_selection",
             "options": [
                 {
                     "value": "alexa",
                     "label": "Voice Control with Alexa",
-                    "description": "Enable Alexa Smart Home voice commands for your devices",
+                    "description": (
+                        "Enable Alexa Smart Home voice commands for your devices"
+                    ),
                     "icon": "🗣️",
                 },
                 {
@@ -211,14 +220,19 @@ async def get_selection_wizard_steps() -> list[dict[str, Any]]:
         {
             "step": 2,
             "title": "Review Suggestions",
-            "description": "Based on your goals, here are the recommended integration combinations",
+            "description": (
+                "Based on your goals, here are the recommended integration "
+                "combinations"
+            ),
             "type": "suggestion_review",
             "dynamic_content": True,
         },
         {
             "step": 3,
             "title": "Customize Selection",
-            "description": "Fine-tune your integration selection and resolve any conflicts",
+            "description": (
+                "Fine-tune your integration selection and resolve any conflicts"
+            ),
             "type": "integration_selection",
             "features": [
                 "dependency_resolution",
@@ -230,7 +244,10 @@ async def get_selection_wizard_steps() -> list[dict[str, Any]]:
         {
             "step": 4,
             "title": "Configuration Preview",
-            "description": "Review the setup steps and requirements for your selected integrations",
+            "description": (
+                "Review the setup steps and requirements for your selected "
+                "integrations"
+            ),
             "type": "configuration_preview",
             "includes": [
                 "aws_services_required",

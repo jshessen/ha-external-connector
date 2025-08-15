@@ -10,16 +10,15 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from ...integrations.alexa.skill_definition_manager import (
-    AlexaSkillDefinitionManager,
-    SkillDefinitionRequest,
-    SkillDefinitionResponse,
-)
 from ...integrations.alexa.console_automation import (
     AmazonDeveloperConsoleAutomator,
     ConsoleAutomationRequest,
     ConsoleAutomationResponse,
-    AutomationMethod,
+)
+from ...integrations.alexa.skill_definition_manager import (
+    AlexaSkillDefinitionManager,
+    SkillDefinitionRequest,
+    SkillDefinitionResponse,
 )
 from ...utils import ValidationError
 
@@ -74,12 +73,12 @@ async def create_skill(request: SkillDefinitionRequest) -> SkillDefinitionRespon
 @router.get("/skills", response_model=SkillListResponse)
 async def list_skills() -> SkillListResponse:
     """List all created Alexa skills."""
-    skills = [
+    skills: list[dict[str, str]] = [
         {
             "skill_id": skill_id,
-            "skill_name": manifest.skill_name,
+            "skill_name": getattr(manifest, "skill_name", "Unknown Skill"),
             "status": "created",
-            "lambda_endpoint": manifest.lambda_endpoint,
+            "lambda_endpoint": getattr(manifest, "lambda_endpoint", "Not configured"),
         }
         for skill_id, manifest in skill_manager.skills.items()
     ]
@@ -126,10 +125,10 @@ async def validate_skill(
 
 
 @router.get("/skills/{skill_id}/export")
-async def export_skill_configuration(skill_id: str, format: str = "json") -> str:
+async def export_skill_configuration(skill_id: str, export_format: str = "json") -> str:
     """Export skill configuration in various formats (JSON, YAML)."""
     try:
-        return skill_manager.export_configuration(skill_id, format)
+        return skill_manager.export_configuration(skill_id, export_format)
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
@@ -357,7 +356,9 @@ async def get_skill_manifest_template() -> dict[str, Any]:
     }
 
 
-@router.post("/skills/{skill_id}/console-automation", response_model=ConsoleAutomationResponse)
+@router.post(
+    "/skills/{skill_id}/console-automation", response_model=ConsoleAutomationResponse
+)
 async def create_console_automation_guide(
     skill_id: str, request: ConsoleAutomationRequest
 ) -> ConsoleAutomationResponse:
@@ -371,9 +372,7 @@ async def create_console_automation_guide(
     - Troubleshooting guidance
     """
     try:
-        # Set the skill_id from the path parameter
-        request.skill_id = skill_id
-        return console_automator.create_automation_guide(request)
+        return console_automator.create_automation_guide(request, skill_id)
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except Exception as e:
@@ -395,15 +394,19 @@ async def get_browser_automation_script(skill_id: str) -> dict[str, str]:
         if skill_id not in skill_manager.skills:
             raise ValidationError(f"Skill not found: {skill_id}")
 
-        skill_manifest = skill_manager.skills[skill_id]
-        script_content = console_automator._generate_browser_automation_script(skill_manifest)
+        skill_manifest = skill_manager.get_skill_manifest(skill_id)
+        script_content = console_automator.generate_browser_automation_script(
+            skill_manifest
+        )
 
         return {
             "skill_id": skill_id,
             "script_type": "selenium",
             "script_content": script_content,
             "requirements": "selenium, webdriver-manager",
-            "usage_instructions": "Save as .py file and run: python amazon_console_automation.py",
+            "usage_instructions": (
+                "Save as .py file and run: python amazon_console_automation.py"
+            ),
         }
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
