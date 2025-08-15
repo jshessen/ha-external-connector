@@ -481,34 +481,58 @@ class AWSDeploymentHandler:
 
         # During Gen 2→Gen 3 transition: Container warming success is the primary metric
         if containers_attempted > 0:
-            if containers_warmed == containers_attempted:
-                self._logger.info(
-                    "✅ Configuration Manager successfully warmed %d containers",
-                    containers_warmed,
-                )
-                if configs_warmed == 0 and configs_attempted > 0:
-                    self._logger.info(
-                        "📋 Gen 3 configurations not available yet (%d attempted) - "
-                        "expected during transition",
-                        configs_attempted,
-                    )
-                return True
-            if containers_warmed > 0:
-                self._logger.warning(
-                    "⚠️ Configuration Manager partially successful containers (%d/%d)",
-                    containers_warmed,
-                    containers_attempted,
-                )
-                return True
-            else:
-                self._logger.error(
-                    "❌ Configuration Manager failed to warm any containers (%d/%d)",
-                    containers_warmed,
-                    containers_attempted,
-                )
-                return False
+            result = self._evaluate_container_warming(
+                containers_warmed,
+                containers_attempted,
+                configs_warmed,
+                configs_attempted,
+            )
+            return result
 
         # Legacy validation: Pure configuration warming (when containers_attempted = 0)
+        result = self._evaluate_legacy_config_warming(configs_warmed, configs_attempted)
+        return result
+
+    def _evaluate_container_warming(
+        self,
+        containers_warmed: int,
+        containers_attempted: int,
+        configs_warmed: int,
+        configs_attempted: int,
+    ) -> bool:
+        """Evaluate container warming results."""
+        if containers_warmed == containers_attempted:
+            self._logger.info(
+                "✅ Configuration Manager successfully warmed %d containers",
+                containers_warmed,
+            )
+            if configs_warmed == 0 and configs_attempted > 0:
+                self._logger.info(
+                    "📋 Gen 3 configurations not available yet (%d attempted) - "
+                    "expected during transition",
+                    configs_attempted,
+                )
+            return True
+
+        if containers_warmed > 0:
+            self._logger.warning(
+                "⚠️ Configuration Manager partially successful containers (%d/%d)",
+                containers_warmed,
+                containers_attempted,
+            )
+            return True
+
+        self._logger.error(
+            "❌ Configuration Manager failed to warm any containers (%d/%d)",
+            containers_warmed,
+            containers_attempted,
+        )
+        return False
+
+    def _evaluate_legacy_config_warming(
+        self, configs_warmed: int, configs_attempted: int
+    ) -> bool:
+        """Evaluate legacy configuration warming results."""
         if configs_warmed == 0 and configs_attempted > 0:
             self._logger.error(
                 "❌ Configuration Manager failed to warm any configs (%d/%d)",
@@ -516,6 +540,7 @@ class AWSDeploymentHandler:
                 configs_attempted,
             )
             return False
+
         if configs_warmed < configs_attempted:
             self._logger.warning(
                 "⚠️ Configuration Manager partially successful (%d/%d configs)",
@@ -523,6 +548,7 @@ class AWSDeploymentHandler:
                 configs_attempted,
             )
             return True
+
         self._logger.info(
             "✅ Configuration Manager successfully warmed %d configs",
             configs_warmed,

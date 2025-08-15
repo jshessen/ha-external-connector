@@ -23,6 +23,7 @@ Usage:
         --function smart_home_bridge
 """
 
+import argparse
 import logging
 import shutil
 import sys
@@ -383,10 +384,8 @@ class DeploymentManager:
         return logger
 
 
-# For backward compatibility, keep main() function here
 def main() -> None:
     """Main entry point - implements basic CLI functionality."""
-    import argparse
 
     parser = argparse.ArgumentParser(description="Lambda Deployment Manager")
     parser.add_argument("--build", action="store_true", help="Build deployment files")
