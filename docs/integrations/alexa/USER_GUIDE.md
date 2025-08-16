@@ -187,12 +187,26 @@ The CloudFlare Security Gateway provides additional security:
 - Secure token handling
 - Audit logging
 
+## 🔮 Future: HACS Integration
+
+This integration is being prepared for publication in the Home Assistant
+Community Store (HACS), which will enable:
+
+- **One-Click Installation**: Install directly from Home Assistant UI
+- **Automatic Updates**: Receive updates through HACS update notifications
+- **Community Discovery**: Find integration through HACS search
+- **Professional Standards**: Full compliance with HACS quality requirements
+
+**Current Status**: All integration components are HACS-ready with professional
+documentation, comprehensive testing, and security validation.
+
 ## 📚 Related Documentation
 
-- [Team Setup Guide](integrations/alexa/TEAM_SETUP.md) - Complete Alexa skill configuration
+- [Team Setup Guide](TEAM_SETUP.md) - Complete Alexa skill configuration
 - [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md) - Sub-500ms voice response optimization
-- [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md) - AWS deployment instructions
-- [Troubleshooting Guide](deployment/TROUBLESHOOTING.md) - Detailed problem resolution
+- [SMAPI Setup Guide](SMAPI_SETUP_GUIDE.md) - Amazon developer console configuration
+- [Deployment Guide](../../deployment/DEPLOYMENT_QUICK_REFERENCE.md) - AWS deployment instructions
+- [Security Validation Guide](../../deployment/security_validation_guide.md) - Security compliance procedures
 
 ## 🆘 Support
 

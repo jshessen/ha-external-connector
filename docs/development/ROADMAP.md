@@ -31,6 +31,7 @@ Transform the HA External Connector from a CLI-based development tool into a com
 **Directory Structure Creation**:
 
 ```bash
+```bash
 # Integration-focused structure
 mkdir -p src/ha_connector/integrations/alexa/{lambda_functions,automation,validators}
 mkdir -p src/ha_connector/integrations/{ios_companion,android_companion}
