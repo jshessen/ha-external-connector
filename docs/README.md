@@ -37,11 +37,9 @@ organized by audience to help you find exactly what you need.
     Code organization patterns
   - [Roadmap](development/ROADMAP.md) - Project planning and future features
 
-- **[Configuration Management](development/)** - Advanced configuration
-- **[Configuration Standardization Plan](development/CONFIGURATION_STANDARDIZATION_PLAN.md)** -
-    Multi-generation support
-  - [Setup Wizard Specification](development/CONFIGURATION_SETUP_WIZARD_SPEC.md) -
-    User-friendly setup tools
+- **[Configuration Management](development/CONFIGURATION_MANAGEMENT.md)** -
+    Complete configuration system with multi-generation support and optional
+    migration tools
   - [Lambda Deployment Markers](development/LAMBDA_DEPLOYMENT_MARKERS.md) -
     Deployment automation
 
@@ -99,7 +97,7 @@ This documentation follows professional standards for HACS readiness:
   start
 - **[Home Assistant Documentation](https://www.home-assistant.io/docs/)** -
   Core Home Assistant docs
-- **[Alexa Smart Home Skill API](https://developer.amazon.com/docs/smarthome/understand-the-smart-home-skill-api.html)** -
+- **[Alexa Smart Home API](https://developer.amazon.com/docs/smarthome/understand-the-smart-home-skill-api.html)** -
   Amazon developer resources
 
 ## 🤝 Contributing to Documentation
