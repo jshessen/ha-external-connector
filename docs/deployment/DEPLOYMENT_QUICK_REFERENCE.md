@@ -91,10 +91,10 @@ python tests/validation/tools/alexa_smart_home_testing_suite.py --save-files
 
 ```bash
 # 12-point security framework validation
-python src/ha_connector/web/security_validation_api.py
+python scripts/demo_security.py
 
 # Security demonstration and testing
-python scripts/demo_security.py
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py
 ```
 
 ### Performance Benchmarking

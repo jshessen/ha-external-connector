@@ -21,10 +21,10 @@ This document describes the comprehensive code quality automation system now in 
 
 ```bash
 # Security validation testing
-python src/ha_connector/web/security_validation_api.py
+python scripts/demo_security.py
 
 # Security framework demonstration
-python scripts/demo_security.py
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py
 
 # OAuth gateway testing
 python tests/integration/test_smapi_token_helper_ux.py

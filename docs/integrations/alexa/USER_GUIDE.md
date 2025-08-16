@@ -75,7 +75,7 @@ python tests/validation/tools/alexa_smart_home_testing_suite.py --test <endpoint
 
    ```bash
    # Run security validation
-   python src/ha_connector/web/security_validation_api.py
+   python scripts/demo_security.py
 
    # Monitor performance
    python tests/validation/tools/alexa_smart_home_testing_suite.py --save-files
@@ -367,7 +367,7 @@ grep -i "state_changed.*alexa" /config/home-assistant.log
 
 ```bash
 # Run comprehensive security check
-python src/ha_connector/web/security_validation_api.py
+python scripts/demo_security.py
 
 # Individual security validations available:
 # - OAuth token validation
