@@ -2,7 +2,8 @@
 
 ## Overview
 
-This guide explains how to optimize your Alexa smart home skill for sub-500ms voice response times through configuration and deployment strategies.
+This guide explains how to optimize your Alexa smart home skill for sub-500ms
+voice response times through configuration and deployment strategies.
 
 ## Performance Architecture
 

@@ -2,7 +2,9 @@
 
 ## Overview
 
-This guide demonstrates the **HACS-pattern guided setup** for Amazon's Skill Management API (SMAPI) integration, following Login with Amazon OAuth 2.0 Authorization Code Grant flow.
+This guide demonstrates the **HACS-pattern guided setup** for Amazon's Skill
+Management API (SMAPI) integration, following Login with Amazon OAuth 2.0
+Authorization Code Grant flow.
 
 ## 🚀 What We've Built
 
