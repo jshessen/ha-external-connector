@@ -2,7 +2,9 @@
 
 ## 👮💼 Security Guard & Executive Receptionist Setup
 
-This guide shows you how to configure your Alexa Smart Home Skill to work with both team members: the **Security Guard** (CloudFlare Security Gateway) and the **Executive Receptionist** (Voice Command Bridge).
+This guide shows you how to configure your Alexa Smart Home Skill to work with
+both team members: the **Security Guard** (CloudFlare Security Gateway) and the
+**Executive Receptionist** (Voice Command Bridge).
 
 ---
 

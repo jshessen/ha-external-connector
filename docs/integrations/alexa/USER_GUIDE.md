@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Alexa Smart Home Bridge is the core component that processes voice commands from Amazon Alexa and translates them into Home Assistant actions. This guide covers setup, usage, and troubleshooting.
+The Alexa Smart Home Bridge is the core component that processes voice commands
+from Amazon Alexa and translates them into Home Assistant actions. This guide
+covers setup, usage, and troubleshooting.
 
 ## 🚀 Quick Start
 
