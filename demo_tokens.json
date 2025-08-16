@@ -1,0 +1,9 @@
+{
+  "client_id": "amzn1.application-oa2-client.3153bcc9edd648e1bc09fedcdf54631a",
+  "client_secret": "demo_secret_for_testing",
+  "access_token": "Atza|IwEBIMc9Jj9iQDY_demo_access_token_example",
+  "refresh_token": "Atzr|IwEBIOpv88edriq_demo_refresh_token_example",
+  "scope": "alexa::ask:skills:readwrite alexa::ask:models:readwrite alexa::ask:skills:test",
+  "vendor_id": "M1234567890",
+  "expires_at": 1734562800
+}
