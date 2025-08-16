@@ -1,8 +1,15 @@
-# 🎙️ Alexa Smart Home Bridge - User Guide
+# 🎙️ Alexa Smart Home Integration - Complete User Guide
 
 ## Overview
 
-The Alexa Smart Home Bridge is the core component that processes voice commands from Amazon Alexa and translates them into Home Assistant actions. This guide covers setup, usage, and troubleshooting.
+The HA External Connector provides a comprehensive Alexa Smart Home integration featuring automated setup, extensive device discovery, and sub-500ms voice command processing. This production-ready system includes SMAPI automation, OAuth 2.0 security, and comprehensive testing capabilities.
+
+### ✅ **Latest Capabilities**
+- **SMAPI Automation**: Complete Amazon LWA integration with interactive token management
+- **Comprehensive Testing**: 187-test suite with device discovery and validation
+- **Lambda Deployment Manager**: Automated build/package/deploy workflow
+- **OAuth Security Framework**: CloudFlare Security Gateway with 12-point validation
+- **Performance Optimized**: Container/Shared/SSM caching for sub-500ms responses
 
 ## 🚀 Quick Start
 
@@ -10,42 +17,95 @@ The Alexa Smart Home Bridge is the core component that processes voice commands 
 
 - Home Assistant instance with external access
 - AWS account with Lambda access
-- CloudFlare account (optional, for OAuth security)
-- Amazon Developer account
+- Amazon Developer account with SMAPI access
+- CloudFlare account (optional, for enhanced OAuth security)
 
-### Basic Setup
+### Automated Setup
 
-1. **Deploy Lambda Function**:
+**Method 1: SMAPI Setup Wizard (Recommended)**
 
-   ```bash
-   ha-connector integration deploy alexa
-   ```
+Interactive guided setup with OAuth 2.0 automation:
 
-2. **Configure Alexa Skill**:
-   - Follow the [Team Setup Guide](integrations/alexa/TEAM_SETUP.md)
-   - Link your Home Assistant account
+```bash
+# Run the interactive SMAPI setup wizard
+python src/ha_connector/integrations/alexa/smapi_setup_wizard.py
 
-3. **Test Voice Commands**:
+# Or use the web interface
+python src/ha_connector/web/amazon_console.py
+# Navigate to: http://localhost:5000/amazon-console/smapi/wizard/start
+```
+
+**Method 2: Lambda Deployment Manager**
+
+Automated deployment with comprehensive validation:
+
+```bash
+# Deploy complete integration
+python scripts/lambda_deployment/deployment_manager.py deploy
+
+# Or use specific deployment commands
+ha-connector integration deploy alexa --comprehensive
+```
+
+### Device Discovery and Testing
+
+**Comprehensive Device Discovery**:
+
+```bash
+# Run comprehensive Alexa Smart Home testing suite
+python tests/validation/tools/alexa_smart_home_testing_suite.py
+
+# Discovery testing only
+python tests/validation/tools/alexa_smart_home_testing_suite.py --discovery
+
+# Test specific endpoints
+python tests/validation/tools/alexa_smart_home_testing_suite.py --test <endpoint_id>
+```
+
+3. **Voice Command Testing**:
 
    ```text
-   "Alexa, turn on the lights"
-   "Alexa, set living room to 50%"
-   "Alexa, what's the temperature?"
+   "Alexa, discover devices"     # Comprehensive device discovery
+   "Alexa, turn on the lights"   # Basic device control
+   "Alexa, set living room to 50%" # Advanced dimming
+   "Alexa, what's the temperature?" # Sensor queries
+   ```
+
+4. **Validation and Monitoring**:
+
+   ```bash
+   # Run security validation
+   python src/ha_connector/web/security_validation_api.py
+
+   # Monitor performance
+   python tests/validation/tools/alexa_smart_home_testing_suite.py --save-files
    ```
 
 ## 🏗️ Architecture
 
-### Components
+### Production Components
 
-- **Smart Home Bridge**: Lambda function processing Alexa directives
-- **CloudFlare Security Gateway**: Secure authentication handling
-- **Home Assistant Integration**: API communication with HA
+- **Smart Home Bridge**: Lambda function processing Alexa directives with sub-500ms response
+- **CloudFlare Security Gateway**: OAuth 2.0 validation with 12-point security framework  
+- **Configuration Manager**: Automated SSM parameter management with 3-tier caching
+- **SMAPI Automation**: Complete Amazon LWA integration with token refresh
+- **Testing Suite**: 187 comprehensive tests covering discovery and device control
 
-### Data Flow
+### Enhanced Data Flow
 
 ```text
-Alexa Voice → Amazon Service → Smart Home Bridge → Home Assistant → Device
+Voice → Amazon Alexa → OAuth Gateway → Smart Home Bridge → Home Assistant → Device
+                           ↓                 ↓
+                   Security Validation  Performance Cache
+                   (12-point check)     (0-1ms container)
 ```
+
+### Performance Architecture
+
+**3-Tier Caching System**:
+- **Container Cache**: 0-1ms access for warm Lambda containers
+- **Shared Cache**: 20-50ms cross-Lambda function sharing via DynamoDB  
+- **SSM Fallback**: 100-200ms authoritative configuration source
 
 ## 🎯 Supported Commands
 
@@ -74,27 +134,85 @@ Scenes:
 
 ## 🔧 Configuration
 
-### Environment Variables
+### SMAPI Token Configuration
 
-Required Lambda environment variables:
+**Interactive Setup (Recommended)**:
+
+```bash
+# Start SMAPI setup wizard
+python src/ha_connector/integrations/alexa/smapi_setup_wizard.py
+
+# Web-based setup (HACS pattern)
+python src/ha_connector/web/amazon_console.py
+# Navigate to: /amazon-console/smapi/wizard/start
+```
+
+**Manual Token Management**:
+
+```bash
+# Check token status
+python src/ha_connector/integrations/alexa/smapi_token_helper.py status
+
+# Refresh tokens
+python src/ha_connector/integrations/alexa/smapi_token_helper.py refresh
+
+# Clean up expired tokens
+python src/ha_connector/integrations/alexa/smapi_token_cleanup.py
+```
+
+### Generation 3 Configuration System
+
+**SSM Parameter Structure**:
 
 ```text
-HA_URL=https://your-homeassistant.domain.com
-HA_TOKEN=your_long_lived_access_token
-OAUTH_CLIENT_ID=your_oauth_client_id
-OAUTH_CLIENT_SECRET=your_oauth_secret
+/home-assistant/alexa/
+├── core/                     # Core Home Assistant configuration
+├── cloudflare/              # CloudFlare API settings
+├── lambda/                  # Lambda function ARNs
+├── lambda/security/         # Security validation settings
+└── lambda/cache/           # Performance caching configuration
+```
+
+**Migration to Gen 3**:
+
+```bash
+# Check current configuration generation
+python src/ha_connector/integrations/alexa/lambda_functions/configuration_manager.py check
+
+# Migrate to Generation 3
+# See: docs/development/CONFIGURATION_STANDARDIZATION_PLAN.md
 ```
 
 ### Home Assistant Configuration
 
-Add to `configuration.yaml`:
+**Smart Home Integration**:
 
 ```yaml
+# configuration.yaml
 alexa:
   smart_home:
     endpoint: https://your-lambda-url.amazonaws.com/
     client_id: your_client_id
     client_secret: your_client_secret
+```
+
+**Enhanced Entity Configuration**:
+
+```yaml
+# For comprehensive device discovery
+alexa:
+  smart_home:
+    filter:
+      include_entities:
+        - light.living_room
+        - switch.bedroom_fan
+        - climate.thermostat
+        - sensor.temperature
+      include_domains:
+        - light
+        - switch
+        - climate
+        - sensor
 ```
 
 ## ⚡ Performance Optimization
@@ -107,96 +225,276 @@ For optimal voice command response times (target: <500ms):
 
 📘 **See [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md) for detailed configuration strategies and benchmarks.**
 
-## 🔍 Troubleshooting
+## 🔍 Comprehensive Troubleshooting
 
-### Common Issues
+### Device Discovery Issues
 
 #### "Alexa can't find any devices"
 
-**Cause**: Discovery not working properly
+**Enhanced Diagnosis**:
 
-**Solution**:
+```bash
+# Run comprehensive discovery testing
+python tests/validation/tools/alexa_smart_home_testing_suite.py --discovery
 
-1. Check Lambda logs in CloudWatch
-2. Verify HA_TOKEN has sufficient permissions
-3. Run discovery test: `ha-connector alexa test-discovery`
+# Check discovery response details
+python tests/validation/tools/alexa_smart_home_testing_suite.py --save-files
+```
+
+**Validation Steps**:
+
+1. **Security Validation**: Run 12-point security check
+   ```bash
+   python src/ha_connector/web/security_validation_api.py
+   ```
+
+2. **Token Verification**: Check SMAPI token status
+   ```bash
+   python src/ha_connector/integrations/alexa/smapi_token_helper.py status
+   ```
+
+3. **Lambda Function Health**: Check deployment status
+   ```bash
+   python scripts/lambda_deployment/deployment_manager.py status
+   ```
 
 #### "Device is not responding"
 
-**Cause**: Communication failure with Home Assistant
+**Comprehensive Testing**:
 
-**Solution**:
+```bash
+# Test specific endpoint
+python tests/validation/tools/alexa_smart_home_testing_suite.py --test <endpoint_id>
 
-1. Verify HA_URL is accessible from Lambda
-2. Check Home Assistant logs
-3. Test connectivity: `ha-connector alexa test-connection`
+# Full endpoint testing (turn on/off)
+python tests/validation/tools/alexa_smart_home_testing_suite.py --turn-on <endpoint_id>
+python tests/validation/tools/alexa_smart_home_testing_suite.py --turn-off <endpoint_id>
+```
+
+**Performance Analysis**:
+
+1. **Check Response Times**: Verify sub-500ms target
+2. **Cache Performance**: Validate 3-tier caching system
+3. **Configuration Generation**: Ensure Generation 3 configuration
 
 #### Voice commands time out
 
-**Cause**: Lambda function taking too long
-
-**Solution**:
-
-1. Check Lambda timeout settings (recommended: 10 seconds)
-2. Optimize Home Assistant response time
-3. Review CloudWatch metrics
-
-### Debug Mode
-
-Enable detailed logging:
+**Performance Optimization**:
 
 ```bash
-ha-connector alexa setup --debug
+# Check Lambda performance metrics
+python scripts/lambda_deployment/deployment_manager.py metrics
+
+# Validate caching configuration
+python src/ha_connector/integrations/alexa/lambda_functions/configuration_manager.py validate
 ```
 
-## 📊 Monitoring
+### Advanced Debugging
 
-### CloudWatch Metrics
-
-Key metrics to monitor:
-
-- **Duration**: Lambda execution time
-- **Errors**: Failed invocations
-- **Invocations**: Total requests
-
-### Home Assistant Logs
-
-Monitor for Alexa-related entries:
+**Comprehensive Diagnostic Suite**:
 
 ```bash
-grep -i alexa /config/home-assistant.log
+# Complete system validation
+python scripts/agent_helper.py all
+
+# SMAPI integration testing
+python scripts/demo_smapi_integration.py
+
+# Security framework validation
+python scripts/demo_security.py
 ```
 
-## 🔒 Security
+**Debug Mode with Enhanced Logging**:
 
-### Best Practices
+```bash
+# Enable comprehensive debugging
+export DEBUG_MODE=true
+python src/ha_connector/integrations/alexa/smapi_setup_wizard.py
 
-- Use CloudFlare Access for OAuth protection
-- Rotate HA tokens regularly
-- Monitor failed authentication attempts
-- Use least-privilege IAM roles
+# Web interface with debug logging
+export FLASK_DEBUG=true
+python src/ha_connector/web/amazon_console.py
+```
 
-### OAuth Security
+## 📊 Performance Monitoring and Analytics
 
-The CloudFlare Security Gateway provides additional security:
+### Real-Time Performance Metrics
 
-- Rate limiting protection
-- CloudFlare Access integration
-- Secure token handling
-- Audit logging
+**Lambda Function Monitoring**:
+
+```bash
+# Check comprehensive performance metrics
+python scripts/lambda_deployment/deployment_manager.py metrics --detailed
+
+# Monitor response times (target: <500ms)
+python tests/validation/tools/alexa_smart_home_testing_suite.py --performance
+```
+
+**Key Performance Indicators**:
+
+- **Voice Command Response**: Sub-500ms target
+- **Discovery Performance**: Comprehensive device mapping time
+- **Cache Hit Rates**: Container (>95%), Shared (>80%), SSM (fallback)
+- **Security Validation**: <50ms OAuth validation time
+
+### CloudWatch Enhanced Metrics
+
+**Production Monitoring**:
+
+- **Duration**: Lambda execution time with performance targets
+- **Errors**: Failed invocations with categorized error types
+- **Invocations**: Total requests with peak load analysis
+- **Custom Metrics**: Security validation response times
+- **Cache Performance**: Hit/miss ratios across all cache tiers
+
+### Home Assistant Integration Monitoring
+
+**Enhanced Logging**:
+
+```bash
+# Monitor Alexa-specific events
+grep -i "alexa\|smapi\|discovery" /config/home-assistant.log
+
+# Check device state changes from voice commands
+grep -i "state_changed.*alexa" /config/home-assistant.log
+```
+
+## 🔒 Enhanced Security Framework
+
+### OAuth 2.0 Security Gateway
+
+**12-Point Security Validation**:
+
+```bash
+# Run comprehensive security check
+python src/ha_connector/web/security_validation_api.py
+
+# Individual security validations available:
+# - OAuth token validation
+# - Lambda security configuration
+# - CloudFlare Access integration
+# - Rate limiting validation
+# - Secret management verification
+# - Audit logging compliance
+```
+
+**Security Best Practices**:
+
+- **SMAPI Token Management**: Automated refresh with secure storage
+- **CloudFlare Access**: Zero-trust network access for OAuth endpoints
+- **Secret Rotation**: Regular rotation of OAuth credentials and HA tokens
+- **Audit Logging**: Comprehensive security event tracking
+- **Rate Limiting**: Protection against abuse and attacks
+
+### Token Security
+
+**Automated Token Management**:
+
+```bash
+# Check token security status
+python src/ha_connector/integrations/alexa/smapi_token_helper.py security-check
+
+# Rotate tokens securely
+python src/ha_connector/integrations/alexa/smapi_token_helper.py rotate
+
+# Clean up expired tokens
+python src/ha_connector/integrations/alexa/smapi_token_cleanup.py
+```
 
 ## 📚 Related Documentation
 
-- [Team Setup Guide](integrations/alexa/TEAM_SETUP.md) - Complete Alexa skill configuration
-- [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md) - Sub-500ms voice response optimization
-- [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md) - AWS deployment instructions
-- [Troubleshooting Guide](deployment/TROUBLESHOOTING.md) - Detailed problem resolution
+### Integration Guides
+- **[SMAPI Setup Guide](SMAPI_SETUP_GUIDE.md)** - Complete OAuth 2.0 automation and token management
+- **[Team Setup Guide](TEAM_SETUP.md)** - Multi-user Alexa skill configuration
+- **[Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md)** - Sub-500ms response optimization
 
-## 🆘 Support
+### Development and Deployment
+- **[Lambda Deployment Markers](../../development/LAMBDA_DEPLOYMENT_MARKERS.md)** - Automated deployment system
+- **[Automation Setup](../../development/AUTOMATION_SETUP.md)** - Development environment configuration
+- **[Configuration Standards](../../development/CONFIGURATION_STANDARDIZATION_PLAN.md)** - Generation 3 configuration system
 
-For additional help:
+### Operations and Security
+- **[Deployment Quick Reference](../../deployment/DEPLOYMENT_QUICK_REFERENCE.md)** - Fast deployment procedures
+- **[Security Validation Guide](../../deployment/security_validation_guide.md)** - 12-point security framework
+- **[Security Validation API](../../api/security_validation_api.md)** - API documentation for security checks
 
-1. Check [troubleshooting guide](deployment/TROUBLESHOOTING.md)
-2. Review CloudWatch logs
-3. Test with `ha-connector alexa diagnose`
-4. Create issue with diagnostic output
+## 🛠️ Testing and Validation Tools
+
+### Comprehensive Testing Suite
+
+**Main Testing Tool**:
+```bash
+# Located at: tests/validation/tools/alexa_smart_home_testing_suite.py
+python tests/validation/tools/alexa_smart_home_testing_suite.py --help
+```
+
+**Available Test Commands**:
+- `--discovery`: Device discovery testing
+- `--test <endpoint_id>`: Full endpoint testing (on/off)
+- `--turn-on <endpoint_id>`: Turn on specific endpoint
+- `--turn-off <endpoint_id>`: Turn off specific endpoint
+- `--save-files`: Save test artifacts permanently
+- `--cleanup`: Clean up test artifacts
+
+### Demo and Integration Scripts
+
+**SMAPI Integration Demo**:
+```bash
+# Located at: scripts/demo_smapi_integration.py
+python scripts/demo_smapi_integration.py
+```
+
+**Security Framework Demo**:
+```bash
+# Located at: scripts/demo_security.py
+python scripts/demo_security.py
+```
+
+## 🆘 Support and Community
+
+### Getting Help
+
+**Automated Diagnostics**:
+```bash
+# Comprehensive system check
+python scripts/agent_helper.py all
+
+# Quick environment validation
+python scripts/agent_helper.py env
+
+# Check code quality and imports
+python scripts/agent_helper.py imports
+```
+
+**Manual Troubleshooting Steps**:
+
+1. **Check System Status**:
+   ```bash
+   python scripts/lambda_deployment/deployment_manager.py status
+   python src/ha_connector/integrations/alexa/smapi_token_helper.py status
+   ```
+
+2. **Run Security Validation**:
+   ```bash
+   python src/ha_connector/web/security_validation_api.py
+   ```
+
+3. **Test Device Discovery**:
+   ```bash
+   python tests/validation/tools/alexa_smart_home_testing_suite.py --discovery --save-files
+   ```
+
+4. **Review Logs**: Check CloudWatch logs for Lambda functions and Home Assistant logs for integration events
+
+### Community Resources
+
+- **[Development Roadmap](../../development/ROADMAP.md)** - Future feature planning and HACS integration
+- **[Architecture Evolution](../../history/ARCHITECTURE_EVOLUTION.md)** - Project development history
+- **[Phase 6 Completion](../../history/PHASE_6_COMPLETE.md)** - Latest milestone achievements
+
+### Contributing
+
+For development contributions:
+- **[Code Quality Standards](../../development/CODE_QUALITY_SUITE.md)** - Quality requirements and automation
+- **[Utils Architecture](../../development/UTILS_ARCHITECTURE_STANDARDS.md)** - Code organization patterns
+- **[Testing Patterns](../../development/AUTOMATION_SETUP.md)** - Test automation and CI/CD

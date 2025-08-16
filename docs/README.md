@@ -75,7 +75,7 @@ Evolution records, completed analyses, and architectural decisions:
 ### 🎙️ **Alexa Smart Home Integration**
 **Directory**: [`integrations/alexa/`](integrations/alexa/)
 
-Complete Alexa Smart Home skill automation with 58-endpoint discovery:
+Complete Alexa Smart Home skill automation with comprehensive device discovery:
 
 - **[User Guide](integrations/alexa/USER_GUIDE.md)** - End-to-end setup process
 - **[SMAPI Setup Guide](integrations/alexa/SMAPI_SETUP_GUIDE.md)** - OAuth 2.0 automation 
