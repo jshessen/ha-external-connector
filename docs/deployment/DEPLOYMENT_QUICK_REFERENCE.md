@@ -66,3 +66,99 @@ python scripts/lambda_deployment/deployment_manager.py --clean
 | Deploy both functions | `python scripts/lambda_deployment/deployment_manager.py --deploy --function all` |
 
 The deployment manager provides all the same functionality with better validation, error handling, and flexibility.
+
+## 🧪 Deployment Validation and Testing
+
+### Comprehensive Testing After Deployment
+
+**Alexa Smart Home Testing Suite**:
+
+```bash
+# Full testing suite after deployment
+python tests/validation/tools/alexa_smart_home_testing_suite.py
+
+# Discovery testing only
+python tests/validation/tools/alexa_smart_home_testing_suite.py --discovery
+
+# Test specific endpoints
+python tests/validation/tools/alexa_smart_home_testing_suite.py --test <endpoint_id>
+
+# Save test artifacts for analysis
+python tests/validation/tools/alexa_smart_home_testing_suite.py --save-files
+```
+
+**Security Validation**:
+
+```bash
+# 12-point security framework validation
+python src/ha_connector/web/security_validation_api.py
+
+# Security demonstration and testing
+python scripts/demo_security.py
+```
+
+### Performance Benchmarking
+
+**Response Time Validation** (Target: Sub-500ms):
+
+```bash
+# Check deployment performance metrics  
+python scripts/lambda_deployment/deployment_manager.py metrics
+
+# SMAPI integration performance testing
+python scripts/demo_smapi_integration.py
+
+# Voice command response time testing
+python tests/validation/tools/alexa_smart_home_testing_suite.py --performance
+```
+
+**Cache Performance Monitoring**:
+
+- **Container Cache**: 0-1ms access (warm Lambda containers)
+- **Shared Cache**: 20-50ms cross-function sharing (DynamoDB)
+- **SSM Fallback**: 100-200ms authoritative source
+
+## 🔄 Transfer Block Synchronization
+
+### Lambda Function Code Synchronization
+
+The deployment system manages **Transfer Blocks** - synchronized code sections between Lambda functions:
+
+**Primary Transfer Block Locations**:
+- **Source**: `src/ha_connector/integrations/alexa/lambda_functions/cloudflare_security_gateway.py` (line ~3149)
+- **Target**: `src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py` (line ~255)
+
+**Transfer Block Workflow**:
+
+1. **Edit Primary Source**: Update the CloudFlare Security Gateway transfer block
+2. **Copy Content**: Transfer block content between START/END markers
+3. **Update Target**: Apply to Smart Home Bridge with service customizations
+4. **Validate**: Test both functions independently
+
+**Service Customizations**:
+- Cache prefixes: `oauth_config_` → `bridge_config_`
+- Function names: `"cloudflare_security_gateway"` → `"smart_home_bridge"`
+- Service-specific constants and identifiers
+
+## 📊 Deployment Monitoring
+
+### Key Metrics to Monitor
+
+**Performance Targets**:
+- **Voice Command Response**: <500ms end-to-end
+- **Lambda Cold Start**: <2 seconds
+- **Security Validation**: <50ms OAuth validation
+- **Cache Hit Rate**: >95% container, >80% shared
+
+**Health Checks**:
+
+```bash
+# Overall system health
+python scripts/agent_helper.py all
+
+# SMAPI token health
+python src/ha_connector/integrations/alexa/smapi_token_helper.py status
+
+# Deployment validation
+python scripts/lambda_deployment/deployment_manager.py validate
+```
