@@ -1,90 +1,87 @@
-# Documentation Hub
+# Documentation Navigation Hub
 
-Welcome to the Home Assistant External Connector documentation. This hub provides comprehensive information for users, developers, and operators.
+Welcome to the Home Assistant External Connector documentation! This guide is organized by audience to help you find exactly what you need.
 
-## 🎯 Quick Navigation
+## 👥 Find Your Documentation
 
-### For Users
+### 🎯 For Users - Integration and Setup
 
-- **[Alexa Integration Guide](integrations/alexa/)** - Complete setup and configuration
-- **[Installation & Setup](deployment/)** - Getting started with the integration
+**Start here if you want to use Home Assistant External Connector:**
 
-### For Developers
+- **[Alexa Integration](integrations/alexa/)** - Voice command setup and configuration
+  - [User Guide](integrations/alexa/USER_GUIDE.md) - Complete setup walkthrough
+  - [SMAPI Setup](integrations/alexa/SMAPI_SETUP_GUIDE.md) - Amazon developer console configuration
+  - [Team Setup](integrations/alexa/TEAM_SETUP.md) - Multi-user configuration
+  - [Performance Optimization](integrations/alexa/PERFORMANCE_OPTIMIZATION.md) - Response time tuning
 
-- **[Development Workflow](development/DEVELOPMENT_WORKFLOW_GUIDE.md)** - Contributor onboarding
-- **[Code Quality Suite](development/CODE_QUALITY_SUITE.md)** - Standards and tooling
-- **[Browser Mod Architecture](development/BROWSER_MOD_INTEGRATION_BREAKTHROUGH.md)** - Key architectural decisions
-- **[Automation Setup](development/AUTOMATION_SETUP.md)** - Development environment
+**Coming Soon:**
 
-### For Operations
+- iOS Companion App integration
+- Additional voice assistants
 
-- **[Deployment Guide](deployment/)** - Production deployment procedures
-- **[API Documentation](api/)** - Security validation and API references
+### 🛠️ For Developers - Contributing and Development
 
-### Project History
+**Start here if you want to contribute to or extend the project:**
 
-- **[Architecture Evolution](history/ARCHITECTURE_EVOLUTION.md)** - Design decision timeline
-- **[HACS Optimization](history/HACS_OPTIMIZED_STRUCTURE_COMPLETE.md)** - Structure optimization
-- **[Project Milestones](history/)** - Completion records and analysis
+- **[Development Environment](development/)** - Setup and tooling
+  - [Automation Setup](development/AUTOMATION_SETUP.md) - Development environment configuration
+  - [Code Quality Suite](development/CODE_QUALITY_SUITE.md) - Linting and validation tools
+  - [Roadmap](development/ROADMAP.md) - Project planning and future features
 
-## 📁 Documentation Structure
+- **[Configuration Management](development/CONFIGURATION_MANAGEMENT.md)** - Complete configuration system with multi-generation support and optional migration tools
+  - [Lambda Deployment Markers](development/LAMBDA_DEPLOYMENT_MARKERS.md) - Deployment automation
 
-```text
-docs/
-├── README.md                              # This navigation hub
-├── integrations/                          # User-focused guides
-│   └── alexa/                            # Alexa integration setup
-├── development/                           # Developer documentation
-│   ├── DEVELOPMENT_WORKFLOW_GUIDE.md     # Contributor workflow
-│   ├── CODE_QUALITY_SUITE.md             # Quality standards
-│   ├── BROWSER_MOD_INTEGRATION_BREAKTHROUGH.md  # Architecture
-│   └── [other development guides]
-├── deployment/                            # Operations guides
-│   ├── DEPLOYMENT_GUIDE.md               # Production deployment
-│   └── TROUBLESHOOTING.md                # Issue resolution
-├── api/                                   # API documentation
-│   └── security_validation_api.md        # Security API reference
-└── history/                               # Project evolution
-    ├── HACS_OPTIMIZED_STRUCTURE_COMPLETE.md  # Structure completion
-    ├── PROJECT_COMPLETE_HACS_READY.md         # Project status
-    └── [milestone records]
-```
+### 🚀 For Operations - Deployment and Infrastructure
 
-## 🚀 Getting Started
+**Start here if you want to deploy or maintain infrastructure:**
 
-### New Users
+- **[Deployment Procedures](deployment/)** - Infrastructure and operations
+  - [Deployment Quick Reference](deployment/DEPLOYMENT_QUICK_REFERENCE.md) - Fast deployment commands
+  - [Security Validation Guide](deployment/security_validation_guide.md) - Security compliance procedures
 
-1. Start with [Alexa Integration Guide](integrations/alexa/)
-2. Follow [Installation & Setup](deployment/)
-3. Check [API Documentation](api/) for advanced features
+- **[API References](api/)** - Technical interfaces
+  - [Security Validation API](api/security_validation_api.md) - Security automation interface
 
-### New Contributors
+### 📚 For Researchers - Project History and Context
 
-1. Read [Development Workflow](development/DEVELOPMENT_WORKFLOW_GUIDE.md)
-2. Review [Code Quality Suite](development/CODE_QUALITY_SUITE.md)
-3. Set up environment with [Automation Setup](development/AUTOMATION_SETUP.md)
+**Start here if you want to understand project evolution:**
 
-### Operations Teams
+- **[Historical Records](history/)** - Evolution and decisions
+  - [Architecture Evolution](history/ARCHITECTURE_EVOLUTION.md) - Design decision history
+  - [Automation Gaps Analysis](history/AUTOMATION_GAPS_ANALYSIS.md) - Problem analysis
+  - [Phase 6 Complete](history/PHASE_6_COMPLETE.md) - Milestone completion records
 
-1. Review [Deployment Guide](deployment/)
-2. Understand [API Security](api/security_validation_api.md)
-3. Prepare troubleshooting with [operations guides](deployment/)
+## 🎯 Quick Navigation by Task
 
-## 🎯 Quality Standards
+### I want to
 
-This project maintains **exemplary quality standards**:
+- **Set up voice commands**: → [Alexa User Guide](integrations/alexa/USER_GUIDE.md)
+- **Deploy the system**: → [Deployment Quick Reference](deployment/DEPLOYMENT_QUICK_REFERENCE.md)
+- **Contribute code**: → [Development Setup](development/AUTOMATION_SETUP.md)
+- **Understand security**: → [Security Validation Guide](deployment/security_validation_guide.md)
+- **Configure performance**: → [Performance Optimization](integrations/alexa/PERFORMANCE_OPTIMIZATION.md)
+- **Set up development**: → [Automation Setup](development/AUTOMATION_SETUP.md)
 
-- **Perfect Code Quality**: 10.00/10 Pylint scores
-- **Comprehensive Testing**: >95% test coverage
-- **Professional Documentation**: HACS-ready presentation
-- **Modern Architecture**: Browser Mod integration breakthrough
+## 🏗️ Documentation Standards
 
-## 📚 Additional Resources
+This documentation follows professional standards for HACS readiness:
 
-- **GitHub Repository**: [ha-external-connector](https://github.com/jshessen/ha-external-connector)
-- **Home Assistant Integration**: Custom Components following HA best practices
-- **HACS Compatible**: Professional integration ready for community use
+- **Audience-based organization** - Clear separation by user type
+- **Comprehensive coverage** - Setup, configuration, troubleshooting
+- **Cross-references** - Easy navigation between related topics
+- **Professional presentation** - Consistent formatting and structure
+- **Community-friendly** - Accessible to all skill levels
+
+## 🔗 External Resources
+
+- **[Main Project Repository](../README.md)** - Project overview and quick start
+- **[Home Assistant Documentation](https://www.home-assistant.io/docs/)** - Core Home Assistant docs
+- **[Alexa Smart Home API](https://developer.amazon.com/docs/smarthome/understand-the-smart-home-skill-api.html)** - Amazon developer resources
+
+## 🤝 Contributing to Documentation
+
+Found an issue or want to improve the documentation? See our [development documentation](development/) for contribution guidelines and setup instructions.
 
 ---
 
-**Navigation Tip**: Use the table of contents above to quickly find the documentation you need based on your role (user, developer, or operator).
+**Last Updated**: Documentation structure established for comprehensive coverage and HACS readiness.
