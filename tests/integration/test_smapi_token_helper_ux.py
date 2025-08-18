@@ -18,28 +18,21 @@ import secrets
 import tempfile
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
 from rich.console import Console
-from src.ha_connector.integrations.alexa.automation.models import SMAPICredentials
-from src.ha_connector.integrations.alexa.smapi_token_helper import main
 
-if TYPE_CHECKING:
-    from src.ha_connector.integrations.alexa.smapi_token_helper import (
-        LWASecurityProfile,
-        OAuthResult,
-        SMAPITokenHelper,
-        ValidationError,
-    )
-else:
-    from src.ha_connector.integrations.alexa.smapi_token_helper import (
-        LWASecurityProfile,
-        OAuthResult,
-        SMAPITokenHelper,
-        ValidationError,
-    )
+from custom_components.ha_external_connector.integrations.alexa.automation.models import (  # noqa: E501
+    SMAPICredentials,
+)
+from development.alexa_automation_scripts.smapi_token_helper import (
+    LWASecurityProfile,
+    OAuthResult,
+    SMAPITokenHelper,
+    ValidationError,
+    main,
+)
 
 
 class TestSMAPITokenHelperUserExperience:
