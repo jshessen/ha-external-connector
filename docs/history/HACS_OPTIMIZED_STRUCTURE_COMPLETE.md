@@ -6,7 +6,7 @@
 ```
 📦 ha-external-connector/
 ├── 🎯 custom_components/           # HACS Integration (PRIMARY)
-├── 🧪 tests/                      # Test Suite (QUALITY INDICATOR)  
+├── 🧪 tests/                      # Test Suite (QUALITY INDICATOR)
 ├── 📚 docs/                       # Documentation (PROFESSIONAL)
 ├── 🔧 development/                # All Development Tools
 ├── 📋 README.md                   # Project Overview
