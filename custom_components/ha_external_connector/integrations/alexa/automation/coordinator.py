@@ -96,7 +96,7 @@ class AmazonDeveloperConsoleAutomator:
         """
         _LOGGER.info(
             "Starting console automation for automation method: %s",
-            request.automation_method.value
+            request.automation_method.value,
         )
 
         try:
@@ -107,7 +107,7 @@ class AmazonDeveloperConsoleAutomator:
                 except (ValueError, ValidationError) as smapi_error:
                     _LOGGER.warning(
                         "SMAPI automation failed: %s, falling back to guided manual",
-                        smapi_error
+                        smapi_error,
                     )
                     # Fall back to guided manual workflow
                     request.automation_method = AutomationMethod.GUIDED_MANUAL
