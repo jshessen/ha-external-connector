@@ -10,6 +10,21 @@
     "python.analysis.diagnosticMode": "openFilesOnly",  // CRITICAL: Changed from "workspace"
     "python.analysis.autoFormatOnType": false,  // Disabled to reduce processing
 
+    // CRITICAL: Exclude ha-core from Pylance analysis to prevent enumeration delays
+    "python.analysis.exclude": [
+        "/mnt/development/GitHub/ha-core/**",
+        "**/ha-core/**",
+        "**/.git/**",
+        "**/__pycache__/**",
+        "**/.mypy_cache/**",
+        "**/.pytest_cache/**",
+        "**/.ruff_cache/**"
+    ],
+    "python.analysis.ignore": [
+        "/mnt/development/GitHub/ha-core/**",
+        "**/ha-core/**"
+    ],
+
     // Linting configuration (DISABLED - Use modern extensions)
     "python.linting.enabled": false,  // CRITICAL: Disable duplicate linting
     "python.linting.lintOnSave": false,
@@ -162,7 +177,10 @@
         ".pytest_cache": true,
         ".ruff_cache": true,
         "**/node_modules": true,
-        "**/.git": true
+        "**/.git": true,
+        // CRITICAL: Exclude ha-core from file enumeration to prevent Pylance delays
+        "/mnt/development/GitHub/ha-core": true,
+        "**/ha-core": true
     },
 
     // PERFORMANCE: Reduce file watching overhead
@@ -171,7 +189,10 @@
         "**/.mypy_cache/**": true,
         "**/.pytest_cache/**": true,
         "**/.ruff_cache/**": true,
-        "**/node_modules/**": true
+        "**/node_modules/**": true,
+        // CRITICAL: Don't watch ha-core files to prevent enumeration overhead
+        "/mnt/development/GitHub/ha-core/**": true,
+        "**/ha-core/**": true
     },
 
     // File associations for synchronized scripts
