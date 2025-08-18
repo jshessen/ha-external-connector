@@ -1,0 +1,9 @@
+setup_lwa_profile:
+  name: Setup LWA Profile
+  description: Start the guided setup for Amazon LWA Security Profile creation using Browser Mod.
+  fields: {}
+
+check_browser_mod:
+  name: Check Browser Mod
+  description: Check if Browser Mod integration is available and properly configured.
+  fields: {}
