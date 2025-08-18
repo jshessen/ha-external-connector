@@ -15,10 +15,19 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.exceptions import HomeAssistantError
 
-if TYPE_CHECKING:
-    from aiohttp import ClientError, ClientSession
-
 from .models import SkillDeploymentStage, SkillValidationResult, SMAPICredentials
+
+# Handle aiohttp imports - will be available at runtime in Home Assistant
+try:
+    from aiohttp import ClientError
+except ImportError:
+    # Fallback for development environment - create a specific exception type
+    class ClientError(Exception):
+        """Fallback ClientError for development environment."""
+
+if TYPE_CHECKING:
+    from aiohttp import ClientSession
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,7 +63,6 @@ class AmazonSMAPIClient:
 
         Args:
             credentials: SMAPI OAuth credentials
-            session: Optional aiohttp session for connection pooling
         """
         self.credentials = credentials
         self.session = session

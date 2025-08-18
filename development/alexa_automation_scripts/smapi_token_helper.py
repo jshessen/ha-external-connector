@@ -58,8 +58,10 @@ from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
 from rich.table import Table
 
-from ...utils import HAConnectorLogger
-from .automation.models import SMAPICredentials
+from custom_components.ha_external_connector.integrations.alexa.automation.models import (  # noqa: E501
+    SMAPICredentials,
+)
+from development.utils import HAConnectorLogger
 
 try:
     from .lwa_security_profile_automation import automate_security_profile_creation

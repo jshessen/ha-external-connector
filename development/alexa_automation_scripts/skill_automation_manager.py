@@ -48,7 +48,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import boto3
 from botocore.exceptions import ClientError
-from ha_connector.utils import ValidationError
+
+from development.utils import ValidationError
 
 if TYPE_CHECKING:
     from types_boto3_lambda.client import LambdaClient
@@ -416,7 +417,9 @@ class SmartHomeSkillAutomator:
         else:
             # Generic setup
             web_auth_uri = "https://your-homeassistant.domain.com/auth/authorize"
-            access_token_uri = "https://your-homeassistant.domain.com/auth/token"  # nosec B105
+            access_token_uri = (
+                "https://your-homeassistant.domain.com/auth/token"  # nosec B105
+            )
             setup_type = "Generic OAuth Setup"
 
         guide = f"""

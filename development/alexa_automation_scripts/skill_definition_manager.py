@@ -19,8 +19,9 @@ from enum import Enum
 from typing import Any
 
 import yaml
-from ha_connector.utils import HAConnectorLogger, ValidationError
 from pydantic import BaseModel, Field
+
+from development.utils import HAConnectorLogger, ValidationError
 
 logger = HAConnectorLogger("alexa.skill_definition")
 

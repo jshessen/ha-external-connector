@@ -8,7 +8,7 @@ deploying the changes determined by the decision engine.
 from dataclasses import dataclass
 from enum import Enum
 
-from ..utils import HAConnectorLogger
+from .utils.helpers import HAConnectorLogger
 
 logger = HAConnectorLogger("automation.execution")
 

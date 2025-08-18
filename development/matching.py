@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from ..utils import HAConnectorLogger
+from .utils.helpers import HAConnectorLogger
 
 logger = HAConnectorLogger("automation.matching")
 

@@ -8,7 +8,7 @@ finding alternative matches and compatible options when exact matches aren't ava
 from dataclasses import dataclass
 from enum import Enum
 
-from ..utils import HAConnectorLogger
+from .utils.helpers import HAConnectorLogger
 
 logger = HAConnectorLogger("automation.compatibility")
 

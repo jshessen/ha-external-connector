@@ -16,10 +16,20 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from ha_connector.utils import HAConnectorLogger
 from pydantic import BaseModel, Field
 
-from ..config.manager import InstallationScenario
+try:
+    from development.config.manager import InstallationScenario
+except ImportError:
+    # Fallback definition for type checking or testing
+
+    class InstallationScenario(str, Enum):
+        DIRECT_ALEXA = "direct_alexa"
+        CLOUDFLARE = "cloudflare"
+        # Add other scenarios as needed
+
+
+from development.utils import HAConnectorLogger
 
 logger = HAConnectorLogger("integrations.selection")
 

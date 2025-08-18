@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from ..utils import logger
+from .helpers import logger
 
 # Import CloudFlare components at module level to avoid import-outside-toplevel warnings
 # Initialize as None, will be set if import succeeds

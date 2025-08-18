@@ -22,12 +22,12 @@ from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 import requests
-from ha_connector.utils import ValidationError
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 from rich.text import Text
+from custom_components.ha_external_connector.utils import ValidationError
 
 # Public OAuth 2.0 token endpoint for Amazon (not a secret, safe to hardcode)
 AMAZON_OAUTH_TOKEN_URL = "https://api.amazon.com/auth/o2/token"  # nosec B105

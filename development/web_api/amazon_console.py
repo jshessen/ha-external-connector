@@ -23,15 +23,15 @@ from flask import (
     session,
     url_for,
 )
-from ha_connector.integrations.alexa.amazon_developer_console import (
+from custom_components.ha_external_connector.integrations.alexa.amazon_developer_console import (
     AmazonDeveloperConsoleIntegration,
     AutomationConfig,
     OAuthConfiguration,
     SkillConfiguration,
     SkillMetadata,
 )
-from ha_connector.integrations.alexa.smapi_client import SMAPICredentials
-from ha_connector.utils import HAConnectorLogger
+from custom_components.ha_external_connector.integrations.alexa.smapi_client import SMAPICredentials
+from custom_components.ha_external_connector.utils import HAConnectorLogger
 
 # OAuth2 token endpoint for Amazon authentication (not a secret)
 AMAZON_OAUTH_TOKEN_URL = "https://api.amazon.com/auth/o2/token"  # nosec: B105 - public OAuth endpoint, not a secret

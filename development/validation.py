@@ -8,7 +8,7 @@ testing that the deployed system works end-to-end and meets requirements.
 from dataclasses import dataclass
 from enum import Enum
 
-from ..utils import HAConnectorLogger
+from .utils.helpers import HAConnectorLogger
 
 logger = HAConnectorLogger("automation.validation")
 

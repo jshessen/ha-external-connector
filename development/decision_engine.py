@@ -8,7 +8,7 @@ determining what actions to take (reuse/update/add/remove).
 from dataclasses import dataclass
 from enum import Enum
 
-from ..utils import HAConnectorLogger
+from .utils.helpers import HAConnectorLogger
 
 logger = HAConnectorLogger("automation.decision_engine")
 

@@ -8,11 +8,9 @@ Demonstrates the Phase 5.2 Security Validation Framework capabilities.
 import sys
 from pathlib import Path
 
-from ha_connector.security import (
+from development.utils.models import SecurityCheckResult, SecurityLevel, SecurityPolicy
+from development.utils.policy_validator import (
     ComplianceChecker,
-    SecurityCheckResult,
-    SecurityLevel,
-    SecurityPolicy,
     SecurityPolicyValidator,
     SecurityReporter,
 )
@@ -37,9 +35,9 @@ def demo_security_validation() -> None:
     _show_next_steps()
 
 
-def _initialize_and_show_validators() -> tuple[
-    SecurityPolicyValidator, ComplianceChecker, SecurityReporter
-]:
+def _initialize_and_show_validators() -> (
+    tuple[SecurityPolicyValidator, ComplianceChecker, SecurityReporter]
+):
     """Initialize validators and show enhanced Lambda capabilities"""
     # Initialize validators
     policy_validator = SecurityPolicyValidator()

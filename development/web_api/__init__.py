@@ -13,9 +13,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from ha_connector.web.api import integration_router, setup_router, status_router
-from ha_connector.web.api.alexa import router as alexa_router
-from ha_connector.web.api.integrations_selection import (
+from custom_components.ha_external_connector.web.api import integration_router, setup_router, status_router
+from custom_components.ha_external_connector.web.api.alexa import router as alexa_router
+from custom_components.ha_external_connector.web.api.integrations_selection import (
     router as integrations_selection_router,
 )
 
