@@ -323,7 +323,7 @@ jobs:
             "(Security Profiles, Skills)"
         )
         console.print(
-            "⚠️ [red]Avoid Automating[/red] OAuth consent " "(security + ToS violations)"
+            "⚠️ [red]Avoid Automating[/red] OAuth consent (security + ToS violations)"
         )
 
     def generate_deployment_automation(self) -> str:
@@ -815,7 +815,7 @@ jobs:
             "(Security Profiles, Skills)"
         )
         console.print(
-            "⚠️ [red]Avoid Automating[/red] OAuth consent " "(security + ToS violations)"
+            "⚠️ [red]Avoid Automating[/red] OAuth consent (security + ToS violations)"
         )
 
     def generate_deployment_automation(self) -> str:

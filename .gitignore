@@ -217,3 +217,8 @@ smapi_tokens.json
 **/smapi_tokens*.json
 oauth_tokens.json
 **/oauth_tokens*.json
+
+# === DEVELOPMENT ENVIRONMENTS ===
+# Home Assistant Core development repository (added to workspace but not tracked)
+/mnt/development/GitHub/ha-core/
+ha-core/

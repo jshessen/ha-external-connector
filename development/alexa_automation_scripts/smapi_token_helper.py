@@ -61,6 +61,11 @@ from rich.table import Table
 from ...utils import HAConnectorLogger
 from .automation.models import SMAPICredentials
 
+try:
+    from .lwa_security_profile_automation import automate_security_profile_creation
+except ImportError:
+    automate_security_profile_creation = None
+
 
 class ValidationError(Exception):
     """Validation error for SMAPI token operations."""
@@ -200,6 +205,44 @@ class SMAPITokenHelper:
 
     def _guide_security_profile_creation(self) -> None:
         """Guide user through LWA Security Profile creation."""
+        # Offer browser automation option
+        use_automation = Confirm.ask(
+            "[cyan]🤖 Would you like me to help automate the Security Profile "
+            "creation process?\n"
+            "[dim](I'll open a browser and fill forms for you, but you stay in "
+            "control)[/dim][/cyan]"
+        )
+        if use_automation and automate_security_profile_creation is not None:
+            try:
+                self.console.print("[yellow]🌐 Starting browser automation...[/yellow]")
+                profile_result = automate_security_profile_creation(headless=False)
+                if (
+                    profile_result
+                    and profile_result.get("client_id") != "MANUAL_COLLECTION_REQUIRED"
+                ):
+                    self.console.print(
+                        "[green]✅ Browser automation completed successfully![/green]"
+                    )
+                    self.console.print(
+                        "[yellow]Please return to continue with OAuth flow...[/yellow]"
+                    )
+                    return
+                self.console.print(
+                    "[yellow]⚠️ Browser automation partially completed. "
+                    "Continuing with manual guidance...[/yellow]"
+                )
+            except (RuntimeError, ValueError) as e:
+                self.console.print(
+                    f"[yellow]⚠️ Browser automation failed: {e}. "
+                    "Using manual guidance...[/yellow]"
+                )
+        elif use_automation and automate_security_profile_creation is None:
+            self.console.print(
+                "[yellow]⚠️ Browser automation not available. "
+                "Using manual guidance...[/yellow]"
+            )
+
+        # Fallback to manual guidance
         guide_text = self._build_security_profile_guide()
 
         self.console.print(

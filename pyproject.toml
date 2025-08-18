@@ -8,6 +8,8 @@ extend-exclude = [
     ".mypy_cache",
     ".pytest_cache",
     "infrastructure/deployment",
+    "/mnt/development/GitHub/ha-core",
+    "ha-core",
 ]
 # Focus on rules that Ruff doesn't handle as well or plugin-specific rules
 # Disable overlapping rules that Ruff handles better with auto-fix
@@ -42,7 +44,7 @@ readme = "README.md"
 packages = [{include = "ha_connector", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.13"
 click = "^8.1.0"
 httpx = "^0.25.0"
 boto3 = "^1.39.13"
@@ -52,16 +54,19 @@ typer = "^0.16.0"
 asyncio-throttle = "^1.0.2"
 pydantic = "^2.11.7"
 pydantic-settings = "^2.10.0"
+voluptuous = "^0.15.2"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-asyncio = "^1.0.0"
+pytest = "^8.4.1"
+pytest-asyncio = "^1.1.0"
 pytest-mock = "^3.12.0"
-pytest-cov = "^6.0.0"
-mypy = "^1.8.0"
+pytest-cov = "^6.2.1"
+mypy = "^1.13.0"
 black = "^25.1.0"
+ruff = "^0.12.1"
 isort = "^6.0.0"
 flake8 = "^7.0.0"
+flake8-pyproject = "^1.2.0"
 pre-commit = "^3.6.0"
 mkdocs = "^1.5.0"
 mkdocs-material = "^9.5.0"
@@ -73,13 +78,14 @@ invoke = "^2.2.0"
 vulture = "^2.10.0"
 pip-audit = "^2.6.0"
 pylint-pydantic = "^0.3.5"
+pyright = "^1.1.0"
 boto3-stubs = {extras = ["iam", "lambda", "ssm"], version = "^1.34.0"}
 
 [tool.poetry.scripts]
 ha-connector = "ha_connector.cli.main:app"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
@@ -99,6 +105,8 @@ exclude = [
     "build/",
     "dist/",
     "infrastructure/deployment/",
+    "/mnt/development/GitHub/ha-core/",
+    "ha-core/",
 ]
 
 [tool.pyright]
@@ -158,7 +166,7 @@ reportWildcardImportFromLibrary = "error"
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py313']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -217,6 +225,8 @@ omit = [
     "*.egg-info/*",
     "build/*",
     "dist/*",
+    "/mnt/development/GitHub/ha-core/*",
+    "ha-core/*",
 ]
 
 [tool.coverage.report]
@@ -237,7 +247,7 @@ skip_covered = false
 precision = 2
 
 [tool.bandit]
-exclude_dirs = [".venv", ".backup", "build", "dist", "__pycache__", "infrastructure/deployment"]
+exclude_dirs = [".venv", ".backup", "build", "dist", "__pycache__", "infrastructure/deployment", "/mnt/development/GitHub/ha-core", "ha-core"]
 # No global skips - detect all real security issues
 
 [tool.bandit.assert_used]
@@ -271,9 +281,11 @@ exclude = [
     ".coveragerc",
     "infrastructure/deployment",
     "docs",
+    "/mnt/development/GitHub/ha-core",
+    "ha-core",
 ]
 line-length = 88
-target-version = "py311"
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "UP", "B", "SIM", "I", "W"]
@@ -315,6 +327,8 @@ ignore-paths = [
     "build/.*",
     "dist/.*",
     "__pycache__/.*",
+    "/mnt/development/GitHub/ha-core/.*",
+    "ha-core/.*",
 ]
 
 [tool.pylint.messages_control]

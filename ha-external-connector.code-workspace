@@ -3,6 +3,10 @@
     {
       "name": "HA External Connector (Python)",
       "path": "."
+    },
+    {
+      "name": "Home Assistant Core (Development)",
+      "path": "/mnt/development/GitHub/ha-core"
     }
   ],
   "settings": {
@@ -22,6 +26,12 @@
     "python.defaultInterpreterPath": "/usr/bin/python3",
     "python.analysis.autoImportCompletions": true,
     "python.analysis.typeCheckingMode": "basic",
+
+    // Home Assistant specific Python settings
+    "python.analysis.extraPaths": [
+      "/mnt/development/GitHub/ha-core",
+      "/mnt/development/GitHub/ha-core/config/custom_components"
+    ],
 
     // Bash/Shell script settings
     "shellcheck.enable": true,
@@ -54,14 +64,18 @@
       "**/Thumbs.db": true,
       "config/.storage": true,
       "config/home-assistant.log*": true,
-      "config/OZW_Log.txt": true
+      "config/OZW_Log.txt": true,
+      // HA Core specific exclusions for performance
+      "**/ha-core/**": true,
     },
     "search.exclude": {
       "**/node_modules": true,
       "**/bower_components": true,
       "**/*.code-search": true,
       "config/.storage": true,
-      "config/deps": true
+      "config/deps": true,
+      // HA Core search exclusions for performance
+      "**/ha-core/**": true,
     },
     "git.ignoreLimitWarning": true,
     "editor.rulers": [88, 120],
@@ -102,7 +116,8 @@
       "implementAbstractClasses": true,
       "generateSymbol": true,
       "convertFormatString": true
-    }
+    },
+    "flake8.importStrategy": "fromEnvironment"
   },
   "extensions": {
     "recommendations": [
