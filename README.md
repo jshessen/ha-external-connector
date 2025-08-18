@@ -4,31 +4,40 @@
 [![GitHub Release][releases-badge]][releases-url]
 [![GitHub License][license-badge]][license-url]
 
-Professional automation and integration system for Home Assistant with external services including Alexa, CloudFlare, and AWS infrastructure.
+Professional automation and integration system for Home Assistant with external services
+including Alexa, CloudFlare, and AWS infrastructure.
 
 ## 🚀 Quick Start
 
 ### For Users
 
-- **[Alexa Integration Setup](docs/integrations/alexa/USER_GUIDE.md)** - Set up voice commands with Home Assistant
-- **[SMAPI Configuration](docs/integrations/alexa/SMAPI_SETUP_GUIDE.md)** - Configure Alexa Smart Home API
-- **[Performance Optimization](docs/integrations/alexa/PERFORMANCE_OPTIMIZATION.md)** - Optimize response times
+- **[Alexa Integration Setup](docs/integrations/alexa/USER_GUIDE.md)**
+  - Set up voice commands with Home Assistant
+- **[SMAPI Configuration](docs/integrations/alexa/SMAPI_SETUP_GUIDE.md)** -
+  Configure Alexa Smart Home API
+- **[Performance Optimization](docs/integrations/alexa/PERFORMANCE_OPTIMIZATION.md)**
+  - Optimize response times
 
 ### For Developers
 
-- **[Development Setup](docs/development/AUTOMATION_SETUP.md)** - Environment and tooling setup
-- **[Code Quality Standards](docs/development/CODE_QUALITY_SUITE.md)** - Linting and quality requirements
-- **[Configuration Management](docs/development/CONFIGURATION_MANAGEMENT.md)** - System configuration patterns
+- **[Development Setup](docs/development/AUTOMATION_SETUP.md)** -
+  Environment and tooling setup
+- **[Code Quality Standards](docs/development/CODE_QUALITY_SUITE.md)** -
+  Linting and quality requirements
+- **[Configuration Management](docs/development/CONFIGURATION_MANAGEMENT.md)** -
+  System configuration patterns
 
 ### For Operations
 
-- **[Deployment Guide](docs/deployment/DEPLOYMENT_QUICK_REFERENCE.md)** - Infrastructure deployment
-- **[Security Validation](docs/deployment/security_validation_guide.md)** - Security compliance checks
+- **[Deployment Guide](docs/deployment/DEPLOYMENT_QUICK_REFERENCE.md)** -
+  Infrastructure deployment
+- **[Security Validation](docs/deployment/security_validation_guide.md)** -
+  Security compliance checks
 
 ## 🎯 Key Features
 
 - **Voice Command Integration**: Seamless Alexa voice control for Home Assistant
-- **Security-First Design**: Comprehensive validation and secure deployment patterns  
+- **Security-First Design**: Comprehensive validation and secure deployment patterns
 - **High Performance**: Sub-500ms response times with intelligent caching
 - **Professional Tooling**: Full automation suite with quality gates
 - **HACS Ready**: Prepared for Home Assistant Community Store publication
@@ -63,7 +72,9 @@ After installation, add the integration through the Home Assistant UI:
 
 ### Prerequisites
 
-- **Browser Mod**: This integration depends on [Browser Mod](https://github.com/thomasloven/hass-browser_mod) for automated browser interactions
+- **Browser Mod**: This integration depends on
+  [Browser Mod](https://github.com/thomasloven/hass-browser_mod)
+  for automated browser interactions
 - **AWS Account**: Required for cloud infrastructure components (optional for basic functionality)
 - **Alexa Developer Account**: Required for SMAPI integration features
 
@@ -98,15 +109,19 @@ Complete documentation is organized by audience in the [`docs/`](docs/) director
 
 ## 🏆 Project Status
 
-This project represents a complete evolution from CLI tool to professional Home Assistant integration, with full HACS readiness and community-focused development practices.
+This project represents a complete evolution from CLI tool to professional Home Assistant
+integration, with full HACS readiness and community-focused development practices.
 
-**Current Phase**: Professional integration with comprehensive documentation, security validation, and performance optimization.
+**Current Phase**: Professional integration with comprehensive documentation, security
+validation, and performance optimization.
 
 **Next Phase**: HACS publication preparation and community release.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [development documentation](docs/development/) for detailed setup instructions, coding standards, and contribution guidelines.
+We welcome contributions! Please see our
+[development documentation](docs/development/) for detailed setup instructions,
+coding standards, and contribution guidelines.
 
 ## Quality
 

@@ -2,7 +2,8 @@
 
 ## 🚀 Development Environment Options
 
-Based on the Home Assistant development documentation, we have multiple approaches for local testing of our Browser Mod integration:
+Based on the Home Assistant development documentation, we have multiple approaches for
+local testing of our Browser Mod integration:
 
 ### Option 1: VSCode Devcontainer (Recommended)
 
@@ -284,11 +285,14 @@ async def test_browser_mod_services(hass: HomeAssistant):
 - Validate memory usage
 - Ensure no blocking operations
 
-This setup gives us the flexibility to rapidly develop and test our Browser Mod integration while maintaining development velocity!
+This setup gives us the flexibility to rapidly develop and test our Browser Mod integration
+while maintaining development velocity!
 
 ## 📦 Next Steps: HACS Publishing
 
-Once local testing is successful, review the [HACS Publishing Requirements](../deployment/HACS_PUBLISHING_REQUIREMENTS.md) for:
+Once local testing is successful, review the
+[HACS Publishing Requirements](../deployment/HACS_PUBLISHING_REQUIREMENTS.md)
+for:
 
 - Repository structure requirements
 - Manifest file creation
@@ -296,4 +300,5 @@ Once local testing is successful, review the [HACS Publishing Requirements](../d
 - HACS submission process
 - Container compatibility validation
 
-The Browser Mod approach eliminates external dependencies and provides a clean path to HACS publication!
+The Browser Mod approach eliminates external dependencies and provides a clean path
+to HACS publication!

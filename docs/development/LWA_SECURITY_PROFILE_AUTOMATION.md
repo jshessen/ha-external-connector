@@ -2,7 +2,10 @@
 
 ## Overview
 
-The LWA (Login with Amazon) Security Profile Browser Automation provides ethical browser automation for creating and configuring Amazon Developer Console Security Profiles required for SMAPI access. This component seamlessly integrates with the existing SMAPITokenHelper to offer users a choice between manual setup and automated assistance.
+The LWA (Login with Amazon) Security Profile Browser Automation provides ethical browser
+automation for creating and configuring Amazon Developer Console Security Profiles
+required for SMAPI access. This component seamlessly integrates with the existing
+SMAPITokenHelper to offer users a choice between manual setup and automated assistance.
 
 ## Architecture Integration
 
@@ -34,7 +37,8 @@ The LWA (Login with Amazon) Security Profile Browser Automation provides ethical
 ### Integration Flow
 
 1. **User starts SMAPI token setup**: `python -m ha_connector.integrations.alexa.smapi_token_helper`
-2. **Automation choice offered**: User chooses between manual or automated Security Profile creation
+2. **Automation choice offered**: User chooses between manual or automated
+   Security Profile creation
 3. **Browser automation activated**: Selenium WebDriver opens visible browser
 4. **Ethical form automation**: Forms filled automatically, user stays in control
 5. **User approval workflow**: User reviews and saves when ready
@@ -134,11 +138,13 @@ python scripts/demo_lwa_automation.py --headless
 
 ## Public API Methods
 
-The `LWASecurityProfileAutomation` class provides the following public methods for testing, debugging, and integration:
+The `LWASecurityProfileAutomation` class provides the following public methods for
+testing, debugging, and integration:
 
 ### Core Automation
 
-- **`guide_security_profile_creation()`** - Complete automated workflow for Security Profile creation
+- **`guide_security_profile_creation()`** - Complete automated workflow for
+  Security Profile creation
 - **`navigate_to_lwa_console()`** - Navigate to Amazon LWA Console (for testing/demo)
 
 ### Status and Debugging
@@ -376,4 +382,5 @@ logging.getLogger("ha_connector").setLevel(logging.DEBUG)
 
 ---
 
-*This automation component follows the project's ethical automation principles: enhance user efficiency while preserving user control and decision-making authority.*
+*This automation component follows the project's ethical automation principles: enhance user
+efficiency while preserving user control and decision-making authority.*

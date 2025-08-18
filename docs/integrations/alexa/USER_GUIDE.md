@@ -103,11 +103,14 @@ alexa:
 
 For optimal voice command response times (target: <500ms):
 
-- **Environment Variables**: Use Lambda environment variables instead of SSM for 75-85% faster cold starts
+- **Environment Variables**: Use Lambda environment variables instead of SSM for
+  75-85% faster cold starts
 - **Container Caching**: Leverage AWS Lambda container warmness (15-45 minutes)
-- **Configuration Priority**: Environment variables > SSM Parameter Store > Configuration cache
+- **Configuration Priority**:
+  Environment variables > SSM Parameter Store > Configuration cache
 
-📘 **See [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md) for detailed configuration strategies and benchmarks.**
+📘 **See [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md)
+for detailed configuration strategies and benchmarks.**
 
 ## 🔍 Troubleshooting
 
@@ -203,10 +206,12 @@ documentation, comprehensive testing, and security validation.
 ## 📚 Related Documentation
 
 - [Team Setup Guide](TEAM_SETUP.md) - Complete Alexa skill configuration
-- [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md) - Sub-500ms voice response optimization
+- [Performance Optimization Guide](PERFORMANCE_OPTIMIZATION.md)
+  Sub-500ms voice response optimization
 - [SMAPI Setup Guide](SMAPI_SETUP_GUIDE.md) - Amazon developer console configuration
 - [Deployment Guide](../../deployment/DEPLOYMENT_QUICK_REFERENCE.md) - AWS deployment instructions
-- [Security Validation Guide](../../deployment/security_validation_guide.md) - Security compliance procedures
+- [Security Validation Guide](../../deployment/security_validation_guide.md)
+  Security compliance procedures
 
 ## 🆘 Support
 

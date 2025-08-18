@@ -212,4 +212,5 @@ Account Linking Required: YES
 
 ---
 
-*This professional team approach ensures your Alexa Smart Home Skill is both secure and efficient, with each component specialized for its specific role in the system.*
+*This professional team approach ensures your Alexa Smart Home Skill is both secure and
+efficient, with each component specialized for its specific role in the system.*

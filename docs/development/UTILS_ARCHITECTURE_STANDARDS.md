@@ -47,7 +47,8 @@ logger.info(f"Processing {request_id}")        # Performance impact
 #### CLI Module (`src/ha_connector/cli/`)
 
 - **Purpose**: Command-line interfaces and automation scripts
-- **Standard imports**: `from ha_connector.utils import HAConnectorLogger, ValidationError, error_exit`
+- **Standard imports**:
+  `from ha_connector.utils import HAConnectorLogger, ValidationError, error_exit`
 - **Logging pattern**: `HAConnectorLogger("cli.command_name")`
 
 #### Integration Module (`src/ha_connector/integrations/`)
@@ -106,7 +107,8 @@ def setup_module_logger():
 
 - **Function complexity**: Extract helpers when Pylint reports R0912/R0915
 - **Parameter count**: Use Pydantic configuration objects for >5 parameters
-- **Import validation**: Always test imports after refactoring: `python -c "from module import class"`
+- **Import validation**: Always test imports after refactoring:
+  `python -c "from module import class"`
 
 ## 🔄 Quality Maintenance Workflow
 
@@ -146,4 +148,5 @@ def setup_module_logger():
 - ✅ Unified logging approach
 - ✅ Reduced quality violations by 50%
 
-**Result**: Clean, maintainable architecture that supports growth in web, cli, and integration directories without duplicating utility functionality.
+**Result**: Clean, maintainable architecture that supports growth in web, cli, and
+integration directories without duplicating utility functionality.

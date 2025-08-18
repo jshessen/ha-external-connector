@@ -1,6 +1,7 @@
 # Documentation Navigation Hub
 
-Welcome to the Home Assistant External Connector documentation! This guide is organized by audience to help you find exactly what you need.
+Welcome to the Home Assistant External Connector documentation!
+This guide is organized by audience to help you find exactly what you need.
 
 ## 👥 Find Your Documentation
 
@@ -12,7 +13,8 @@ Welcome to the Home Assistant External Connector documentation! This guide is or
   - [User Guide](integrations/alexa/USER_GUIDE.md) - Complete setup walkthrough
   - [SMAPI Setup](integrations/alexa/SMAPI_SETUP_GUIDE.md) - Amazon developer console configuration
   - [Team Setup](integrations/alexa/TEAM_SETUP.md) - Multi-user configuration
-  - [Performance Optimization](integrations/alexa/PERFORMANCE_OPTIMIZATION.md) - Response time tuning
+  - [Performance Optimization](integrations/alexa/PERFORMANCE_OPTIMIZATION.md) -
+    Response time tuning
 
 **Coming Soon:**
 
@@ -28,7 +30,8 @@ Welcome to the Home Assistant External Connector documentation! This guide is or
   - [Code Quality Suite](development/CODE_QUALITY_SUITE.md) - Linting and validation tools
   - [Roadmap](development/ROADMAP.md) - Project planning and future features
 
-- **[Configuration Management](development/CONFIGURATION_MANAGEMENT.md)** - Complete configuration system with multi-generation support and optional migration tools
+- **[Configuration Management](development/CONFIGURATION_MANAGEMENT.md)** - Complete
+  configuration system with multi-generation support and optional migration tools
   - [Lambda Deployment Markers](development/LAMBDA_DEPLOYMENT_MARKERS.md) - Deployment automation
 
 ### 🚀 For Operations - Deployment and Infrastructure
@@ -36,8 +39,10 @@ Welcome to the Home Assistant External Connector documentation! This guide is or
 **Start here if you want to deploy or maintain infrastructure:**
 
 - **[Deployment Procedures](deployment/)** - Infrastructure and operations
-  - [Deployment Quick Reference](deployment/DEPLOYMENT_QUICK_REFERENCE.md) - Fast deployment commands
-  - [Security Validation Guide](deployment/security_validation_guide.md) - Security compliance procedures
+  - [Deployment Quick Reference](deployment/DEPLOYMENT_QUICK_REFERENCE.md) -
+    Fast deployment commands
+  - [Security Validation Guide](deployment/security_validation_guide.md) - Security
+    compliance procedures
 
 - **[API References](api/)** - Technical interfaces
   - [Security Validation API](api/security_validation_api.md) - Security automation interface
@@ -75,13 +80,18 @@ This documentation follows professional standards for HACS readiness:
 ## 🔗 External Resources
 
 - **[Main Project Repository](../README.md)** - Project overview and quick start
-- **[Home Assistant Documentation](https://www.home-assistant.io/docs/)** - Core Home Assistant docs
-- **[Alexa Smart Home API](https://developer.amazon.com/docs/smarthome/understand-the-smart-home-skill-api.html)** - Amazon developer resources
+- **[Home Assistant Documentation](https://www.home-assistant.io/docs/)** - Core Home
+  Assistant docs
+- **[Alexa Smart Home API](
+    https://developer.amazon.com/docs/smarthome/understand-the-smart-home-skill-api.html
+  )** - Amazon developer resources
 
 ## 🤝 Contributing to Documentation
 
-Found an issue or want to improve the documentation? See our [development documentation](development/) for contribution guidelines and setup instructions.
+Found an issue or want to improve the documentation?
+See our [development documentation](development/) for contribution guidelines and setup instructions.
 
 ---
 
-**Last Updated**: Documentation structure established for comprehensive coverage and HACS readiness.
+**Last Updated**: Documentation structure established for comprehensive coverage and
+HACS readiness.

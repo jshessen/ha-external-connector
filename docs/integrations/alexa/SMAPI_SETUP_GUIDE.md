@@ -151,7 +151,8 @@ src/ha_connector/web/
 
 This implementation successfully addresses the original request:
 
-> "help guide a user to setup their ID, but also to enable the user to empower this automation to help build this on their behalf"
+> "help guide a user to setup their ID, but also to enable the user to empower this
+> automation to help build this on their behalf"
 
 **Key Success Factors:**
 
@@ -161,4 +162,6 @@ This implementation successfully addresses the original request:
 4. **User Experience**: Guided setup with clear feedback
 5. **Integration Ready**: Works with existing automation infrastructure
 
-The setup wizard empowers users to configure their Amazon Developer Console credentials while providing the automation framework to build skills on their behalf.
+The setup wizard empowers users to configure their Amazon Developer Console
+credentials while providing the automation framework to build skills on their
+behalf.

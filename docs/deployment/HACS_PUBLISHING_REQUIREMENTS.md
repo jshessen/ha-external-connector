@@ -4,7 +4,9 @@
 
 ### Overview
 
-This document provides comprehensive requirements for publishing the **HA External Connector** integration to HACS (Home Assistant Community Store), ensuring proper container compatibility and professional deployment.
+This document provides comprehensive requirements for publishing the **HA External Connector**
+integration to HACS (Home Assistant Community Store), ensuring proper container compatibility
+and professional deployment.
 
 ## 📋 Repository Structure Requirements
 
@@ -155,9 +157,10 @@ This integration requires:
 
 ## 🎯 Home Assistant Brands Registration
 
-### MANDATORY Step
+### Mandatory step
 
-Must add integration to [home-assistant/brands](https://github.com/home-assistant/brands) repository:
+You must add the integration to the
+[home-assistant/brands](https://github.com/home-assistant/brands) repository:
 
 1. Fork `home-assistant/brands`
 2. Add integration icon and metadata
@@ -305,4 +308,6 @@ custom_integrations/ha_external_connector/
 6. **Phase 6**: Submit for inclusion in default HACS store
 7. **Phase 7**: Community adoption and feedback integration
 
-This comprehensive approach ensures successful HACS publication while leveraging Browser Mod's native Home Assistant integration capabilities for optimal container compatibility.
+This comprehensive approach ensures successful HACS publication while leveraging
+Browser Mod's native Home Assistant integration capabilities for optimal container
+compatibility.
