@@ -16,9 +16,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 from ha_connector.utils import HAConnectorLogger
+from pydantic import BaseModel, Field
 
 from ..config.manager import InstallationScenario
 

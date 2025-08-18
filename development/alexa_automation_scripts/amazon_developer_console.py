@@ -57,6 +57,7 @@ from typing import Any, cast
 from urllib.parse import urlencode
 
 import requests
+from ha_connector.utils import ValidationError
 from pydantic import BaseModel
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
@@ -64,8 +65,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-
-from ha_connector.utils import ValidationError
 
 from .smapi_client import SMAPIClient, SMAPICredentials
 

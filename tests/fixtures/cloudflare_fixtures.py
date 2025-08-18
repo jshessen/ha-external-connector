@@ -6,7 +6,6 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-
 from ha_connector.platforms.cloudflare.api_manager import (
     AccessApplicationSpec,
     CloudFlareAccessManager,
@@ -84,7 +83,7 @@ CLOUDFLARE_MANAGER_TEST_PARAMS = [
 
 
 @pytest.fixture(scope="session")
-def cloudflare_test_framework() -> Generator[CloudFlareTestFramework, None, None]:
+def cloudflare_test_framework() -> Generator[CloudFlareTestFramework]:
     framework = CloudFlareTestFramework()
     yield framework
 
@@ -101,13 +100,13 @@ def cloudflare_config() -> CloudFlareConfig:
 
 
 @pytest.fixture(scope="function")
-def mock_cloudflare_client() -> Generator[Mock, None, None]:
+def mock_cloudflare_client() -> Generator[Mock]:
     framework = CloudFlareTestFramework()
     yield framework.mock_client
 
 
 @pytest.fixture(scope="function")
-def cloudflare_environment() -> Generator[dict[str, str], None, None]:
+def cloudflare_environment() -> Generator[dict[str, str]]:
     env_vars = {
         "CF_API_TOKEN": "test-token-" + "x" * 32,
         "CF_ZONE_ID": "test-zone-id",

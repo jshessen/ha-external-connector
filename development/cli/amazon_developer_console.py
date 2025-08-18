@@ -14,12 +14,6 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import typer
-from rich import print as rprint
-from rich.console import Console
-from rich.panel import Panel
-from rich.progress import Progress
-from rich.prompt import Confirm, Prompt
-
 from ha_connector.integrations.alexa.amazon_developer_console import (
     AmazonDeveloperConsoleIntegration,
     AutomationConfig,
@@ -29,6 +23,11 @@ from ha_connector.integrations.alexa.amazon_developer_console import (
     SkillMetadata,
 )
 from ha_connector.integrations.alexa.smapi_client import SMAPICredentials
+from rich import print as rprint
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress
+from rich.prompt import Confirm, Prompt
 
 if TYPE_CHECKING:
     pass

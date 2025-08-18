@@ -13,6 +13,7 @@ from ha_connector.platforms.cloudflare.api_manager import (
     CloudFlareResourceType,
     DNSRecordSpec,
 )
+
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 

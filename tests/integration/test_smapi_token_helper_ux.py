@@ -23,7 +23,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 from rich.console import Console
-
 from src.ha_connector.integrations.alexa.automation.models import SMAPICredentials
 from src.ha_connector.integrations.alexa.smapi_token_helper import main
 

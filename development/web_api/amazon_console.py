@@ -23,7 +23,6 @@ from flask import (
     session,
     url_for,
 )
-
 from ha_connector.integrations.alexa.amazon_developer_console import (
     AmazonDeveloperConsoleIntegration,
     AutomationConfig,

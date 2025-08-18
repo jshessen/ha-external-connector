@@ -11,9 +11,8 @@ from typing import TYPE_CHECKING, Any
 
 import boto3
 from botocore.exceptions import ClientError
-from moto import mock_aws
-
 from ha_connector.security import LambdaSecurityValidator, SecurityStatus
+from moto import mock_aws
 
 if TYPE_CHECKING:
     # Import AWS client types from types-boto3 packages for correct type checking

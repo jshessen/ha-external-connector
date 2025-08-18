@@ -12,8 +12,6 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from typer.testing import CliRunner
-
 from ha_connector.cli.main import app
 from ha_connector.config import ConfigurationManager, InstallationScenario
 from ha_connector.deployment import (
@@ -24,6 +22,8 @@ from ha_connector.deployment import (
     ServiceType,
 )
 from ha_connector.platforms.cloudflare.api_manager import CloudFlareManager
+from typer.testing import CliRunner
+
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 

@@ -16,8 +16,6 @@ import pytest
 # Import pytest internals for proper hook typing
 from _pytest.config import Config
 from _pytest.nodes import Item
-from pydantic import BaseModel
-
 from ha_connector.config import (
     ConfigurationManager,
     ConfigurationState,
@@ -31,6 +29,8 @@ from ha_connector.deployment import (
     ServiceInstaller,
     ServiceType,
 )
+from pydantic import BaseModel
+
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 # Import AWS fixtures to make them available to tests
@@ -123,14 +123,14 @@ class MockCloudFlareResponse(BaseModel):
 
 
 @pytest.fixture
-def temp_dir() -> Generator[Path, None, None]:
+def temp_dir() -> Generator[Path]:
     """Create a temporary directory for tests"""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
 
 
 @pytest.fixture
-def mock_env_vars() -> Generator[dict[str, str], None, None]:
+def mock_env_vars() -> Generator[dict[str, str]]:
     """Mock environment variables for testing"""
     test_env = {
         "HA_BASE_URL": "https://test.homeassistant.local:8123",
@@ -378,7 +378,7 @@ def pytest_collection_modifyitems(config: Config, items: list[Item]) -> None:
 
 
 @pytest.fixture(autouse=True)
-def cleanup_environment() -> Generator[None, None, None]:
+def cleanup_environment() -> Generator[None]:
     """Cleanup environment after each test"""
     yield
     # Any cleanup code would go here

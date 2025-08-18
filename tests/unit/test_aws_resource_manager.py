@@ -11,7 +11,6 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-
 from ha_connector.platforms.aws.resource_manager import (
     AWSIAMManager,
     AWSLambdaManager,
@@ -26,7 +25,7 @@ from ha_connector.platforms.aws.resource_manager import (
 
 # Shared test fixtures
 @pytest.fixture(name="_boto3_session")
-def mock_boto3_session() -> Generator[Mock, None, None]:
+def mock_boto3_session() -> Generator[Mock]:
     """Mock boto3 session to avoid real AWS connections"""
     with patch("ha_connector.adapters.aws_manager.boto3.Session") as mock_session:
         mock_session.return_value.client.return_value = Mock()

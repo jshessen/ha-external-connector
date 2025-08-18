@@ -48,7 +48,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 import boto3
 from botocore.exceptions import ClientError
-
 from ha_connector.utils import ValidationError
 
 if TYPE_CHECKING:

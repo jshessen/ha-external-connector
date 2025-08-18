@@ -13,11 +13,10 @@ from importlib.metadata import version
 from unittest.mock import Mock, patch
 
 import pytest
-from typer.testing import CliRunner
-
 from ha_connector.cli import app
 from ha_connector.config import InstallationScenario
 from ha_connector.deployment import ServiceType
+from typer.testing import CliRunner
 
 # from ha_connector.cli.commands import get_services_for_scenario
 
@@ -371,7 +370,7 @@ class TestCLIIntegration:
     """Integration tests for CLI functionality"""
 
     @pytest.fixture
-    def temp_dir(self) -> Generator[str, None, None]:
+    def temp_dir(self) -> Generator[str]:
         """Shared temporary directory for integration tests"""
         temp_dir = tempfile.mkdtemp()
         yield temp_dir

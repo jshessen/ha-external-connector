@@ -9,8 +9,6 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from moto import mock_aws
-
 from ha_connector.deployment import (
     DeploymentConfig,
     DeploymentManager,
@@ -22,6 +20,7 @@ from ha_connector.deployment import (
     orchestrate_deployment,
 )
 from ha_connector.utils import ValidationError
+from moto import mock_aws
 
 
 # Shared test fixtures for performance optimization
@@ -143,7 +142,7 @@ def mock_service_installer() -> ServiceInstaller:
 
 # Global moto fixture for deployment tests
 @pytest.fixture(autouse=True, scope="class")
-def mock_aws_for_deployment() -> Generator[None, None, None]:
+def mock_aws_for_deployment() -> Generator[None]:
     """Automatically apply moto mocking to all deployment test classes"""
     with mock_aws():
         yield

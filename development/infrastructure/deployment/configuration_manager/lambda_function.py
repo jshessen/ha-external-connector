@@ -142,7 +142,7 @@ import re
 import time
 import urllib.parse
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 import boto3
 import urllib3
