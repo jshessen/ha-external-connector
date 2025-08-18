@@ -5,20 +5,24 @@ Welcome to the Home Assistant External Connector documentation. This hub provide
 ## 🎯 Quick Navigation
 
 ### For Users
+
 - **[Alexa Integration Guide](integrations/alexa/)** - Complete setup and configuration
 - **[Installation & Setup](deployment/)** - Getting started with the integration
 
 ### For Developers
+
 - **[Development Workflow](development/DEVELOPMENT_WORKFLOW_GUIDE.md)** - Contributor onboarding
 - **[Code Quality Suite](development/CODE_QUALITY_SUITE.md)** - Standards and tooling
 - **[Browser Mod Architecture](development/BROWSER_MOD_INTEGRATION_BREAKTHROUGH.md)** - Key architectural decisions
 - **[Automation Setup](development/AUTOMATION_SETUP.md)** - Development environment
 
 ### For Operations
+
 - **[Deployment Guide](deployment/)** - Production deployment procedures
 - **[API Documentation](api/)** - Security validation and API references
 
 ### Project History
+
 - **[Architecture Evolution](history/ARCHITECTURE_EVOLUTION.md)** - Design decision timeline
 - **[HACS Optimization](history/HACS_OPTIMIZED_STRUCTURE_COMPLETE.md)** - Structure optimization
 - **[Project Milestones](history/)** - Completion records and analysis
@@ -49,16 +53,19 @@ docs/
 ## 🚀 Getting Started
 
 ### New Users
+
 1. Start with [Alexa Integration Guide](integrations/alexa/)
 2. Follow [Installation & Setup](deployment/)
 3. Check [API Documentation](api/) for advanced features
 
 ### New Contributors
+
 1. Read [Development Workflow](development/DEVELOPMENT_WORKFLOW_GUIDE.md)
 2. Review [Code Quality Suite](development/CODE_QUALITY_SUITE.md)
 3. Set up environment with [Automation Setup](development/AUTOMATION_SETUP.md)
 
 ### Operations Teams
+
 1. Review [Deployment Guide](deployment/)
 2. Understand [API Security](api/security_validation_api.md)
 3. Prepare troubleshooting with [operations guides](deployment/)

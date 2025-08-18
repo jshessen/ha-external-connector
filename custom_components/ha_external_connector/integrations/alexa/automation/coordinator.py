@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.exceptions import HomeAssistantError
 
@@ -23,9 +23,6 @@ from .models import (
     SMAPICredentials,
 )
 from .smapi_client import AmazonSMAPIClient
-
-if TYPE_CHECKING:
-    from ..skill_definition_manager import AlexaSkillDefinitionManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,23 +38,20 @@ class AmazonDeveloperConsoleAutomator:
     - Browser automation guidance (fallback)
     - Manual workflow coordination (comprehensive)
 
-    Args:
-        skill_manager: Skill definition and manifest management instance
+    This is a simplified version for HACS integration that doesn't depend
+    on external development tools.
 
     Example:
-        >>> skill_manager = AlexaSkillDefinitionManager()
-        >>> automator = AmazonDeveloperConsoleAutomator(skill_manager)
+        >>> automator = AmazonDeveloperConsoleAutomator()
         >>> response = await automator.automate_console_setup(request)
     """
 
-    def __init__(self, skill_manager: AlexaSkillDefinitionManager) -> None:
-        """Initialize the console automator with skill management integration.
-
-        Args:
-            skill_manager: Skill definition and manifest management instance
-        """
-        self.skill_manager = skill_manager
+    def __init__(self) -> None:
+        """Initialize the console automator for HACS integration."""
         self._smapi_client: AmazonSMAPIClient | None = None
+        # Simplified skill management for HACS integration
+        self._skills: dict[str, dict] = {}
+        self._skill_manifests: dict[str, dict] = {}
         self._setup_steps: list[ConsoleSetupStep] = []
         _LOGGER.info("Amazon Developer Console Automator initialized")
 
@@ -269,7 +263,7 @@ class AmazonDeveloperConsoleAutomator:
         _LOGGER.info("Creating automation guide for skill %s", skill_id)
 
         # Validate skill exists
-        if skill_id not in self.skill_manager.skills:
+        if skill_id not in self._skills:
             raise ValidationError(f"Skill not found: {skill_id}")
 
         # Generate comprehensive setup response based on request method
@@ -412,11 +406,11 @@ class AmazonDeveloperConsoleAutomator:
         _LOGGER.info("Validating skill setup for %s", skill_id)
 
         # Validate skill exists
-        if skill_id not in self.skill_manager.skills:
+        if skill_id not in self._skills:
             raise ValidationError(f"Skill not found: {skill_id}")
 
         # Get skill manifest as dict
-        skill_manifest = self.skill_manager.get_skill_manifest(skill_id)
+        skill_manifest = self._skill_manifests.get(skill_id, {})
 
         # Perform validation checks
         validation_results = {
@@ -498,11 +492,11 @@ class AmazonDeveloperConsoleAutomator:
         _LOGGER.info("Generating manifest export for %s", skill_id)
 
         # Validate skill exists
-        if skill_id not in self.skill_manager.skills:
+        if skill_id not in self._skills:
             raise ValidationError(f"Skill not found: {skill_id}")
 
         # Get skill manifest as dict
-        skill_manifest = self.skill_manager.get_skill_manifest(skill_id)
+        skill_manifest = self._skill_manifests.get(skill_id, {})
 
         # Generate comprehensive export
         manifest_export = {

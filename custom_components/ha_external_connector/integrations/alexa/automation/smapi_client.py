@@ -11,10 +11,12 @@ import logging
 import secrets
 import time
 import urllib.parse
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import aiohttp
 from homeassistant.exceptions import HomeAssistantError
+
+if TYPE_CHECKING:
+    from aiohttp import ClientError, ClientSession
 
 from .models import SkillDeploymentStage, SkillValidationResult, SMAPICredentials
 
@@ -46,7 +48,7 @@ class AmazonSMAPIClient:
     def __init__(
         self,
         credentials: SMAPICredentials,
-        session: aiohttp.ClientSession | None = None,
+        session: ClientSession | None = None,
     ) -> None:
         """Initialize Amazon SMAPI client.
 
@@ -62,10 +64,9 @@ class AmazonSMAPIClient:
     async def __aenter__(self) -> AmazonSMAPIClient:
         """Async context manager entry."""
         if self.session is None:
-            self.session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=60),
-                headers={"User-Agent": "HomeAssistant-ExternalConnector/1.0"},
-            )
+            # This should be set by Home Assistant integration before use
+            msg = "Session must be provided by Home Assistant integration"
+            raise HomeAssistantError(msg)
         return self
 
     async def __aexit__(
@@ -215,7 +216,7 @@ class AmazonSMAPIClient:
                     error_msg = response_data.get("message", f"HTTP {response.status}")
                     raise ValidationError(f"SMAPI request failed: {error_msg}")
 
-            except aiohttp.ClientError as e:
+            except ClientError as e:
                 if attempt == 2:  # Last attempt
                     raise ValidationError(f"SMAPI request error: {e}") from e
                 await asyncio.sleep(2**attempt)
