@@ -78,7 +78,8 @@ def cli_command(  # pylint: disable=too-many-positional-arguments
     # Implementation
 ```
 
-**Justification**: CLI interfaces require many parameters for user flexibility. This is an architectural constraint, not a design flaw.
+**Justification**: CLI interfaces require many parameters for user flexibility. This is an
+architectural constraint, not a design flaw.
 
 ## Exception Handling Patterns
 
@@ -184,7 +185,9 @@ except ClientError as e:
 
 ### Forward Reference Type Resolution (Pylance/Pyright)
 
-When working with forward references in Pydantic models, especially `list[Type]` fields with `default_factory`, Pylance/Pyright may report "Type is partially unknown" errors even when MyPy works correctly.
+When working with forward references in Pydantic models, especially `list[Type]` fields with
+`default_factory`, Pylance/Pyright may report "Type is partially unknown" errors even when
+MyPy works correctly.
 
 #### Problem Pattern: Traditional Field Assignment with Forward References
 
@@ -323,7 +326,8 @@ class MyManager:
 
 - Import boto3 client types only in `TYPE_CHECKING` blocks
 - Use quoted type annotations for forward references
-- Use `# pyright: ignore[reportArgumentType, reportUnknownMemberType]` for boto3.client() calls
+- Use `# pyright: ignore[reportArgumentType, reportUnknownMemberType]` for
+  boto3.client() calls
 - This resolves MyPy/Pylance compatibility issues with boto3 dynamic client creation
 
 ## Refactoring Process Guidelines
@@ -435,4 +439,6 @@ source .venv/bin/activate && ruff check --select I --fix src/ tests/ scripts/
 
 ---
 
-**Key Takeaway**: Address root causes (complexity, unclear responsibilities) rather than symptoms (individual warnings). Well-structured code naturally avoids most quality issues.
+**Key Takeaway**: Address root causes (complexity, unclear responsibilities) rather than
+symptoms (individual warnings). Well-structured code naturally avoids most quality
+issues.

@@ -30,11 +30,16 @@ This project uses a hierarchical instruction system to eliminate conflicts:
 
 ### Quick Pattern Reference
 
-- **AWS files** (`**/aws_*.py`, `**/adapters/**/*.py`) → `instructions/specialized/aws-patterns.md`
-- **Lambda functions** (`**/lambda_functions/**/*.py`) → `instructions/specialized/lambda-patterns.md`
-- **Test files** (`**/test_*.py`, `**/tests/**/*.py`) → `instructions/specialized/testing-patterns.md`
-- **Security files** (`**/security/**/*.py`) → `instructions/specialized/security-patterns.md`
-- **Pydantic models** (`**/*models*.py`, Pylance type issues) → `instructions/core/quality-standards.md#pydantic-type-annotation-patterns`
+- **AWS files** (`**/aws_*.py`, `**/adapters/**/*.py`) →
+  `instructions/specialized/aws-patterns.md`
+- **Lambda functions** (`**/lambda_functions/**/*.py`) →
+  `instructions/specialized/lambda-patterns.md`
+- **Test files** (`**/test_*.py`, `**/tests/**/*.py`) →
+  `instructions/specialized/testing-patterns.md`
+- **Security files** (`**/security/**/*.py`) →
+  `instructions/specialized/security-patterns.md`
+- **Pydantic models** (`**/*models*.py`, Pylance type issues) →
+  `instructions/core/quality-standards.md#pydantic-type-annotation-patterns`
 - **Markdown files** (`**/*.md`) → `instructions/documentation/markdown-standards.md`
 
 ## ⚡ Streamlined Terminal Automation
@@ -122,7 +127,8 @@ Add this to your VS Code user settings (`~/.config/Code/User/settings.json` on L
 
 ### 2. Activate in VS Code UI
 
-1. Open **Settings** → **Extensions** → **GitHub Copilot** → **Chat** → **Tools: Auto Approve**
+1. Open **Settings** → **Extensions** → **GitHub Copilot** → **Chat** →
+   **Tools: Auto Approve**
 2. **CRITICAL**: Check the checkbox to enable the experimental feature
 3. Add tools using the UI or directly edit `settings.json`
 4. **Both JSON configuration AND UI activation are required for experimental features**
@@ -155,7 +161,8 @@ Add this to your VS Code user settings (`~/.config/Code/User/settings.json` on L
 ## ⚠️ LEGACY SECTION (DEPRECATED) - For Reference Only
 
 > **Note**: The following configuration uses the deprecated terminal allowlist system.
-> Use the new [Tool Approval System](#quick-start-enable-automated-tool-approvals-vs-code-2024) instead.
+> Use the new [Tool Approval System](#quick-start-enable-automated-tool-approvals-vs-code-2024)
+> instead.
 
 ```json
 {
@@ -177,9 +184,10 @@ Add this to your VS Code user settings (`~/.config/Code/User/settings.json` on L
 
 ### Legacy VS Code UI Activation (Deprecated)
 
-1. Open **Settings** → **Extensions** → **GitHub Copilot** → **Agent** → **Terminal: Allow List**
-2. Add commands using the **"Add Item"** button
-3. Both JSON and UI activation are required
+1. Open **Settings** → **Extensions**
+2. Go to **GitHub Copilot** → **Agent** → **Terminal: Allow List**
+3. Add commands using the **"Add Item"** button
+4. Both JSON and UI activation are required
 
 ### Test Your Setup
 
@@ -190,7 +198,9 @@ python scripts/agent_helper.py env     # Use "Always approve for session"
 ruff check src/ --no-fix               # Use "Always approve for session"
 ```
 
-**Note**: The auto-approve configuration is experimental and may require manual approval initially. Use the "Continue" dropdown to select "Always approve for this session" or "Always approve for this workspace" for seamless operation within the current session.
+**Note**: The auto-approve configuration is experimental and may require manual approval
+initially. Use the "Continue" dropdown to select "Always approve for this session" or
+"Always approve for this workspace" for seamless operation within the current session.
 
 ## AWS CLI Configuration
 
@@ -262,7 +272,8 @@ Agent → run_in_terminal → Direct Process → Complete Output → Agent
 - **Synchronous execution**: Tool waits for command completion (`isBackground=false`)
 - **Complete output capture**: Both stdout and stderr returned immediately
 - **No UI interruption**: Allowlisted commands bypass approval prompts
-- **Pipeline support**: Complex commands like `ruff check src/ | head -10` work seamlessly
+- **Pipeline support**: Complex commands like `ruff check src/ | head -10` work
+  seamlessly
 
 ### VS Code Tasks vs Direct Commands
 
@@ -314,13 +325,17 @@ ${workspaceFolder}/.venv/bin/python scripts/lint.py
 
 ## Security Note
 
-Only add trusted commands to the allowlist. Each command bypasses VS Code's approval prompts, so ensure you understand what each command does before adding it.
+Only add trusted commands to the allowlist. Each command bypasses VS Code's approval
+prompts, so ensure you understand what each command does before adding it.
 
 ## Agent Automation Solution: Python Script Alternative
 
 ### Problem: `python -c` Commands Trigger Prompts
 
-VS Code's allowlist has limitations with complex `python -c` patterns, even with wildcards like `"python -c*": true`. Commands like `python -c 'import sys; print(sys.executable)'` consistently trigger approval prompts regardless of allowlist configuration.
+VS Code's allowlist has limitations with complex `python -c` patterns, even with
+wildcards like `"python -c*": true`. Commands like `python -c 'import sys;
+print(sys.executable)'` consistently trigger approval prompts regardless of allowlist
+configuration.
 
 ### Solution: Use `scripts/agent_helper.py`
 
@@ -339,11 +354,16 @@ VS Code's allowlist has limitations with complex `python -c` patterns, even with
 
 ### Available Agent Helper Actions
 
-- **`python scripts/agent_helper.py env`** - Environment validation (Python version, venv status, working directory, key files)
-- **`python scripts/agent_helper.py imports`** - Module import testing (validates core project imports)
-- **`python scripts/agent_helper.py tools`** - Development tools check (ruff, pytest, mypy, black versions)
-- **`python scripts/agent_helper.py python`** - Python environment info (executable path, version, platform)
-- **`python scripts/agent_helper.py all`** - Complete automation suite (all checks combined)
+- **`python scripts/agent_helper.py env`** - Environment validation (Python version,
+  venv status, working directory, key files)
+- **`python scripts/agent_helper.py imports`** - Module import testing (validates core
+  project imports)
+- **`python scripts/agent_helper.py tools`** - Development tools check (ruff, pytest,
+  mypy, black versions)
+- **`python scripts/agent_helper.py python`** - Python environment info (executable
+  path, version, platform)
+- **`python scripts/agent_helper.py all`** - Complete automation suite (all checks
+  combined)
 
 ### Benefits Over `python -c`
 
@@ -368,7 +388,8 @@ python scripts/agent_helper.py imports
 python scripts/agent_helper.py all
 ```
 
-This approach eliminates the `python -c` allowlist limitations while providing superior functionality for agent automation tasks.
+This approach eliminates the `python -c` allowlist limitations while providing superior
+functionality for agent automation tasks.
 
 ---
 
@@ -378,26 +399,34 @@ This approach eliminates the `python -c` allowlist limitations while providing s
 
 **📂 CONTEXT-SPECIFIC GUIDANCE:**
 
-This project includes specialized instruction files in `.github/instructions/` that provide detailed patterns for:
+This project includes specialized instruction files in `.github/instructions/` that
+provide detailed patterns for:
 
-- **`aws-patterns.instructions.md`**: AWS client creation, resource management, security patterns
-- **`code-quality-refactoring.instructions.md`**: Function decomposition, logging standards, exception handling
-- **`testing-patterns.instructions.md`**: Mandatory moto library usage, fixture design, performance requirements
-- **`security-patterns.instructions.md`**: Secret management, input validation, secure error handling
-- **`markdown-formatting.instructions.md`**: Markdownlint compliance, heading structure, list formatting
-- **`documentation-patterns.instructions.md`**: Documentation organization, HACS readiness, audience-based structure
-- **`lambda-functions-patterns.instructions.md`**: Lambda deployment markers, transfer blocks, service specialization
+- **`aws-patterns.instructions.md`**: AWS client creation, resource management,
+  security patterns
+- **`code-quality-refactoring.instructions.md`**: Function decomposition, logging
+  standards, exception handling
+- **`testing-patterns.instructions.md`**: Mandatory moto library usage, fixture design,
+  performance requirements
+- **`security-patterns.instructions.md`**: Secret management, input validation, secure
+  error handling
+- **`markdown-formatting.instructions.md`**: Markdownlint compliance, heading
+  structure, list formatting
+- **`documentation-patterns.instructions.md`**: Documentation organization, HACS
+  readiness, audience-based structure
+- **`lambda-functions-patterns.instructions.md`**: Lambda deployment markers, transfer
+  blocks, service specialization**🤖 AI ASSISTANT USAGE:**
 
-**🤖 AI ASSISTANT USAGE:**
-
-When working on files matching these patterns, reference the relevant instruction file for detailed guidance:
+When working on files matching these patterns, reference the relevant instruction file
+for detailed guidance:
 
 - AWS files (`**/aws_*.py`, `**/adapters/**/*.py`): Use AWS patterns
 - All Python files (`**/*.py`): Apply code quality and refactoring standards
 - Test files (`**/test_*.py`, `**/tests/**/*.py`): Follow testing patterns
 - Security files (`**/security/**/*.py`, `**/*security*.py`): Apply security patterns
 - Markdown files (`**/*.md`): Use markdown formatting standards
-- Documentation work (`**/docs/**/*`, documentation reorganization): Apply documentation patterns
+- Documentation work (`**/docs/**/*`, documentation reorganization): Apply
+  documentation patterns
 - Lambda functions (`**/lambda_functions/**/*.py`): Follow Lambda functions patterns
 
 ### Code Quality Requirements
@@ -414,9 +443,12 @@ When working on files matching these patterns, reference the relevant instructio
 - Fix root causes, not symptoms - address underlying issues, not warnings
 - Use modern Python patterns over legacy approaches
 - Security first - always prioritize security over convenience
-- No suppression without justification - avoid `# pylint: disable` except for architectural constraints
-- **Function complexity refactoring**: Decompose large functions into single-responsibility helpers
-- **Configuration objects**: Use Pydantic models to group related parameters and reduce argument count
+- No suppression without justification - avoid `# pylint: disable`
+  except for architectural constraints
+- **Function complexity refactoring**: Decompose large functions into
+  single-responsibility helpers
+- **Configuration objects**: Use Pydantic models to group related parameters and
+  reduce argument count
 
 ## Quality Standards
 
@@ -432,9 +464,12 @@ When working on files matching these patterns, reference the relevant instructio
 - Fix root causes, not symptoms - address underlying issues, not warnings
 - Use modern Python patterns over legacy approaches
 - Security first - always prioritize security over convenience
-- No suppression without justification - avoid `# pylint: disable` except for architectural constraints
-- **Function complexity refactoring**: Decompose large functions into single-responsibility helpers
-- **Configuration objects**: Use Pydantic models to group related parameters and reduce argument count
+- No suppression without justification - avoid `# pylint: disable` except for
+  architectural constraints
+- **Function complexity refactoring**: Decompose large functions into
+  single-responsibility helpers
+- **Configuration objects**: Use Pydantic models to group related parameters and
+  reduce argument count
 
 ### Type Safety Standards
 
@@ -456,7 +491,8 @@ When working on files matching these patterns, reference the relevant instructio
 
 - Use `types-boto3` packages for AWS client type annotations
 - Import AWS client types in `TYPE_CHECKING` blocks
-- Use `# pyright: ignore[reportArgumentType, reportUnknownMemberType]` for boto3.client() calls (MyPy/Pylance compatibility)
+- Use `# pyright: ignore[reportArgumentType, reportUnknownMemberType]` for
+  boto3.client() calls (MyPy/Pylance compatibility)
 
 ### Testing Standards
 
@@ -479,32 +515,39 @@ When working on files matching these patterns, reference the relevant instructio
 
 - **R0917** (too many arguments): Use Pydantic configuration objects for >5 parameters
 - **R0912** (too many branches): Extract decision logic into focused helper functions
-- **R0915** (too many statements): Decompose into logical workflow steps (main function <20 lines)
-- **CLI exception**: CLI functions inherently need many parameters - use targeted `# pylint: disable=too-many-positional-arguments`
+- **R0915** (too many statements): Decompose into logical workflow steps
+  (main function <20 lines)
+- **CLI exception**: CLI functions inherently need many parameters - use targeted
+  `# pylint: disable=too-many-positional-arguments`
 
 **⚡ PERFORMANCE LOGGING:**
 
 - **MANDATORY**: Use lazy % formatting: `logger.info("User %s logged in", username)`
-- **AVOID**: f-string logging: `logger.info(f"User {username} logged in")` (performance impact)
+- **AVOID**: f-string logging: `logger.info(f"User {username} logged in")`
+  (performance impact)
 - **BENEFIT**: Logging performance and structured log compatibility
 
 **🚀 REFACTORING PROCESS (Proven Pattern from alexa_setup Success):**
 
-1. **Identify complexity triggers**: Use Pylint R-family rules to find refactoring targets
+1. **Identify complexity triggers**: Use Pylint R-family rules to find refactoring
+   targets
 2. **Create configuration objects**: Use Pydantic models to group related parameters
-3. **Extract helper functions**: Single-responsibility functions with clear names (_validate_*, _setup_*, _generate_*)
+3. **Extract helper functions**: Single-responsibility functions with clear names
+   (_validate_*, _setup_*, _generate_*)
 4. **Preserve functionality**: All refactoring must maintain exact behavior and imports
 5. **Validate continuously**: Run `ruff check` and import tests after each step
 
 **💡 EXCEPTION HANDLING EVOLUTION:**
 
-- **Replace broad catching**: `except Exception:` → `except (ValidationError, ClientError):`
+- **Replace broad catching**: `except Exception:` →
+  `except (ValidationError, ClientError):`
 - **AWS response safety**: `e.response["Error"]` → `e.response.get("Error", {})`
 - **Chain exceptions**: Always use `raise typer.Exit(1) from e` to preserve traceback
 
 **🎯 ARCHITECTURAL CONSTRAINTS:**
 
-- **CLI parameters**: CLI functions naturally need 5+ parameters - use targeted disable with justification
+- **CLI parameters**: CLI functions naturally need 5+ parameters - use targeted
+  disable with justification
 - **Configuration objects**: Prefer Pydantic models over parameter tuples for type safety
 - **Helper function organization**: Group related helpers near their main function
 
@@ -554,7 +597,8 @@ When working on files matching these patterns, reference the relevant instructio
 
 **📁 AUDIENCE-BASED STRUCTURE:**
 
-Follow the established `docs/` directory structure for professional documentation organization:
+Follow the established `docs/` directory structure for professional documentation
+organization:
 
 ```text
 docs/
@@ -579,16 +623,20 @@ docs/
 
 - **Root Directory**: Only essential project files (`README.md`, `CHANGELOG.md`, configuration)
 - **User Guides**: Place in `docs/integrations/{service}/` for service-specific user instructions
-- **Development Planning**: Place in `docs/development/` for roadmaps, architecture decisions, setup guides
-- **Operations**: Place in `docs/deployment/` for deployment, monitoring, troubleshooting content
-- **Historical Records**: Place in `docs/history/` for completed analyses, evolution records, legacy content
+- **Development Planning**: Place in `docs/development/` for roadmaps, architecture
+  decisions, setup guides
+- **Operations**: Place in `docs/deployment/` for deployment, monitoring,
+  troubleshooting content
+- **Historical Records**: Place in `docs/history/` for completed analyses, evolution
+  records, legacy content
 
 **🔗 CROSS-REFERENCE STANDARDS:**
 
 - **Root README.md**: Should link to relevant `docs/` content with clear audience indicators
 - **docs/README.md**: Must provide comprehensive navigation with audience-based sections
 - **Relative Paths**: Use relative paths for internal documentation links for portability
-- **Clear Audience**: Each document should clearly indicate its target audience (users/developers/operators)
+- **Clear Audience**: Each document should clearly indicate its target audience
+  (users/developers/operators)
 
 **📋 DOCUMENTATION LIFECYCLE MANAGEMENT:**
 
@@ -603,17 +651,20 @@ When reorganizing documentation:
 
 **🚀 HACS-READY DOCUMENTATION:**
 
-Maintain documentation structure that supports future HACS (Home Assistant Community Store) publication:
+Maintain documentation structure that supports future HACS (Home Assistant Community
+Store) publication:
 
 - **Professional presentation**: Clear, consistent formatting and navigation
 - **User-focused organization**: Integration guides easily discoverable by end users
 - **Comprehensive coverage**: Setup, configuration, troubleshooting all documented
-- **Community-friendly**: Contributing guides and developer documentation separated from user guides
+- **Community-friendly**: Contributing guides and developer documentation separated from
+  user guides
 
 **🔧 AUTOMATION-FRIENDLY PATTERNS:**
 
 - **Consistent naming**: Use `UPPERCASE_WITH_UNDERSCORES.md` for major documents
-- **Clear file purposes**: Filename should indicate content type (`GUIDE`, `SETUP`, `TROUBLESHOOTING`)
+- **Clear file purposes**: Filename should indicate content type (`GUIDE`, `SETUP`,
+  `TROUBLESHOOTING`)
 - **Tool-friendly**: Structure documents for easy parsing by automation tools
 - **Version control**: Use meaningful commit messages when reorganizing documentation structure
 
@@ -644,13 +695,19 @@ Maintain documentation structure that supports future HACS (Home Assistant Commu
 
 **🔄 STRATEGIC DUPLICATE CODE SYNCHRONIZATION:**
 
-This project intentionally maintains synchronized duplicate code between Lambda functions using a **Transfer Block System** for optimal performance and deployment independence.
+This project intentionally maintains synchronized duplicate code between Lambda functions
+using a **Transfer Block System** for optimal performance and deployment independence.
 
 **📋 TRANSFER BLOCK LOCATIONS:**
 
-- **Primary Source**: `src/ha_connector/integrations/alexa/lambda_functions/cloudflare_security_gateway.py` (line ~3149)
-- **Synchronized Target**: `src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py` (line ~255)
-- **Infrastructure**: `infrastructure/deployment/smart_home_bridge.py` (separate deployment script)
+- **Primary Source**:
+  `src/ha_connector/integrations/alexa/lambda_functions/cloudflare_security_gateway.py`
+  (line ~3149)
+- **Synchronized Target**:
+  `src/ha_connector/integrations/alexa/lambda_functions/smart_home_bridge.py`
+  (line ~255)
+- **Infrastructure**: `infrastructure/deployment/smart_home_bridge.py`
+  (separate deployment script)
 
 **🎯 TRANSFER BLOCK MARKERS:**
 
@@ -677,10 +734,14 @@ def load_standardized_configuration(...):
 
 **⚠️ CRITICAL AI ASSISTANT GUIDELINES:**
 
-1. **NEVER "Clean Up" Duplicate Code**: The duplicate code between CloudFlare Security Gateway and Smart Home Bridge is INTENTIONAL
-2. **Preserve Transfer Blocks**: When editing one transfer block, copy changes to the synchronized location
-3. **Maintain Service-Specific Customizations**: Each Lambda function has its own cache prefixes and service identifiers
-4. **Infrastructure Files Are Separate**: Don't confuse `infrastructure/deployment/` files with main Lambda functions
+1. **NEVER "Clean Up" Duplicate Code**: The duplicate code between CloudFlare Security
+   Gateway and Smart Home Bridge is INTENTIONAL
+2. **Preserve Transfer Blocks**: When editing one transfer block, copy changes to the
+   synchronized location
+3. **Maintain Service-Specific Customizations**: Each Lambda function has its own cache
+   prefixes and service identifiers
+4. **Infrastructure Files Are Separate**: Don't confuse `infrastructure/deployment/`
+   files with main Lambda functions
 
 **🔧 TRANSFER WORKFLOW:**
 
@@ -699,7 +760,8 @@ When updating shared functionality:
 
 - **Lambda Independence**: Each function can be deployed separately without shared dependencies
 - **Performance Optimization**: Eliminates import overhead and cold start penalties
-- **Service Specialization**: CloudFlare Security Gateway handles authentication, Smart Home Bridge handles voice commands
+- **Service Specialization**: CloudFlare Security Gateway handles authentication,
+  Smart Home Bridge handles voice commands
 - **Maintenance Efficiency**: Transfer blocks enable quick synchronization of shared optimizations
 
 **📊 PERFORMANCE BENEFITS:**
@@ -727,17 +789,22 @@ When working with documentation:
 2. **Organization**: Apply audience-based categorization (users/developers/operations/history)
 3. **Movement**: Use `run_in_terminal` with `mv` commands for file reorganization
 4. **Reference Updates**: Use `grep_search` to find and update internal links after moves
-5. **Validation**: Use `python scripts/agent_helper.py imports` to ensure no code breaks after documentation changes
+5. **Validation**: Use `python scripts/agent_helper.py imports` to ensure no code breaks
+   after documentation changes
 6. **Professional Standards**: Apply markdownlint compliance and HACS-ready formatting throughout
 
 **🎯 DOCUMENTATION BEST PRACTICES:**
 
-- **Root directory cleanup**: Keep only essential project files in root, move documentation to `docs/`
-- **Audience clarity**: Each document should clearly serve users, developers, operators, or historical context
+- **Root directory cleanup**: Keep only essential project files in root, move
+  documentation to `docs/`
+- **Audience clarity**: Each document should clearly serve users, developers, operators,
+  or historical context
 - **Link maintenance**: Always update internal references when moving documentation files
-- **HACS readiness**: Organize documentation to support future Home Assistant Community Store publication
+- **HACS readiness**: Organize documentation to support future Home Assistant Community
+  Store publication
 - **Consistency**: Use established naming conventions and directory structure patterns
 
 ---
 
-**Project Source**: This configuration was developed for Python projects requiring comprehensive linting and development tool automation.
+**Project Source**: This configuration was developed for Python projects requiring
+comprehensive linting and development tool automation.

@@ -222,3 +222,5 @@ oauth_tokens.json
 # Home Assistant Core development repository (added to workspace but not tracked)
 /mnt/development/GitHub/ha-core/
 ha-core/
+**/ha-core/
+ha-core/**/*

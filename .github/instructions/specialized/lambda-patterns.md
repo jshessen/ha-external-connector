@@ -2,7 +2,10 @@
 
 ## Overview
 
-This instruction file documents the specialized patterns and standards for Lambda function development in the `src/ha_connector/integrations/alexa/lambda_functions/` directory. These patterns ensure optimal performance, deployment independence, and maintainable code architecture.
+This instruction file documents the specialized patterns and standards for Lambda function
+development in the `src/ha_connector/integrations/alexa/lambda_functions/` directory.
+These patterns ensure optimal performance, deployment independence, and maintainable code
+architecture.
 
 ## Standardized Deployment Markers System
 
@@ -49,7 +52,8 @@ def _initialize_logging() -> logging.Logger:
 1. **Visual Brackets**: Use Unicode box-drawing characters `╭`, `╮`, `╰`, `╯`
 2. **Block Identifiers**: `IMPORT_BLOCK_START/END` and `FUNCTION_BLOCK_START/END`
 3. **Shared Import Identification**: `# === SHARED CONFIGURATION IMPORTS ===`
-4. **Development Comment**: `# SHARED_CONFIG_IMPORT: Development-only imports replaced in deployment`
+4. **Development Comment**:
+   `# SHARED_CONFIG_IMPORT: Development-only imports replaced in deployment`
 
 **🔧 VALIDATION INTEGRATION:**
 
@@ -110,7 +114,8 @@ python scripts/deploy_shared_config.py --validate
 
 **🔄 INTENTIONAL DUPLICATION STRATEGY:**
 
-Lambda functions maintain strategic duplicate code using transfer blocks for optimal performance and deployment independence.
+Lambda functions maintain strategic duplicate code using transfer blocks for optimal performance
+and deployment independence.
 
 ### Transfer Block Markers
 
@@ -417,7 +422,8 @@ def validate_transfer_block_sync():
 
 **🔧 RECOMMENDED PROCESS:**
 
-1. **Identify Change Scope**: Determine if change affects shared code, transfer blocks, or service-specific code
+1. **Identify Change Scope**: Determine if change affects shared code, transfer blocks,
+   or service-specific code
 2. **Preserve Markers**: Ensure all deployment markers remain intact
 3. **Sync Changes**: If editing transfer blocks, synchronize across Lambda functions
 4. **Validate Imports**: Test imports after structural changes
@@ -463,4 +469,6 @@ def validate_transfer_block_sync():
 
 ---
 
-**Key Takeaway**: Lambda functions in this project use intentional architectural patterns for optimal AWS performance. Preserve these patterns and use the established systems for deployment, validation, and synchronization.
+**Key Takeaway**: Lambda functions in this project use intentional architectural
+patterns for optimal AWS performance. Preserve these patterns and use the
+established systems for deployment, validation, and synchronization.
