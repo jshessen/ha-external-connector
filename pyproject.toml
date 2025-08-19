@@ -118,7 +118,7 @@ executionEnvironments = [
     { root = ".", pythonVersion = "3.13", pythonPlatform = "Linux", extraPaths = ["src"] }
 ]
 typeCheckingMode = "basic"
-include = ["src", "tests", "scripts"]
+include = ["src", "tests", "scripts", "custom_components"]
 exclude = [
     ".coveragerc",
     ".venv",
@@ -127,7 +127,26 @@ exclude = [
     "**/__pycache__",
     "**/.mypy_cache",
     "**/.pytest_cache",
+    "**/.ruff_cache",
     "infrastructure/deployment",
+    # CRITICAL: Exclude Home Assistant development instances to prevent enumeration delays
+    "ha-dev-instance/**",
+    # CRITICAL: Exclude ha-core from Pylance analysis to prevent enumeration delays
+    "/mnt/development/GitHub/ha-core/**",
+    "**/ha-core/**",
+    "**/.git/**",
+    # Additional large directories that can slow down analysis
+    "node_modules/**",
+    ".backup/**",
+    "htmlcov/**",
+    "docs/_build/**"
+]
+ignore = [
+    # CRITICAL: Ignore ha-core from Pylance analysis to prevent enumeration delays
+    "/mnt/development/GitHub/ha-core/**",
+    "**/ha-core/**",
+    # CRITICAL: Ignore Home Assistant development instances
+    "ha-dev-instance/**"
 ]
 reportMissingImports = "none"  # Align with mypy's ignore-missing-imports behavior
 reportMissingTypeStubs = "none"
