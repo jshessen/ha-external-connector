@@ -25,17 +25,16 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
-from ..config import ConfigurationManager, InstallationScenario
-from ..deployment import (
+from ..alexa_automation_scripts.skill_automation_manager import SmartHomeSkillAutomator
+from ..deployment_tools.deploy_manager import (
     DeploymentConfig,
     DeploymentManager,
     DeploymentStrategy,
-    ServiceInstaller,
-    ServiceType,
 )
-from ..integrations.alexa.skill_automation_manager import SmartHomeSkillAutomator
+from ..deployment_tools.service_installer import ServiceInstaller, ServiceType
 from ..platforms.aws.resource_manager import AWSResourceManager
 from ..utils import HAConnectorLogger, ValidationError
+from ..utils.manager import ConfigurationManager, InstallationScenario
 
 
 class InstallCommandConfig(BaseModel):

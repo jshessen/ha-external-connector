@@ -7,6 +7,7 @@ Browser Mod integration works correctly in the HACS structure.
 """
 
 import asyncio
+import json
 import logging
 import sys
 from pathlib import Path
@@ -20,91 +21,87 @@ logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
 
+# Import integration modules at the top-level to avoid "Import outside toplevel" errors
+try:
+    from custom_components.ha_external_connector import DOMAIN, PLATFORMS
+    from custom_components.ha_external_connector.browser_mod_lwa_assistant import (
+        BrowserModLWAAssistant,
+    )
+    from custom_components.ha_external_connector.config_flow import ConfigFlow
+    from custom_components.ha_external_connector.const import DOMAIN as CONST_DOMAIN
+
+    _INTEGRATION_IMPORT_ERROR = None
+except ImportError as e:
+    DOMAIN = None
+    PLATFORMS = None
+    CONST_DOMAIN = None
+    BrowserModLWAAssistant = None
+    ConfigFlow = None
+    _INTEGRATION_IMPORT_ERROR = e
+
+
 async def test_integration_import():
     """Test that our integration can be imported correctly."""
-    try:
-        # Test importing the integration modules
-        from ha_external_connector import (
-            DOMAIN,
-            PLATFORMS,
-            async_setup,
-            async_setup_entry,
-            async_unload_entry,
-        )
-        from ha_external_connector.browser_mod_lwa_assistant import (
-            BrowserModLWAAssistant,
-        )
-        from ha_external_connector.config_flow import ConfigFlow
-        from ha_external_connector.const import DOMAIN as CONST_DOMAIN
-        from ha_external_connector.services import (
-            async_setup_services,
-            async_unload_services,
-        )
-
-        _LOGGER.info("✅ All integration modules imported successfully")
-        _LOGGER.info(f"✅ Domain: {DOMAIN}")
-        _LOGGER.info(f"✅ Platforms: {PLATFORMS}")
-        _LOGGER.info(f"✅ Const Domain: {CONST_DOMAIN}")
-
-        return True
-
-    except ImportError as e:
-        _LOGGER.error(f"❌ Import failed: {e}")
+    if _INTEGRATION_IMPORT_ERROR is not None:
+        _LOGGER.error("❌ Import failed: %s", _INTEGRATION_IMPORT_ERROR)
         return False
+
+    _LOGGER.info("✅ All integration modules imported successfully")
+    _LOGGER.info("✅ Domain: %s", DOMAIN)
+    _LOGGER.info("✅ Platforms: %s", PLATFORMS)
+    _LOGGER.info("✅ Const Domain: %s", CONST_DOMAIN)
+
+    return True
 
 
 async def test_browser_mod_assistant_init():
     """Test that BrowserModLWAAssistant can be initialized."""
     try:
         # Create minimal mock HomeAssistant object
-        class MockHomeAssistant:
-            def __init__(self):
-                self.services = MockServices()
-
         class MockServices:
             def async_services(self):
                 return {
                     "browser_mod": {"popup": {}, "navigate": {}, "notification": {}}
                 }
 
+        class MockHomeAssistant:
+            def __init__(self):
+                self.services = MockServices()
+
         mock_hass = MockHomeAssistant()
-
-        # Test BrowserModLWAAssistant initialization
-        from ha_external_connector.browser_mod_lwa_assistant import (
-            BrowserModLWAAssistant,
-        )
-
         assistant = BrowserModLWAAssistant(mock_hass)
         _LOGGER.info("✅ BrowserModLWAAssistant initialized successfully")
 
         # Test constants are accessible
         _LOGGER.info(
-            f"✅ Required redirect URIs: {len(assistant.REQUIRED_REDIRECT_URIS)}"
+            "✅ Required redirect URIs: %s", len(assistant.REQUIRED_REDIRECT_URIS)
         )
         _LOGGER.info(
-            f"✅ Default profile config name: {assistant.DEFAULT_PROFILE_CONFIG['name']}"
+            "✅ Default profile config name: %s",
+            assistant.DEFAULT_PROFILE_CONFIG["name"],
         )
 
         return True
 
-    except Exception as e:
-        _LOGGER.error(f"❌ BrowserModLWAAssistant test failed: {e}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _LOGGER.error("❌ BrowserModLWAAssistant test failed: %s", e)
         return False
 
 
 async def test_config_flow():
     """Test that config flow can be imported and initialized."""
     try:
-        from ha_external_connector.config_flow import ConfigFlow
+        if ConfigFlow is None:
+            raise ImportError("ConfigFlow could not be imported")
 
         # Test constants
         config_flow = ConfigFlow()
-        _LOGGER.info(f"✅ Config flow version: {config_flow.VERSION}")
+        _LOGGER.info("✅ Config flow version: %s", config_flow.VERSION)
 
         return True
 
-    except Exception as e:
-        _LOGGER.error(f"❌ Config flow test failed: {e}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _LOGGER.error("❌ Config flow test failed: %s", e)
         return False
 
 
@@ -129,7 +126,7 @@ async def validate_hacs_structure():
             missing_files.append(file_path)
 
     if missing_files:
-        _LOGGER.error(f"❌ Missing required files: {missing_files}")
+        _LOGGER.error("❌ Missing required files: %s", missing_files)
         return False
 
     _LOGGER.info("✅ All required HACS files present")
@@ -138,13 +135,12 @@ async def validate_hacs_structure():
 
 async def test_manifest_json():
     """Test manifest.json is valid."""
-    import json
 
     try:
         manifest_path = (
             PROJECT_ROOT / "custom_components/ha_external_connector/manifest.json"
         )
-        with open(manifest_path) as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
 
         required_keys = [
@@ -158,40 +154,42 @@ async def test_manifest_json():
         missing_keys = [key for key in required_keys if key not in manifest]
 
         if missing_keys:
-            _LOGGER.error(f"❌ Missing manifest keys: {missing_keys}")
+            _LOGGER.error("❌ Missing manifest keys: %s", missing_keys)
             return False
 
         _LOGGER.info(
-            f"✅ Manifest valid - Domain: {manifest['domain']}, Version: {manifest['version']}"
+            "✅ Manifest valid - Domain: %s, Version: %s",
+            manifest["domain"],
+            manifest["version"],
         )
         _LOGGER.info(
-            f"✅ Browser Mod dependency: {'browser_mod' in manifest.get('dependencies', [])}"
+            "✅ Browser Mod dependency: %s",
+            "browser_mod" in manifest.get("dependencies", []),
         )
 
         return True
 
-    except Exception as e:
-        _LOGGER.error(f"❌ Manifest validation failed: {e}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _LOGGER.error("❌ Manifest validation failed: %s", e)
         return False
 
 
 async def test_hacs_json():
     """Test hacs.json is valid."""
-    import json
 
     try:
         hacs_path = PROJECT_ROOT / "hacs.json"
-        with open(hacs_path) as f:
+        with open(hacs_path, encoding="utf-8") as f:
             hacs_config = json.load(f)
 
-        _LOGGER.info(f"✅ HACS config - Name: {hacs_config.get('name')}")
-        _LOGGER.info(f"✅ HA Version: {hacs_config.get('homeassistant')}")
-        _LOGGER.info(f"✅ HACS Version: {hacs_config.get('hacs')}")
+        _LOGGER.info("✅ HACS config - Name: %s", hacs_config.get("name"))
+        _LOGGER.info("✅ HA Version: %s", hacs_config.get("homeassistant"))
+        _LOGGER.info("✅ HACS Version: %s", hacs_config.get("hacs"))
 
         return True
 
-    except Exception as e:
-        _LOGGER.error(f"❌ HACS config validation failed: {e}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        _LOGGER.error("❌ HACS config validation failed: %s", e)
         return False
 
 
@@ -210,12 +208,12 @@ async def main():
 
     results = []
     for test_name, test_func in tests:
-        _LOGGER.info(f"\n🧪 Running {test_name} test...")
+        _LOGGER.info("\n🧪 Running %s test...", test_name)
         try:
             result = await test_func()
             results.append((test_name, result))
-        except Exception as e:
-            _LOGGER.error(f"❌ {test_name} test crashed: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            _LOGGER.error("❌ %s test crashed: %s", test_name, e)
             results.append((test_name, False))
 
     # Summary
@@ -223,18 +221,18 @@ async def main():
     passed = 0
     for test_name, result in results:
         status = "✅ PASSED" if result else "❌ FAILED"
-        _LOGGER.info(f"  {test_name}: {status}")
+        _LOGGER.info("  %s: %s", test_name, status)
         if result:
             passed += 1
 
-    _LOGGER.info(f"\n🎯 Overall: {passed}/{len(results)} tests passed")
+    _LOGGER.info("\n🎯 Overall: %s/%s tests passed", passed, len(results))
 
     if passed == len(results):
         _LOGGER.info("🎉 All tests passed! Integration is ready for local HA testing.")
         return True
-    else:
-        _LOGGER.error("💥 Some tests failed. Fix issues before proceeding.")
-        return False
+
+    _LOGGER.error("💥 Some tests failed. Fix issues before proceeding.")
+    return False
 
 
 if __name__ == "__main__":

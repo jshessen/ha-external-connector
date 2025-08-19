@@ -19,15 +19,16 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress
 from rich.prompt import Confirm, Prompt
-from custom_components.ha_external_connector.integrations.alexa.amazon_developer_console import (
+
+from development.alexa_automation_scripts.amazon_developer_console import (
     AmazonDeveloperConsoleIntegration,
     AutomationConfig,
     BrowserAutomationDriver,
     OAuthConfiguration,
     SkillConfiguration,
     SkillMetadata,
+    SMAPICredentials,
 )
-from custom_components.ha_external_connector.integrations.alexa.smapi_client import SMAPICredentials
 
 if TYPE_CHECKING:
     pass
@@ -444,7 +445,15 @@ def list_skills() -> None:
             )
             raise typer.Exit(1)
 
-        skills = console_integration.smapi_client.list_skills()
+        # Use the correct method to list skills for the vendor
+        vendor_id = (
+            credentials.vendor_id
+            or console_integration.smapi_client.get_vendor_id()
+        )
+        if not vendor_id:
+            rprint("[red]❌ Vendor ID not found. Please complete authentication.[/red]")
+            raise typer.Exit(1)
+        skills = console_integration.smapi_client.list_skills_for_vendor(vendor_id)
         progress.update(task, advance=100)
 
     if skills:

@@ -6,7 +6,8 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from ha_connector.platforms.cloudflare.api_manager import (
+
+from development.platforms.cloudflare.api_manager import (
     AccessApplicationSpec,
     CloudFlareAccessManager,
     CloudFlareConfig,

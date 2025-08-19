@@ -22,13 +22,13 @@ import traceback
 from pathlib import Path
 from typing import Any, cast
 
-from custom_components.ha_external_connector.integrations.alexa.console_automation import (
+from development.alexa_automation_scripts.console_automation import (  # noqa: E501
     AutomationMethod,
     SkillCertificationResult,
     SkillValidationResult,
     SMAPICredentials,
 )
-from custom_components.ha_external_connector.integrations.alexa.skill_definition_manager import (
+from development.alexa_automation_scripts.skill_definition_manager import (  # noqa: E501
     AlexaSkillDefinitionManager,
     SkillDefinitionRequest,
 )

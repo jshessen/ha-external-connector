@@ -12,18 +12,17 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from ha_connector.cli.main import app
-from ha_connector.config import ConfigurationManager, InstallationScenario
-from ha_connector.deployment import (
-    DeploymentConfig,
-    DeploymentManager,
-    DeploymentResult,
-    DeploymentStrategy,
-    ServiceType,
-)
-from ha_connector.platforms.cloudflare.api_manager import CloudFlareManager
 from typer.testing import CliRunner
 
+from development.cli.main import app
+from development.deployment_tools.deploy_manager import (
+    DeploymentConfig,
+    DeploymentManager,
+    DeploymentStrategy,
+)
+from development.deployment_tools.service_installer import DeploymentResult, ServiceType
+from development.platforms.cloudflare.api_manager import CloudFlareManager
+from development.utils.manager import ConfigurationManager, InstallationScenario
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 

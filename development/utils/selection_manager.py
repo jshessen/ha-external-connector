@@ -19,7 +19,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 try:
-    from development.config.manager import InstallationScenario
+    from development.utils.manager import InstallationScenario
 except ImportError:
     # Fallback definition for type checking or testing
 

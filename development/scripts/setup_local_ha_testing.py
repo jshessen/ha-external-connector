@@ -10,7 +10,7 @@ import asyncio
 import logging
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404: usage is controlled and arguments are not user-supplied
 import sys
 from pathlib import Path
 
@@ -31,20 +31,32 @@ def check_prerequisites():
     python_version = sys.version_info
     if python_version < (3, 11):
         _LOGGER.error(
-            f"❌ Python 3.11+ required, found {python_version.major}.{python_version.minor}"
+            "❌ Python 3.11+ required, found %d.%d",
+            python_version.major,
+            python_version.minor,
         )
         return False
 
     _LOGGER.info(
-        f"✅ Python {python_version.major}.{python_version.minor}.{python_version.micro}"
+        "✅ Python %d.%d.%d",
+        python_version.major,
+        python_version.minor,
+        python_version.micro,
     )
 
     # Check git
+    git_path = shutil.which("git")
+    if not git_path:
+        _LOGGER.error("❌ Git not found. Install git to continue.")
+        return False
     try:
-        subprocess.run(["git", "--version"], check=True, capture_output=True)
+        # Safe: git_path is resolved by shutil.which and not user input
+        subprocess.run(
+            [git_path, "--version"], check=True, capture_output=True
+        )  # nosec B603
         _LOGGER.info("✅ Git available")
     except (subprocess.CalledProcessError, FileNotFoundError):
-        _LOGGER.error("❌ Git not found. Install git to continue.")
+        _LOGGER.error("❌ Git not found or failed to run. Install git to continue.")
         return False
 
     return True
@@ -59,9 +71,17 @@ def setup_ha_dev_environment():
     os.chdir(HA_DEV_DIR)
 
     # Create virtual environment for HA
-    if not (HA_DEV_DIR / "ha-venv").exists():
+    venv_dir = HA_DEV_DIR / "ha-venv"
+    if not venv_dir.exists():
         _LOGGER.info("Creating HA virtual environment...")
-        subprocess.run([sys.executable, "-m", "venv", "ha-venv"], check=True)
+        try:
+            # nosec B603: sys.executable and venv_dir are trusted, not user input
+            subprocess.run(
+                [sys.executable, "-m", "venv", str(venv_dir)], check=True
+            )  # nosec B603
+        except subprocess.CalledProcessError as exc:
+            _LOGGER.error("❌ Failed to create virtual environment: %s", exc)
+            sys.exit(1)
     else:
         _LOGGER.info("✅ HA virtual environment exists")
 
@@ -71,12 +91,18 @@ def setup_ha_dev_environment():
         ha_python = HA_DEV_DIR / "ha-venv" / "Scripts" / "python.exe"  # Windows
 
     _LOGGER.info("Installing Home Assistant...")
-    subprocess.run(
-        [str(ha_python), "-m", "pip", "install", "--upgrade", "pip"], check=True
-    )
-    subprocess.run(
-        [str(ha_python), "-m", "pip", "install", "homeassistant"], check=True
-    )
+    try:
+        subprocess.run(
+            [str(ha_python), "-m", "pip", "install", "--upgrade", "pip"],
+            check=True,  # nosec B603
+        )
+        subprocess.run(
+            [str(ha_python), "-m", "pip", "install", "homeassistant"],
+            check=True,  # nosec B603
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        _LOGGER.error("❌ Failed to install Home Assistant: %s", exc)
+        sys.exit(1)
 
     # Initialize HA configuration
     HA_CONFIG_DIR.mkdir(exist_ok=True)
@@ -95,14 +121,18 @@ def install_browser_mod():
     if not browser_mod_dir.exists():
         _LOGGER.info("Cloning Browser Mod repository...")
         os.chdir(CUSTOM_COMPONENTS_DIR)
+        git_path = shutil.which("git")
+        if not git_path:
+            _LOGGER.error("❌ Git not found. Install git to continue.")
+            raise FileNotFoundError("git executable not found")
         subprocess.run(
             [
-                "git",
+                git_path,
                 "clone",
                 "https://github.com/thomasloven/hass-browser_mod.git",
                 "browser_mod",
             ],
-            check=True,
+            check=True,  # nosec B603: arguments are hardcoded and safe
         )
     else:
         _LOGGER.info("✅ Browser Mod already installed")
@@ -168,7 +198,7 @@ http:
   server_port: 8123
 """
 
-    with open(config_yaml, "w") as f:
+    with open(config_yaml, "w", encoding="utf-8") as f:
         f.write(config_content.strip())
 
     _LOGGER.info("✅ Configuration created")
@@ -206,7 +236,10 @@ async def test_browser_mod_services():
         await async_setup_component(hass, "browser_mod", {})
 
         # Test our integration
-        from custom_components.ha_external_connector.browser_mod_lwa_assistant import BrowserModLWAAssistant
+        # Test our integration  # noqa: E501
+        from custom_components.ha_external_connector.browser_mod_lwa_assistant import (
+            BrowserModLWAAssistant,
+        )
 
         assistant = BrowserModLWAAssistant(hass)
         availability = await assistant.check_browser_mod_availability()
@@ -223,7 +256,7 @@ if __name__ == "__main__":
     sys.exit(0 if success else 1)
 '''
 
-    with open(test_script, "w") as f:
+    with open(test_script, "w", encoding="utf-8") as f:
         f.write(test_content)
 
     _LOGGER.info("✅ Test scripts created")
@@ -254,7 +287,7 @@ echo ""
 hass --config config --debug
 """
 
-    with open(startup_script, "w") as f:
+    with open(startup_script, "w", encoding="utf-8") as f:
         f.write(startup_content)
 
     startup_script.chmod(0o755)
@@ -265,7 +298,7 @@ def print_usage_instructions():
     """Print instructions for using the development environment."""
     _LOGGER.info("\n🎉 Local HA development environment ready!")
     _LOGGER.info("\n📋 Usage Instructions:")
-    _LOGGER.info(f"1. Start HA: cd {HA_DEV_DIR} && ./start_ha_dev.sh")
+    _LOGGER.info("1. Start HA: cd %s && ./start_ha_dev.sh", HA_DEV_DIR)
     _LOGGER.info("2. Open browser: http://localhost:8123")
     _LOGGER.info("3. Go through HA setup wizard")
     _LOGGER.info("4. Add our integration via Configuration > Integrations")
@@ -281,9 +314,9 @@ def print_usage_instructions():
     )
 
     _LOGGER.info("\n📁 Environment Locations:")
-    _LOGGER.info(f"- HA Config: {HA_CONFIG_DIR}")
-    _LOGGER.info(f"- Our Integration: {CUSTOM_COMPONENTS_DIR}/ha_external_connector")
-    _LOGGER.info(f"- Browser Mod: {CUSTOM_COMPONENTS_DIR}/browser_mod")
+    _LOGGER.info("- HA Config: %s", HA_CONFIG_DIR)
+    _LOGGER.info("- Our Integration: %s/ha_external_connector", CUSTOM_COMPONENTS_DIR)
+    _LOGGER.info("- Browser Mod: %s/browser_mod", CUSTOM_COMPONENTS_DIR)
 
 
 async def main():
@@ -296,7 +329,7 @@ async def main():
             return False
 
         # Set up HA environment
-        ha_python = setup_ha_dev_environment()
+        setup_ha_dev_environment()
 
         # Install Browser Mod
         install_browser_mod()
@@ -318,8 +351,8 @@ async def main():
 
         return True
 
-    except Exception as e:
-        _LOGGER.error(f"❌ Setup failed: {e}")
+    except (OSError, subprocess.CalledProcessError) as exc:
+        _LOGGER.error("❌ Setup failed: %s", exc)
         return False
 
 

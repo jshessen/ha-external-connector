@@ -47,6 +47,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
 from custom_components.ha_external_connector.utils import HAConnectorLogger
 
 from .browser_automation import BrowserAutomationDriver

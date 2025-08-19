@@ -16,8 +16,12 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import Mock
 
-from ha_connector.config import InstallationScenario
-from ha_connector.deployment import DeploymentResult, ServiceConfig, ServiceType
+from development.deployment_tools.service_installer import (
+    DeploymentResult,
+    ServiceConfig,
+    ServiceType,
+)
+from development.utils.manager import InstallationScenario
 
 # Test constants - clearly marked as test data
 TEST_SECRET_PREFIX = "test-"  # nosec B105

@@ -11,18 +11,18 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ..config.manager import (
-    ConfigurationManager,
-    InstallationScenario,
-    ResourceRequirement,
-)
-from ..constants import LAMBDA_ASSUME_ROLE_POLICY
 from ..platforms.aws.resource_manager import (
     AWSResourceManager,
     AWSResourceType,
     LambdaResourceSpec,
 )
 from ..utils import AWSError, HAConnectorLogger, ValidationError
+from ..utils.constants import LAMBDA_ASSUME_ROLE_POLICY
+from ..utils.manager import (
+    ConfigurationManager,
+    InstallationScenario,
+    ResourceRequirement,
+)
 
 
 class ServiceType(str, Enum):

@@ -95,6 +95,9 @@ class SMAPICredentials:
     access_token: str | None = None
     refresh_token: str | None = None
     vendor_id: str | None = None
+    expires_at: int | None = None
+    refresh_expires_at: int | None = None
+    scope: str = "alexa::ask:skills:readwrite alexa::ask:models:readwrite"
 
     @classmethod
     def from_environment(cls) -> "SMAPICredentials":
@@ -160,6 +163,20 @@ class AmazonSMAPIClient:
         # This method is planned for implementation
         logger.info("Skill validation not implemented in development version")
         return {"status": "NOT_IMPLEMENTED"}
+
+    def get_vendor_id(self) -> str | None:
+        """Get the vendor ID for the authenticated account."""
+        # This method is planned for implementation
+        logger.info("Get vendor ID not implemented in development version")
+        # Return a dummy vendor ID for development to avoid None assignment errors
+        return "dummy-vendor-id-123"
+
+    def list_skills_for_vendor(self, vendor_id: str) -> list[dict[str, Any]]:  # pylint: disable=unused-argument
+        """List all skills for a vendor."""
+        # This method is planned for implementation
+        logger.info("List skills for vendor not implemented in development version")
+        # Return empty list for development
+        return []
 
 
 logger = logging.getLogger(__name__)

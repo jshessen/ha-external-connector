@@ -6,14 +6,13 @@ These tests focus on data structure validation and business logic, not service
 implementation.
 """
 
-from ha_connector.platforms.cloudflare.api_manager import (
+from development.platforms.cloudflare.api_manager import (
     AccessApplicationSpec,
     CloudFlareConfig,
     CloudFlareResourceResponse,
     CloudFlareResourceType,
     DNSRecordSpec,
 )
-
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 

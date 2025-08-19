@@ -23,7 +23,7 @@ from unittest.mock import Mock, patch
 import pytest
 from rich.console import Console
 
-from custom_components.ha_external_connector.integrations.alexa.automation.models import (  # noqa: E501
+from development.alexa_automation_scripts.amazon_developer_console import (
     SMAPICredentials,
 )
 from development.alexa_automation_scripts.smapi_token_helper import (
@@ -71,9 +71,6 @@ class TestSMAPITokenHelperUserExperience:
             client_secret=test_secret,
             access_token=test_access_token,
             refresh_token=test_refresh_token,
-            expires_at=int(time.time()) + 3600,
-            refresh_expires_at=int(time.time()) + (365 * 24 * 3600),
-            scope="alexa::ask:skills:readwrite alexa::ask:models:readwrite",
         )
 
     def test_new_user_account_creation_flow(self, token_helper):

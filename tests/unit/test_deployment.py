@@ -9,18 +9,21 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from ha_connector.deployment import (
+from moto import mock_aws
+
+from development.deployment_tools.deploy_manager import (
     DeploymentConfig,
     DeploymentManager,
-    DeploymentResult,
     DeploymentStrategy,
+    orchestrate_deployment,
+)
+from development.deployment_tools.service_installer import (
+    DeploymentResult,
     ServiceConfig,
     ServiceInstaller,
     ServiceType,
-    orchestrate_deployment,
 )
-from ha_connector.utils import ValidationError
-from moto import mock_aws
+from development.utils.helpers import ValidationError
 
 
 # Shared test fixtures for performance optimization

@@ -14,11 +14,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from custom_components.ha_external_connector.integrations.alexa.lwa_security_profile_automation import (
+from development.alexa_automation_scripts.lwa_security_profile_automation import (  # noqa: E501
     LWASecurityProfileAutomation,
     automate_security_profile_creation,
 )
-from custom_components.ha_external_connector.utils import HAConnectorLogger
+from development.utils import HAConnectorLogger
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))

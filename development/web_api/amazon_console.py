@@ -12,40 +12,93 @@ from typing import Any
 from urllib.parse import urlencode
 
 import requests
-from flask import (
-    Blueprint,
-    Flask,
-    Response,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    session,
-    url_for,
-)
-from custom_components.ha_external_connector.integrations.alexa.amazon_developer_console import (
+
+try:
+    from flask import (
+        Blueprint,
+        Flask,
+        Response,
+        jsonify,
+        redirect,
+        render_template,
+        request,
+        session,
+        url_for,
+    )
+
+    FLASK_AVAILABLE = True
+except ImportError:
+    # Flask is optional for development - web API functionality won't be available
+    Flask = Blueprint = Response = request = session = None
+    FLASK_AVAILABLE = False
+
+    # Define stub functions when Flask is not available
+    def jsonify(*_args, **_kwargs):
+        """Stub function when Flask is not available."""
+        return None
+
+    def redirect(*_args, **_kwargs):
+        """Stub function when Flask is not available."""
+        return None
+
+    def render_template(*_args, **_kwargs):
+        """Stub function when Flask is not available."""
+        return None
+
+    def url_for(*_args, **_kwargs):
+        """Stub function when Flask is not available."""
+        return None
+
+
+from development.alexa_automation_scripts.amazon_developer_console import (
     AmazonDeveloperConsoleIntegration,
     AutomationConfig,
     OAuthConfiguration,
     SkillConfiguration,
     SkillMetadata,
+    SMAPICredentials,
 )
-from custom_components.ha_external_connector.integrations.alexa.smapi_client import SMAPICredentials
-from custom_components.ha_external_connector.utils import HAConnectorLogger
+from development.utils import HAConnectorLogger
 
 # OAuth2 token endpoint for Amazon authentication (not a secret)
 AMAZON_OAUTH_TOKEN_URL = "https://api.amazon.com/auth/o2/token"  # nosec: B105 - public OAuth endpoint, not a secret
 
 logger = HAConnectorLogger("web.amazon_console")
 
-# Create Blueprint for Amazon Developer Console routes
-amazon_console_bp = Blueprint(
-    "amazon_console",
-    __name__,
-    template_folder="templates",
-    static_folder="static",
-    url_prefix="/amazon-console",
-)
+if FLASK_AVAILABLE:
+    # Flask is available - create the actual Blueprint
+    amazon_console_bp = Blueprint(
+        "amazon_console",
+        __name__,
+        template_folder="templates",
+        static_folder="static",
+        url_prefix="/amazon-console",
+    )
+else:
+    # Flask is not available - create a mock Blueprint that doesn't error
+    class MockBlueprint:
+        """Mock Blueprint that provides no-op methods when Flask is unavailable."""
+
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def route(self, *_args, **_kwargs):
+            """Mock route decorator."""
+
+            def decorator(func):
+                return func
+
+            return decorator
+
+        def __getattr__(self, name):
+            """Return a no-op function for any other method calls."""
+
+            def no_op(*_args, **_kwargs):
+                return None
+
+            return no_op
+
+    amazon_console_bp = MockBlueprint()
 
 
 @amazon_console_bp.route("/")
@@ -705,8 +758,18 @@ def list_skills():
 
         console_integration = AmazonDeveloperConsoleIntegration(credentials)
         if console_integration.smapi_client is not None:
-            skills = console_integration.smapi_client.list_skills()
-            return jsonify({"success": True, "skills": skills})
+            # Get vendor ID and list skills for that vendor
+            vendor_id = (
+                credentials.vendor_id
+                or console_integration.smapi_client.get_vendor_id()
+            )
+            if vendor_id:
+                skills = console_integration.smapi_client.list_skills_for_vendor(
+                    vendor_id
+                )
+                return jsonify({"success": True, "skills": skills})
+            logger.error("Vendor ID not found; cannot list skills.")
+            return jsonify({"success": False, "error": "Vendor ID not found"})
         logger.error("SMAPI client is not initialized; cannot list skills.")
         return (
             jsonify(

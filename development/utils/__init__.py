@@ -12,6 +12,7 @@ from .helpers import (
     HAEnvironmentError,
     PrerequisiteError,
     ValidationError,
+    assert_never,
     aws_region_check,
     error_exit,
     extract_json_value,
@@ -39,6 +40,7 @@ __all__ = [
     "HAEnvironmentError",
     "PrerequisiteError",
     # Utilities
+    "assert_never",
     "safe_exec",
     "error_exit",
     "require_commands",

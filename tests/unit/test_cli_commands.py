@@ -13,10 +13,11 @@ from importlib.metadata import version
 from unittest.mock import Mock, patch
 
 import pytest
-from ha_connector.cli import app
-from ha_connector.config import InstallationScenario
-from ha_connector.deployment import ServiceType
 from typer.testing import CliRunner
+
+from development.cli import app
+from development.deployment_tools.service_installer import ServiceType
+from development.utils.manager import InstallationScenario
 
 # from ha_connector.cli.commands import get_services_for_scenario
 

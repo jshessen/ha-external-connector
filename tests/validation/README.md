@@ -1,20 +1,24 @@
 # AWS Lambda Function Validation Suite
 
-This directory contains comprehensive validation and testing tools for the Home Assistant External Connector AWS Lambda functions.
+This directory contains comprehensive validation and testing tools for the
+Home Assistant External Connector AWS Lambda functions.
 
 ## 📁 Directory Structure
 
 ### 🛠️ Active Testing Tools (`tools/`)
 
-- **`alexa_smart_home_testing_suite.py`** - Comprehensive Alexa Smart Home testing with discovery, power control, and artifact management
+- **`alexa_smart_home_testing_suite.py`** - Comprehensive Alexa Smart Home testing
+  with discovery, power control, and artifact management
 
 ### 📚 Legacy Validation Scripts (`legacy/`)
 
 Historical validation scripts from development phases:
 
 - **`test_authentication_fix.py`** - Authentication fix validation
-- **`test_deployed_cloudflare_security_gateway.py`** - Deployed CloudFlare Security Gateway testing
-- **`test_cloudflare_security_gateway_validation.py`** - CloudFlare Security Gateway validation suite
+- **`test_deployed_cloudflare_security_gateway.py`** - Deployed CloudFlare Security
+  Gateway testing
+- **`test_cloudflare_security_gateway_validation.py`** - CloudFlare Security Gateway
+  validation suite
 - **`test_smart_home_bridge_validation.py`** - Smart Home Bridge validation
 
 ### 📋 Documentation
@@ -73,7 +77,9 @@ See `GUEST_FAN_TEST_RESULTS.md` for detailed test outcomes including:
 
 ## 🔧 Development History
 
-Legacy validation scripts in `legacy/` directory contain historical development artifacts from various testing phases. These are preserved for reference but superseded by the current testing suite.
+Legacy validation scripts in `legacy/` directory contain historical development
+artifacts from various testing phases. These are preserved for reference but
+superseded by the current testing suite.
 
 ## 💡 Usage Tips
 

@@ -8,14 +8,13 @@ import secrets
 from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
-from ha_connector.config import (
+from development.platforms.aws.resource_manager import AWSResourceResponse
+from development.utils.manager import (
     ConfigurationManager,
     ConfigurationState,
     InstallationScenario,
+    ResourceRequirement,
 )
-from ha_connector.config.manager import ResourceRequirement
-from ha_connector.platforms.aws.resource_manager import AWSResourceResponse
-
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 if TYPE_CHECKING:

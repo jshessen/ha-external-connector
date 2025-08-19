@@ -2,11 +2,14 @@
 
 ## Overview
 
-This document outlines the comprehensive testing strategy for evolving the CloudFlare Security Gateway from the original CloudFlare-Security-Gateway functionality to an enhanced, performance-optimized version.
+This document outlines the comprehensive testing strategy for evolving the
+CloudFlare Security Gateway from the original CloudFlare-Security-Gateway
+functionality to an enhanced, performance-optimized version.
 
 ## Evolution Pattern (Following Smart Home Bridge Success)
 
-The CloudFlare Security Gateway evolution follows the proven pattern used for the Smart Home Bridge:
+The CloudFlare Security Gateway evolution follows the proven pattern used for the
+Smart Home Bridge:
 
 1. **Baseline**: `Home_Assistant_Wrapper.py` (original OAuth functionality)
 2. **Target**: `cloudflare_security_gateway.py.bkp` (enhanced version with performance optimizations)
@@ -273,7 +276,10 @@ echo "Test exit code: $?"
 
 ```bash
 # Performance regression detection
-python tests/validation/tools/cloudflare_security_gateway_testing_suite.py --performance-benchmark --iterations 10
+python tests/validation/tools/cloudflare_security_gateway_testing_suite.py \
+    --performance-benchmark --iterations 10
 ```
 
-This comprehensive testing strategy ensures reliable, systematic evolution of the CloudFlare Security Gateway while maintaining functionality and improving performance throughout the development process.
+This comprehensive testing strategy ensures reliable, systematic evolution of the
+CloudFlare Security Gateway while maintaining functionality and improving
+performance throughout the development process.

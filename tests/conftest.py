@@ -16,21 +16,23 @@ import pytest
 # Import pytest internals for proper hook typing
 from _pytest.config import Config
 from _pytest.nodes import Item
-from ha_connector.config import (
-    ConfigurationManager,
-    ConfigurationState,
-    InstallationScenario,
-)
-from ha_connector.deployment import (
+from pydantic import BaseModel
+
+from development.deployment_tools.deploy_manager import (
     DeploymentConfig,
     DeploymentManager,
     DeploymentStrategy,
+)
+from development.deployment_tools.service_installer import (
     ServiceConfig,
     ServiceInstaller,
     ServiceType,
 )
-from pydantic import BaseModel
-
+from development.utils.manager import (
+    ConfigurationManager,
+    ConfigurationState,
+    InstallationScenario,
+)
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 # Import AWS fixtures to make them available to tests

@@ -10,8 +10,8 @@ from unittest.mock import Mock
 
 import httpx
 import pytest
-from ha_connector.platforms.cloudflare.api_manager import CloudFlareResourceResponse
 
+from development.platforms.cloudflare.api_manager import CloudFlareResourceResponse
 from tests.fixtures.cloudflare_fixtures import (
     CLOUDFLARE_MANAGER_TEST_PARAMS,
     CloudFlareTestFramework,
