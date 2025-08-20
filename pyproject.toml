@@ -1,3 +1,17 @@
+# Home Assistant External Connector - Python Implementation
+#
+# DEVELOPMENT SETUP NOTES:
+# This project includes Home Assistant core module support for development.
+# The setup includes:
+# 1. Symlink: .venv/lib/python3.13/site-packages/homeassistant -> HA core source
+# 2. HA dependencies in [tool.poetry.group.dev.dependencies] for type support
+# 3. Full VS Code + Pylance integration support
+#
+# To set up development environment:
+# 1. poetry install --with dev
+# 2. Ensure HA core symlink exists (see docs/development/SETUP_GUIDE.md)
+# 3. VS Code will have full type checking for Home Assistant modules
+
 [tool.flake8]
 max-line-length = 88
 extend-exclude = [
@@ -80,6 +94,30 @@ pip-audit = "^2.6.0"
 pylint-pydantic = "^0.3.5"
 pyright = "^1.1.0"
 boto3-stubs = {extras = ["iam", "lambda", "ssm"], version = "^1.34.0"}
+# Home Assistant development dependencies for type support and imports
+ciso8601 = "^2.3.3"
+orjson = "^3.11.2"
+cryptography = "^45.0.0"
+pynacl = "^1.5.0"
+async-interrupt = "^1.2.2"
+python-slugify = "^8.0.4"
+jinja2 = "^3.1.6"
+async-timeout = "^5.0.1"
+hassil = "^3.1.0"
+wheel = "^0.45.1"
+packaging = "^25.0"
+atomicwrites = "^1.4.1"
+attrs = "^25.3.0"
+ulid-transform = "^1.4.0"
+awesomeversion = "^25.8.0"
+lru-dict = "^1.3.0"
+webrtc-models = "^0.3.0"
+mashumaro = "^3.16"
+pyjwt = "^2.10.1"
+bcrypt = "^4.3.0"
+annotatedyaml = "^1.0.0"
+multidict = "^6.6.4"
+yarl = "^1.20.1"
 
 [tool.poetry.scripts]
 ha-connector = "ha_connector.cli.main:app"
@@ -369,6 +407,7 @@ disable = [
 
     # === DESIGN PATTERNS (Project-specific decisions) ===
     "too-few-public-methods",     # R0903: Acceptable for data classes and simple interfaces
+    "unnecessary-ellipsis",       # W2301: Protocol stubs and abstract methods often use ellipsis appropriately
 
     # === FILE-SPECIFIC OVERRIDES (Document per-file exceptions below) ===
     # Per-file overrides should be documented here for transparency:

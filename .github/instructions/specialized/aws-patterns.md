@@ -11,9 +11,11 @@ applyTo: "**/aws_*.py,**/adapters/**/*.py,**/infrastructure/**/*.py"
 
 **NOTE**: For complete Transfer Block documentation, see [`specialized/lambda-patterns.md`](./lambda-patterns.md).
 
-**Key Principle**: Lambda functions use strategic code duplication with transfer blocks for optimal performance and deployment independence.
+**Key Principle**: Lambda functions use strategic code duplication with transfer blocks
+for optimal performance and deployment independence.
 
-**Quick Reference**: Transfer blocks enable shared performance-critical code between Lambda functions while maintaining deployment independence.
+**Quick Reference**: Transfer blocks enable shared performance-critical code between
+Lambda functions while maintaining deployment independence.
 
 ## Client Creation Patterns
 
