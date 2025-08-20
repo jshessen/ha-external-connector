@@ -17,7 +17,7 @@ from typer.testing import CliRunner
 
 from development.cli import app
 from development.deployment_tools.service_installer import ServiceType
-from development.utils.manager import InstallationScenario
+from custom_components.ha_external_connector.manager import InstallationScenario
 
 # from ha_connector.cli.commands import get_services_for_scenario
 

@@ -23,7 +23,7 @@ from development.deployment_tools.service_installer import (
     ServiceInstaller,
     ServiceType,
 )
-from development.utils.helpers import ValidationError
+from custom_components.ha_external_connector.helpers import ValidationError
 
 
 # Shared test fixtures for performance optimization

@@ -11,7 +11,7 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from development.platforms.cloudflare.api_manager import CloudFlareResourceResponse
+from custom_components.ha_external_connector.platforms.cloudflare.api_manager import CloudFlareResourceResponse
 from tests.fixtures.cloudflare_fixtures import (
     CLOUDFLARE_MANAGER_TEST_PARAMS,
     CloudFlareTestFramework,

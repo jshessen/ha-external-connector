@@ -14,6 +14,9 @@ from unittest.mock import Mock, patch
 import pytest
 from typer.testing import CliRunner
 
+from custom_components.ha_external_connector.platforms.cloudflare.api_manager import (
+    CloudFlareManager,
+)
 from development.cli.main import app
 from development.deployment_tools.deploy_manager import (
     DeploymentConfig,
@@ -21,8 +24,10 @@ from development.deployment_tools.deploy_manager import (
     DeploymentStrategy,
 )
 from development.deployment_tools.service_installer import DeploymentResult, ServiceType
-from development.platforms.cloudflare.api_manager import CloudFlareManager
-from development.utils.manager import ConfigurationManager, InstallationScenario
+from development.utils.manager import (
+    ConfigurationManager,
+    InstallationScenario,
+)
 from tests.fixtures.test_secrets import get_deterministic_secret
 
 

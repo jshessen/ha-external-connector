@@ -21,7 +21,7 @@ from development.deployment_tools.service_installer import (
     ServiceConfig,
     ServiceType,
 )
-from development.utils.manager import InstallationScenario
+from custom_components.ha_external_connector.manager import InstallationScenario
 
 # Test constants - clearly marked as test data
 TEST_SECRET_PREFIX = "test-"  # nosec B105

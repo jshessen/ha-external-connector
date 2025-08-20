@@ -13,7 +13,7 @@ import boto3
 from botocore.exceptions import ClientError
 from moto import mock_aws
 
-from development.utils.lambda_validator import LambdaSecurityValidator, SecurityStatus
+from custom_components.ha_external_connector.lambda_validator import LambdaSecurityValidator, SecurityStatus
 
 if TYPE_CHECKING:
     # Import AWS client types from types-boto3 packages for correct type checking
