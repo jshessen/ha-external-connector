@@ -11,19 +11,24 @@ import logging
 import secrets
 import time
 import urllib.parse
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.exceptions import HomeAssistantError
 
 from .models import SkillDeploymentStage, SkillValidationResult, SMAPICredentials
 
+
+# Define a local SmapiClientError for consistent internal usage
+class SmapiClientError(Exception):
+    """Client error for SMAPI client operations."""
+
+
 # Handle aiohttp imports - will be available at runtime in Home Assistant
 try:
-    from aiohttp import ClientError
+    import aiohttp
 except ImportError:
-    # Fallback for development environment - create a specific exception type
-    class ClientError(Exception):
-        """Fallback ClientError for development environment."""
+    aiohttp = None
+
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
@@ -64,10 +69,10 @@ class AmazonSMAPIClient:
         Args:
             credentials: SMAPI OAuth credentials
         """
-        self.credentials = credentials
-        self.session = session
-        self.logger = _LOGGER
-        self._should_close_session = session is None
+        self.credentials: SMAPICredentials = credentials
+        self.session: ClientSession | None = session
+        self.logger: logging.Logger = _LOGGER
+        self._should_close_session: bool = session is None
 
     async def __aenter__(self) -> AmazonSMAPIClient:
         """Async context manager entry."""
@@ -151,12 +156,12 @@ class AmazonSMAPIClient:
                     self.logger.error("OAuth token exchange failed: %s", error_data)
                     raise ValidationError(f"Token exchange failed: {error_data}")
 
-                token_response = await response.json()
+                token_response: dict[str, Any] = await response.json()  # type: ignore[misc]
 
                 # Update credentials with new tokens
                 self.credentials.access_token = token_response["access_token"]
-                self.credentials.refresh_token = token_response.get("refresh_token")
-                self.credentials.expires_at = int(time.time()) + token_response.get(
+                self.credentials.refresh_token = token_response.get("refresh_token")  # type: ignore[misc]
+                self.credentials.expires_at = int(time.time()) + token_response.get(  # type: ignore[misc]
                     "expires_in", 3600
                 )
 
@@ -188,7 +193,7 @@ class AmazonSMAPIClient:
         Raises:
             ValidationError: If API request fails
         """
-        if not self.session:
+        if not self.session:  # type: ignore[misc]
             raise ValidationError("HTTP session not initialized")
 
         url = f"{self.SMAPI_BASE_URL}{endpoint}"
@@ -200,20 +205,21 @@ class AmazonSMAPIClient:
         # Retry logic for rate limiting and transient errors
         for attempt in range(3):
             try:
-                async with self.session.request(
+                async with self.session.request(  # type: ignore[misc]
                     method=method,
                     url=url,
                     json=data,
                     params=params,
                     headers=headers,
                 ) as response:
-                    response_data: dict[str, Any] = (
-                        await response.json() if response.content_length else {}
+                    response_data: dict[str, Any] = cast(
+                        dict[str, Any],
+                        await response.json() if response.content_length else {},  # type: ignore[misc]
                     )
 
-                    if response.status == 200:
+                    if response.status == 200:  # type: ignore[misc]
                         return response_data
-                    if response.status == 429:  # Rate limited
+                    if response.status == 429:  # Rate limited  # type: ignore[misc]
                         wait_time = 2**attempt
                         self.logger.warning(
                             "Rate limited, waiting %s seconds", wait_time
@@ -221,15 +227,24 @@ class AmazonSMAPIClient:
                         await asyncio.sleep(wait_time)
                         continue
 
-                    error_msg = response_data.get("message", f"HTTP {response.status}")
+                    error_msg = response_data.get("message", f"HTTP {response.status}")  # type: ignore[misc]
                     raise ValidationError(f"SMAPI request failed: {error_msg}")
 
-            except ClientError as e:
+            except SmapiClientError as e:
                 if attempt == 2:  # Last attempt
                     raise ValidationError(f"SMAPI request error: {e}") from e
                 await asyncio.sleep(2**attempt)
-
-        raise ValidationError("SMAPI request failed after all retries")
+            except ValidationError:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(2**attempt)
+            except aiohttp.ClientError as e:
+                wrapped_exc = SmapiClientError(str(e))
+                if attempt == 2:
+                    raise ValidationError(
+                        f"SMAPI request error: {wrapped_exc}"
+                    ) from wrapped_exc
+                await asyncio.sleep(2**attempt)
 
     async def create_skill(
         self,
@@ -268,7 +283,7 @@ class AmazonSMAPIClient:
             self.logger.info("Successfully created Alexa skill: %s", skill_id)
             return skill_id
 
-        except Exception as e:
+        except (ValidationError, SmapiClientError) as e:
             self.logger.error("Skill creation failed: %s", e)
             raise ValidationError(f"Failed to create skill: {e}") from e
 
@@ -335,6 +350,6 @@ class AmazonSMAPIClient:
 
             raise ValidationError("Skill validation timed out")
 
-        except Exception as e:
+        except (ValidationError, SmapiClientError) as e:
             self.logger.error("Skill validation error: %s", e)
             raise ValidationError(f"Skill validation failed: {e}") from e

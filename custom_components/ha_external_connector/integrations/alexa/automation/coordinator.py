@@ -50,8 +50,8 @@ class AmazonDeveloperConsoleAutomator:
         """Initialize the console automator for HACS integration."""
         self._smapi_client: AmazonSMAPIClient | None = None
         # Simplified skill management for HACS integration
-        self._skills: dict[str, dict] = {}
-        self._skill_manifests: dict[str, dict] = {}
+        self._skills: dict[str, dict[str, Any]] = {}
+        self._skill_manifests: dict[str, dict[str, Any]] = {}
         self._setup_steps: list[ConsoleSetupStep] = []
         _LOGGER.info("Amazon Developer Console Automator initialized")
 
