@@ -27,6 +27,34 @@ including Alexa, CloudFlare, and AWS infrastructure.
 - **[Configuration Management](docs/development/CONFIGURATION_MANAGEMENT.md)** -
   System configuration patterns
 
+#### Quick Development Environment Setup
+
+```bash
+# Clone with Home Assistant core for full development support
+git clone https://github.com/jshessen/ha-external-connector.git
+cd ha-external-connector
+
+# Automated setup (validates environment and creates HA module access)
+python scripts/setup_ha_dev.py
+
+# Validate installation
+python scripts/test_ha_dev_env.py
+
+Features:
+
+- ✅ Full Home Assistant module access with type support
+- ✅ VS Code + Pylance integration for comprehensive type checking
+- ✅ Automated dependency management via Poetry
+- ✅ Professional development workflow with quality gates
+```
+
+Features:
+
+- ✅ Full Home Assistant module access with type support
+- ✅ VS Code + Pylance integration for comprehensive type checking
+- ✅ Automated dependency management via Poetry
+- ✅ Professional development workflow with quality gates
+
 ### For Operations
 
 - **[Deployment Guide](docs/deployment/DEPLOYMENT_QUICK_REFERENCE.md)** -

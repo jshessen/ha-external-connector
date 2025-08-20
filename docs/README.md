@@ -57,6 +57,10 @@ voice assistants, mobile platforms, and cloud services.
 
 ### 💻 Development Environment
 
+- **[Development Setup](development/)** - Home Assistant development environment
+  - [Setup Guide](development/SETUP_GUIDE.md) - Automated environment configuration
+  - [Environment Status](development/ENVIRONMENT_STATUS.md) - Current environment validation
+
 - **[Quality Standards](quality-standards/)** - Enterprise-grade development standards
   - [Code Quality Tools](quality-standards/code-quality/CODE_QUALITY_SUITE.md)
   - [Development Setup](quality-standards/code-quality/AUTOMATION_SETUP.md)

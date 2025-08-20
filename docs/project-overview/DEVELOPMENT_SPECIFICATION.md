@@ -1,9 +1,10 @@
 # Home Assistant External Connector - Development Specification
 
-**Version:** 2.0
+**Version:** 2.1
 **Date:** August 19, 2025
-**Status:** Draft
+**Status:** Updated for HACS Compliance
 **Project Codename:** HA-External-Connector
+**Project Type:** Home Assistant Custom Integration (HACS)
 
 ## Table of Contents
 
@@ -143,16 +144,26 @@ connections.
 The Alexa integration serves as the architectural foundation and reference implementation
 for all future external integrations. It demonstrates the complete pattern:
 
-**Component Structure:**
+**Component Structure (HACS Compliant):**
 
 ```text
-src/ha_connector/integrations/alexa/
-├── lambda_functions/           # AWS Lambda deployment components
-│   ├── smart_home_bridge.py   # Primary skill handler
-│   └── cloudflare_security_gateway.py  # OAuth & security
-├── configuration/              # Home Assistant configuration
-├── deployment/                 # Infrastructure automation
-└── documentation/             # Integration-specific guides
+custom_components/ha_external_connector/
+├── integrations/alexa/         # Alexa integration module
+│   ├── lambda_functions/       # AWS Lambda deployment components
+│   │   ├── smart_home_bridge.py   # Primary skill handler
+│   │   └── cloudflare_security_gateway.py  # OAuth & security
+│   ├── config_flow.py          # Alexa-specific configuration flow
+│   ├── services.py             # Alexa service definitions
+│   ├── models.py               # Alexa data models
+│   └── coordinator.py          # Alexa state management
+├── platform/                   # Platform abstraction layer
+│   ├── aws/                    # AWS platform services
+│   ├── cloudflare/             # CloudFlare platform services
+│   └── security/               # Security framework
+├── __init__.py                 # Main integration entry point
+├── config_flow.py              # Primary configuration flow
+├── manifest.json               # HACS metadata and dependencies
+└── services.yaml               # Service definitions
 ```
 
 **Communication Flow:**
@@ -351,7 +362,7 @@ class VoiceAssistantPlatform:
 
 **Deliverables:**
 
-- [ ] `src/ha_connector/integrations/` framework with plugin architecture
+- [ ] `custom_components/ha_external_connector/integrations/` framework with plugin architecture
 - [ ] Platform abstraction layer for cloud services
 - [ ] Unified configuration management with migration tools
 - [ ] Enhanced security framework with audit capabilities
