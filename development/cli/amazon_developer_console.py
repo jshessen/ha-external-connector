@@ -20,7 +20,7 @@ from rich.panel import Panel
 from rich.progress import Progress
 from rich.prompt import Confirm, Prompt
 
-from development.alexa_automation_scripts.amazon_developer_console import (
+from ..alexa_automation_scripts.amazon_developer_console import (
     AmazonDeveloperConsoleIntegration,
     AutomationConfig,
     BrowserAutomationDriver,
@@ -447,8 +447,7 @@ def list_skills() -> None:
 
         # Use the correct method to list skills for the vendor
         vendor_id = (
-            credentials.vendor_id
-            or console_integration.smapi_client.get_vendor_id()
+            credentials.vendor_id or console_integration.smapi_client.get_vendor_id()
         )
         if not vendor_id:
             rprint("[red]❌ Vendor ID not found. Please complete authentication.[/red]")

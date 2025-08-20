@@ -13,23 +13,21 @@ Builds on the existing CLI wizard and web API patterns to provide:
 
 from __future__ import annotations
 
+# from development.utils.manager import InstallationScenario
+# Temporary fallback: define InstallationScenario here if missing
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-try:
-    from development.utils.manager import InstallationScenario
-except ImportError:
-    # Fallback definition for type checking or testing
-
-    class InstallationScenario(str, Enum):
-        DIRECT_ALEXA = "direct_alexa"
-        CLOUDFLARE = "cloudflare"
-        # Add other scenarios as needed
-
-
 from development.utils import HAConnectorLogger
+
+
+class InstallationScenario(str, Enum):
+    DIRECT_ALEXA = "direct_alexa"
+    CLOUDFLARE = "cloudflare"
+    HYBRID = "hybrid"
+
 
 logger = HAConnectorLogger("integrations.selection")
 

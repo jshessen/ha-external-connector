@@ -171,7 +171,9 @@ class AmazonSMAPIClient:
         # Return a dummy vendor ID for development to avoid None assignment errors
         return "dummy-vendor-id-123"
 
-    def list_skills_for_vendor(self, vendor_id: str) -> list[dict[str, Any]]:  # pylint: disable=unused-argument
+    def list_skills_for_vendor(
+        self, vendor_id: str
+    ) -> list[dict[str, Any]]:  # pylint: disable=unused-argument
         """List all skills for a vendor."""
         # This method is planned for implementation
         logger.info("List skills for vendor not implemented in development version")
@@ -335,8 +337,8 @@ class BrowserAutomationDriver:
     def __init__(self, headless: bool = False):
         """Initialize browser automation driver."""
         self.headless = headless
-        self.driver: webdriver.Chrome | None = None
-        self.wait: WebDriverWait[webdriver.Chrome] | None = None
+        self.driver: Any = None
+        self.wait: Any = None
 
     def __enter__(self):
         """Context manager entry."""
@@ -357,7 +359,7 @@ class BrowserAutomationDriver:
         """Start Chrome browser with appropriate options."""
         logger.info("Starting browser for Amazon Developer Console automation")
 
-        chrome_options: Options = Options()
+        chrome_options = Options()  # type: ignore
         if self.headless:
             chrome_options.add_argument("--headless")
 
@@ -374,6 +376,14 @@ class BrowserAutomationDriver:
         chrome_options.add_experimental_option(  # pyright: ignore[reportUnknownMemberType]
             "useAutomationExtension", use_automation_extension
         )
+
+        if not SELENIUM_AVAILABLE or webdriver is None or Options is None:
+            logger.error(
+                "Selenium is not available. Please install selenium to use browser automation."
+            )
+            raise ValidationError(
+                "Selenium is not available. Please install selenium to use browser automation."
+            )
 
         try:
             self.driver = webdriver.Chrome(options=chrome_options)
